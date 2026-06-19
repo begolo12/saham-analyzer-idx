@@ -32,6 +32,7 @@ import {
   type SystemHealth,
   type TrackedAction,
 } from "@/lib/self-analysis";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   exportToFile,
   importFromFile,
@@ -522,6 +523,9 @@ export default function SettingsPage() {
 
       {/* Backup & Restore */}
       <BackupRestoreCard />
+
+      {/* Language */}
+      <LanguageSwitcher />
 
       {/* Reset All Data */}
       <ResetAllDataCard />

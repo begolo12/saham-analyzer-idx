@@ -13,6 +13,7 @@ import {
   Sparkles,
   Flame,
   Bell,
+  Share2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,15 +295,18 @@ export default function WatchlistPage() {
             )}
           </div>
           {items.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAll}
-              className="text-xs"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Hapus Semua</span>
-            </Button>
+            <div className="flex gap-1">
+              <ShareWatchlistButton tickers={items.map((i) => i.ticker)} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAll}
+                className="text-xs"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Hapus Semua</span>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -568,5 +572,30 @@ export default function WatchlistPage() {
         />
       )}
     </div>
+  );
+}
+
+function ShareWatchlistButton({ tickers }: { tickers: string[] }) {
+  const handleShare = async () => {
+    const url = `${window.location.origin}/share/watchlist?list=${tickers.join(",")}&title=Watchlist%20Saya`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("🔗 Link watchlist disalin!");
+    } catch {
+      toast.error("Gagal menyalin link");
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleShare}
+      className="text-xs"
+      aria-label="Bagikan watchlist"
+    >
+      <Share2 className="h-4 w-4 mr-1" />
+      <span className="hidden sm:inline">Bagikan</span>
+    </Button>
   );
 }

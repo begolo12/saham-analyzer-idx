@@ -1,17 +1,50 @@
 {
-  "name": "Saham Analyzer IDX",
+  "name": "Saham Analyzer IDX - Analisa Saham Indonesia",
   "short_name": "SahamIDX",
-  "description": "Analisa saham Indonesia dengan rekomendasi Buy/Hold/Sell",
+  "description": "Analisa saham Indonesia dengan rekomendasi Buy/Hold/Sell berbasis teknikal, fundamental, dan sentimen. Plus track portfolio virtual dengan benchmark IHSG.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1E88E5",
   "orientation": "portrait",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["finance", "productivity", "education"],
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cari Saham",
+      "url": "/",
+      "description": "Buka halaman utama untuk cari saham"
+    },
+    {
+      "name": "Watchlist",
+      "url": "/watchlist",
+      "description": "Lihat watchlist saya"
+    },
+    {
+      "name": "Portfolio",
+      "url": "/portfolio",
+      "description": "Lihat portfolio virtual"
+    },
+    {
+      "name": "Screener",
+      "url": "/screener",
+      "description": "Filter saham berdasarkan kriteria"
     }
   ]
 }

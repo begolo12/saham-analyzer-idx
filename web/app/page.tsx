@@ -17,12 +17,15 @@ import {
   Star,
   Activity,
   Scale,
+  FlaskConical,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
 import { DailyBriefing } from "@/components/daily-briefing";
 import { SectorHeatmap } from "@/components/sector-heatmap";
 import { FundamentalScreener } from "@/components/fundamental-screener";
+import { ForeignFlow } from "@/components/foreign-flow";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +94,9 @@ export default function HomePage() {
 
         <Disclaimer />
 
+        {/* Onboarding Tour — first-time user guidance */}
+        <OnboardingTour />
+
         {/* Daily Briefing — personal dashboard */}
         <DailyBriefing />
 
@@ -99,6 +105,9 @@ export default function HomePage() {
 
         {/* Fundamental Screener — jawab "saham apa yang akan dibeli" */}
         <FundamentalScreener />
+
+        {/* Foreign Flow — "apa yang dibeli asing?" (proxy based on volume) */}
+        <ForeignFlow />
 
         {/* Quick Actions */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -128,6 +137,13 @@ export default function HomePage() {
               <Scale className="h-6 w-6 mx-auto mb-1 text-cyan-500" />
               <div className="text-sm font-bold">Compare</div>
               <div className="text-[10px] text-muted-foreground">Bandingkan 2-3 saham</div>
+            </Card>
+          </Link>
+          <Link href="/backtest">
+            <Card className="p-4 card-hover text-center">
+              <FlaskConical className="h-6 w-6 mx-auto mb-1 text-fuchsia-500" />
+              <div className="text-sm font-bold">Backtest</div>
+              <div className="text-[10px] text-muted-foreground">Test strategi</div>
             </Card>
           </Link>
           <Link href="/settings">

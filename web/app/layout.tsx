@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import { BottomNav } from "@/components/bottom-nav";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { AIChatbot } from "@/components/ai-chatbot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +43,9 @@ export default function RootLayout({
         {children}
         <Toaster position="top-center" richColors />
         <BottomNav />
+        <KeyboardShortcuts />
+        <ServiceWorkerRegister />
+        <AIChatbot />
       </body>
     </html>
   );

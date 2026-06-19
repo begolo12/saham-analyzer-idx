@@ -57,8 +57,10 @@ export async function GET(request: NextRequest) {
     );
 
     const cacheKey = `screen:${screen}:${limit}`;
-    const cached = getCached(cacheKey);
-    if (cached) {
+    // Skip cache if forceRefresh param is set
+    const forceRefresh = searchParams.get("refresh") === "1";
+    const cached = forceRefresh ? null : getCached(cacheKey);
+    if (cached && cached.total > 0) {
       return NextResponse.json({ ...cached, cached: true });
     }
 
@@ -68,40 +70,51 @@ export async function GET(request: NextRequest) {
     const stocksToScan = POPULAR_STOCKS.slice(0, scanLimit);
 
     // For ALL screens, use lightweight quote-based approach first
-    const quotes = await Promise.allSettled(
-      stocksToScan.map(async (stock) => {
-        try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/quick/${stock.code}`,
-            { next: { revalidate: 300 } },
-          );
-          if (!res.ok) return null;
-          const data = (await res.json()) as any;
-          return {
-            ticker: `${stock.code}.JK`,
-            code: stock.code,
-            name: stock.name,
-            sector: stock.sector,
-            price: data.price ?? 0,
-            previousClose: data.previousClose ?? null,
-            change: data.change ?? 0,
-            changePct: data.changePct ?? 0,
-          };
-        } catch {
-          return null;
-        }
-      }),
-    );
+    // Fetch in batches to avoid Yahoo Finance rate limits
+    const allStocks = stocksToScan;
+    const allQuotes: QuickQuote[] = [];
 
-    const validQuotes = quotes
-      .filter(
-        (q): q is PromiseFulfilledResult<QuickQuote> =>
-          q.status === "fulfilled" && q.value !== null && q.value.price > 0,
-      )
-      .map((q) => q.value);
+    for (let i = 0; i < allStocks.length; i += 8) {
+      const batch = allStocks.slice(i, i + 8);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (stock) => {
+          try {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/quick/${stock.code}`,
+            );
+            if (!res.ok) return null;
+            const data = (await res.json()) as any;
+            if (!data.price || data.price === 0) return null;
+            return {
+              ticker: `${stock.code}.JK`,
+              code: stock.code,
+              name: stock.name,
+              sector: stock.sector,
+              price: data.price,
+              previousClose: data.previousClose ?? null,
+              change: data.change ?? 0,
+              changePct: data.changePct ?? 0,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      for (const r of batchResults) {
+        if (r.status === "fulfilled" && r.value) {
+          allQuotes.push(r.value);
+        }
+      }
+
+      // Small delay between batches to be nice to Yahoo
+      if (i + 8 < allStocks.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
 
     // Phase 1: Quick screen from quote data (top gainers, losers, near 52w high/low)
-    const quickResults = runQuickScreen(screen, validQuotes);
+    const quickResults = runQuickScreen(screen, allQuotes);
 
     if (quickResults.length >= 5 || isQuickScreen(screen)) {
       const result = {
@@ -113,7 +126,8 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
         duration: Date.now() - startTime,
       };
-      setCache(cacheKey, result);
+      // Only cache if we have meaningful results
+      if (quickResults.length > 0) setCache(cacheKey, result);
       return NextResponse.json({ ...result, cached: false });
     }
 
@@ -134,7 +148,7 @@ export async function GET(request: NextRequest) {
             const match = matchesCriteria(screen, prices);
             if (!match.matched) return null;
 
-            const quote = validQuotes.find((q) => q.code === stock.code);
+            const quote = allQuotes.find((q) => q.code === stock.code);
             return {
               ticker: `${stock.code}.JK`,
               code: stock.code,
@@ -157,6 +171,11 @@ export async function GET(request: NextRequest) {
           deepResults.push(r.value);
         }
       }
+
+      // Small delay between batches
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     }
 
     deepResults.sort((a, b) => b.matchScore - a.matchScore);
@@ -171,7 +190,8 @@ export async function GET(request: NextRequest) {
       duration: Date.now() - startTime,
     };
 
-    setCache(cacheKey, result);
+    // Only cache if we have results
+    if (deepResults.length > 0) setCache(cacheKey, result);
     return NextResponse.json({ ...result, cached: false });
   } catch (error) {
     console.error("API /screener error:", error);

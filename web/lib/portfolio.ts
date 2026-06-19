@@ -100,8 +100,10 @@ export function calculateHoldings(
         buyCount++;
       } else if (tx.type === "SELL") {
         let remaining = tx.quantity;
-        const sellProceeds = tx.price * tx.quantity - tx.fee;
+        const feePerShare = tx.quantity > 0 ? tx.fee / tx.quantity : 0;
         let costOfSold = 0;
+        let proceedsOfSold = 0;
+        let sharesSold = 0;
 
         while (remaining > 0 && buyQueue.length > 0) {
           const buy = buyQueue[0];
@@ -109,17 +111,20 @@ export function calculateHoldings(
           // Cost per share includes proportional fee
           const costPerShare = (buy.price * buy.shares + buy.fee) / buy.shares;
           costOfSold += used * costPerShare;
+          // Proceeds per share is sell price minus proportional fee
+          proceedsOfSold += used * (tx.price - feePerShare);
 
           buy.shares -= used;
           remaining -= used;
+          sharesSold += used;
           if (buy.shares === 0) buyQueue.shift();
         }
 
-        realizedPL += sellProceeds - costOfSold;
-        totalShares -= tx.quantity;
-        // Reduce totalCost proportionally
-        const ratio = (tx.quantity) / (totalShares + tx.quantity);
-        totalCost = totalCost * (1 - ratio);
+        // Cap at actual shares we owned — never let totalShares go negative
+        totalShares -= sharesSold;
+        // Reduce totalCost by actual cost basis of shares sold (not by ratio)
+        totalCost -= costOfSold;
+        realizedPL += proceedsOfSold - costOfSold;
         sellCount++;
       }
     }

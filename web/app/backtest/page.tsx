@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/alert";
+import { ErrorBanner } from "@/components/error-banner";
+import { EmptyState } from "@/components/empty-state";
 import {
   runBacktest,
   compareWithIHSG,
@@ -70,7 +72,7 @@ export default function BacktestPage() {
             </Button>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+            <FlaskConical className="h-6 w-6 sm:h-7 sm:w-7 text-primary" aria-hidden />
             Backtest Strategi
           </h1>
         </div>
@@ -100,8 +102,11 @@ export default function BacktestPage() {
               {POPULAR_STOCKS.slice(0, 8).map((s) => (
                 <button
                   key={s.code}
+                  type="button"
                   onClick={() => setTicker(s.code)}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted hover:bg-accent transition-colors"
+                  aria-pressed={ticker === s.code}
+                  aria-label={`Pilih saham ${s.code}`}
+                  className="inline-flex min-h-8 items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-accent active:bg-accent/70"
                 >
                   + {s.code}
                 </button>
@@ -111,16 +116,19 @@ export default function BacktestPage() {
 
           {/* Strategy */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">
+            <span className="text-xs text-muted-foreground mb-1.5 block">
               Strategi
-            </label>
-            <div className="grid grid-cols-1 gap-2">
+            </span>
+            <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Strategi backtest">
               {STRATEGIES.map((s) => (
                 <button
                   key={s.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={strategy === s.id}
                   onClick={() => setStrategy(s.id)}
                   className={cn(
-                    "text-left p-3 rounded-lg border-2 transition-colors",
+                    "min-h-12 text-left rounded-lg border-2 p-3 transition-colors active:scale-[0.99]",
                     strategy === s.id
                       ? "border-primary bg-primary/5"
                       : "border-border hover:bg-accent/50",
@@ -137,16 +145,19 @@ export default function BacktestPage() {
 
           {/* Period */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">
+            <span className="text-xs text-muted-foreground mb-1.5 block">
               Periode
-            </label>
-            <div className="grid grid-cols-3 gap-2">
+            </span>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Periode backtest">
               {PERIODS.map((p) => (
                 <button
                   key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={period === p.id}
                   onClick={() => setPeriod(p.id)}
                   className={cn(
-                    "py-2 px-3 rounded-lg border-2 font-medium text-sm transition-colors",
+                    "min-h-10 rounded-lg border-2 px-3 py-2 font-medium text-sm transition-colors active:scale-[0.99]",
                     period === p.id
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border hover:bg-accent/50",
@@ -175,8 +186,11 @@ export default function BacktestPage() {
               {["5000000", "10000000", "50000000", "100000000"].map((v) => (
                 <button
                   key={v}
+                  type="button"
                   onClick={() => setCapital(v)}
-                  className="flex-1 px-2 py-1 rounded text-[10px] font-medium bg-muted hover:bg-accent transition-colors tabular-nums"
+                  aria-pressed={capital === v}
+                  aria-label={`Modal ${formatIDR(parseFloat(v))}`}
+                  className="min-h-9 flex-1 rounded px-2 py-1 text-[11px] font-semibold bg-muted hover:bg-accent transition-colors tabular-nums"
                 >
                   {formatIDR(parseFloat(v))}
                 </button>
@@ -184,27 +198,65 @@ export default function BacktestPage() {
             </div>
           </div>
 
-          <Button onClick={handleRun} disabled={loading} size="lg" className="w-full">
+          <Button
+            onClick={handleRun}
+            disabled={loading}
+            size="lg"
+            aria-label={loading ? "Menjalankan backtest" : "Jalankan backtest"}
+            className="min-h-11 w-full"
+          >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
                 Menjalankan backtest...
               </>
             ) : (
               <>
-                <FlaskConical className="h-4 w-4 mr-2" />
+                <FlaskConical className="h-4 w-4 mr-2" aria-hidden />
                 Jalankan Backtest
               </>
             )}
           </Button>
 
           {error && (
-            <Alert variant="warning">
-              <AlertCircle className="h-4 w-4 inline mr-1" />
-              {error}
-            </Alert>
+            <ErrorBanner
+              title="Backtest gagal"
+              message={error}
+              onRetry={handleRun}
+            />
           )}
         </Card>
+
+        {/* Loading state for results */}
+        {loading && !result && (
+          <Card className="p-5 space-y-3" aria-busy="true">
+            <div className="h-5 w-32 bg-secondary rounded shimmer" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-card p-3 space-y-2 animate-pulse">
+                <div className="h-3 w-20 bg-muted rounded" />
+                <div className="h-7 w-24 bg-muted rounded" />
+              </div>
+              <div className="rounded-lg border bg-card p-3 space-y-2 animate-pulse">
+                <div className="h-3 w-20 bg-muted rounded" />
+                <div className="h-7 w-24 bg-muted rounded" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Empty state — belum ada hasil */}
+        {!loading && !result && !error && (
+          <EmptyState
+            icon={<FlaskConical className="h-6 w-6 text-primary" aria-hidden />}
+            title="Belum ada hasil"
+            description="Atur konfigurasi di atas, lalu tekan Jalankan Backtest untuk simulasi strategi trading kamu."
+          />
+        )}
 
         {/* Results */}
         {result && (

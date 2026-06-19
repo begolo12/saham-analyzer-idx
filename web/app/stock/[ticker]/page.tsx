@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, TrendingUp, TrendingDown, Briefcase } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Briefcase, RefreshCw } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,8 @@ import { PriceChart } from "@/components/price-chart";
 import { WatchlistButton, bumpWatchView } from "@/components/watchlist-button";
 import { AddTransactionModal } from "@/components/add-transaction-modal";
 import { useTrackRecommendation } from "@/components/track-recommendation";
+import { ErrorBanner } from "@/components/error-banner";
+import { EmptyState } from "@/components/empty-state";
 import { formatIDR, formatNumber, formatPercent, cn } from "@/lib/utils";
 
 interface AnalysisData {
@@ -40,29 +42,99 @@ interface AnalysisData {
   meta: any;
 }
 
+type Period = "1mo" | "3mo" | "6mo" | "1y" | "2y";
+type Tab = "technical" | "fundamental" | "behavioral" | "news";
+
+const PERIODS: Period[] = ["1mo", "3mo", "6mo", "1y", "2y"];
+const PERIOD_LABELS: Record<Period, string> = {
+  "1mo": "1B",
+  "3mo": "3B",
+  "6mo": "6B",
+  "1y": "1T",
+  "2y": "2T",
+};
+const VALID_TABS: Tab[] = ["technical", "fundamental", "behavioral", "news"];
+const TAB_LABELS: Record<Tab, string> = {
+  technical: "Teknikal",
+  fundamental: "Fundamental",
+  behavioral: "Behavioral",
+  news: "Berita",
+};
+
 export default function StockDetailPage() {
+  return (
+    <Suspense fallback={<StockDetailSkeleton />}>
+      <StockDetailContent />
+    </Suspense>
+  );
+}
+
+function StockDetailContent() {
   const params = useParams<{ ticker: string }>();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const ticker = (params.ticker || "").toUpperCase().replace(".JK", "");
   const [data, setData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<"1mo" | "3mo" | "6mo" | "1y" | "2y">("1y");
-  const [activeTab, setActiveTab] = useState<string>("technical");
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  const initialTab = (() => {
+    const t = searchParams.get("tab");
+    return t && VALID_TABS.includes(t as Tab) ? (t as Tab) : "technical";
+  })();
+  const initialPeriod = (() => {
+    const p = searchParams.get("period");
+    return p && PERIODS.includes(p as Period) ? (p as Period) : "1y";
+  })();
+
+  const [period, setPeriod] = useState<Period>(initialPeriod);
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [showBuyModal, setShowBuyModal] = useState(false);
+
+  const updateUrl = useCallback(
+    (next: { tab?: Tab; period?: Period }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.tab) params.set("tab", next.tab);
+      else if (params.get("tab")) params.delete("tab");
+      if (next.period) params.set("period", next.period);
+      else if (params.get("period")) params.delete("period");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      if (!VALID_TABS.includes(tab as Tab)) return;
+      setActiveTab(tab as Tab);
+      updateUrl({ tab: tab as Tab });
+    },
+    [updateUrl],
+  );
+
+  const handlePeriodChange = useCallback(
+    (p: Period) => {
+      setPeriod(p);
+      updateUrl({ period: p });
+    },
+    [updateUrl],
+  );
 
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
     setError(null);
 
-    // Self-learning: bump view count if ticker is in watchlist
     bumpWatchView(ticker);
 
     fetch(`/api/analysis/${ticker}?period=${period}&includeNews=true`)
       .then(async (res) => {
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Failed to fetch");
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Gagal memuat data (${res.status})`);
         }
         return res.json();
       })
@@ -71,21 +143,16 @@ export default function StockDetailPage() {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message);
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Gagal memuat analisa");
         setLoading(false);
       });
-  }, [ticker, period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, period, retryNonce]);
 
-  const refresh = () => {
-    if (!ticker) return;
-    setLoading(true);
-    setError(null);
-    fetch(`/api/analysis/${ticker}?period=${period}&includeNews=true`)
-      .then((res) => res.json())
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+  const refresh = useCallback(() => {
+    setRetryNonce((n) => n + 1);
+  }, []);
 
   const summary = data?.summary;
   const recommendation = data?.recommendation;
@@ -110,23 +177,24 @@ export default function StockDetailPage() {
     <div className="min-h-screen bg-background">
       <TopHeader />
 
-      <main className="container py-4 sm:py-6">
+      <main className="container py-4 sm:py-6 pb-24 md:pb-6">
         {/* Back button + actions */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
+          <Link href="/" aria-label="Kembali ke Beranda">
+            <Button variant="ghost" size="sm" className="min-h-9">
+              <ArrowLeft className="h-4 w-4 mr-1" aria-hidden />
               <span className="hidden sm:inline">Beranda</span>
             </Button>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <WatchlistButton ticker={ticker} />
             <Button
               onClick={() => setShowBuyModal(true)}
               size="sm"
-              className="bg-bull-600 hover:bg-bull-700"
+              aria-label={`Catat transaksi beli ${ticker}`}
+              className="min-h-9 bg-bull-600 hover:bg-bull-700"
             >
-              <Briefcase className="h-4 w-4 mr-1" />
+              <Briefcase className="h-4 w-4 mr-1" aria-hidden />
               <span>Beli</span>
             </Button>
           </div>
@@ -154,14 +222,24 @@ export default function StockDetailPage() {
 
         {/* Error State */}
         {error && !loading && (
-          <Alert variant="danger" className="mb-4">
-            <strong>Error:</strong> {error}
-            <div className="mt-3">
-              <Button onClick={refresh} variant="outline" size="sm">
-                Coba Lagi
-              </Button>
-            </div>
-          </Alert>
+          <div className="space-y-3">
+            <ErrorBanner
+              title="Gagal memuat analisa"
+              message={error}
+              onRetry={refresh}
+            />
+            <EmptyState
+              title="Coba lagi atau kembali"
+              description="Pastikan ticker valid (contoh: BBCA, TLKM) dan koneksi internet stabil."
+              actions={[
+                {
+                  label: "Cari saham lain",
+                  icon: <RefreshCw className="h-3 w-3" aria-hidden />,
+                  onClick: () => router.push("/search"),
+                },
+              ]}
+            />
+          </div>
         )}
 
         {/* Success State */}
@@ -225,20 +303,33 @@ export default function StockDetailPage() {
             </div>
 
             {/* Period selector */}
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg sm:text-xl font-bold">📈 Chart & Analysis</h2>
-              <div className="flex gap-1">
-                {(["1mo", "3mo", "6mo", "1y", "2y"] as const).map((p) => (
-                  <Button
-                    key={p}
-                    variant={period === p ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPeriod(p)}
-                    className="text-xs h-8 px-3"
-                  >
-                    {p.toUpperCase()}
-                  </Button>
-                ))}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-bold">📈 Chart &amp; Analysis</h2>
+              <div
+                role="radiogroup"
+                aria-label="Periode chart"
+                className="inline-flex items-center gap-0.5 rounded-full bg-muted p-0.5"
+              >
+                {PERIODS.map((p) => {
+                  const active = period === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => handlePeriodChange(p)}
+                      className={cn(
+                        "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
+                        active
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {PERIOD_LABELS[p]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -288,8 +379,8 @@ export default function StockDetailPage() {
             </Card>
 
             {/* Detailed Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full grid grid-cols-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              <TabsList className="w-full grid grid-cols-4" aria-label="Detail analisa">
                 <TabsTrigger value="technical">📊 Tech</TabsTrigger>
                 <TabsTrigger value="fundamental">💼 Fund</TabsTrigger>
                 <TabsTrigger value="behavioral">🔍 Pattern</TabsTrigger>
@@ -413,6 +504,23 @@ export default function StockDetailPage() {
         <Footer />
       </main>
 
+      {/* Sticky mobile action bar */}
+      {data && !loading && lastPrice && (
+        <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-background/95 px-3 py-2 backdrop-blur md:hidden">
+          <div className="flex items-center gap-2">
+            <WatchlistButton ticker={ticker} compact />
+            <Button
+              onClick={() => setShowBuyModal(true)}
+              className="min-h-11 flex-1 bg-bull-600 hover:bg-bull-700"
+              aria-label={`Catat transaksi beli ${ticker}`}
+            >
+              <Briefcase className="h-4 w-4 mr-1.5" aria-hidden />
+              <span className="font-semibold">Beli {ticker}</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Buy to Portfolio Modal */}
       {showBuyModal && lastPrice && (
         <AddTransactionModal
@@ -431,5 +539,22 @@ function Footer() {
       <p>📊 Data: Yahoo Finance • Sentimen: Google News</p>
       <p className="mt-1">© 2026 Saham Analyzer IDX • Not financial advice</p>
     </footer>
+  );
+}
+
+function StockDetailSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <TopHeader />
+      <main className="container py-4 sm:py-6 space-y-4">
+        <div className="h-9 w-32 bg-secondary rounded shimmer" />
+        <div className="space-y-2">
+          <div className="h-10 w-40 bg-secondary rounded shimmer" />
+          <div className="h-4 w-56 bg-secondary rounded shimmer" />
+        </div>
+        <RecommendationSkeleton />
+        <ChartSkeleton />
+      </main>
+    </div>
   );
 }

@@ -19,6 +19,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/alert";
+import { EmptyState } from "@/components/empty-state";
+import { StockRowSkeleton } from "@/components/stock-row-skeleton";
 import {
   getWatchlistItems,
   setWatchlist,
@@ -278,14 +280,14 @@ export default function WatchlistPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-1" />
+            <Link href="/" aria-label="Kembali ke Beranda">
+              <Button variant="ghost" size="sm" className="min-h-9">
+                <ArrowLeft className="h-4 w-4 mr-1" aria-hidden />
                 <span className="hidden sm:inline">Beranda</span>
               </Button>
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-              <Star className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500 fill-amber-500" />
+              <Star className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500 fill-amber-500" aria-hidden />
               Watchlist
             </h1>
             {items.length > 0 && (
@@ -301,9 +303,10 @@ export default function WatchlistPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearAll}
-                className="text-xs"
+                className="min-h-9 text-xs"
+                aria-label="Hapus semua saham dari watchlist"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
+                <Trash2 className="h-4 w-4 mr-1" aria-hidden />
                 <span className="hidden sm:inline">Hapus Semua</span>
               </Button>
             </div>
@@ -333,22 +336,24 @@ export default function WatchlistPage() {
 
         {/* Empty State */}
         {items.length === 0 && (
-          <Card className="p-8 sm:p-12 text-center">
-            <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
-              <Inbox className="h-10 w-10 text-amber-500" />
-            </div>
-            <h2 className="text-xl font-bold mb-2">Watchlist Kosong</h2>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Tambahkan saham favorit dari halaman analisa untuk monitoring
-              harga real-time + smart alerts.
-            </p>
-            <Link href="/">
-              <Button>
-                <Star className="h-4 w-4 mr-2" />
-                Jelajahi Saham
-              </Button>
-            </Link>
-          </Card>
+          <EmptyState
+            icon={<Star className="h-6 w-6 text-amber-500" aria-hidden />}
+            title="Watchlist kosong"
+            description="Tambahkan saham favorit dari halaman analisa untuk monitoring harga real-time + smart alerts."
+            actions={[
+              {
+                label: "Jelajahi saham",
+                icon: <Star className="h-3 w-3" aria-hidden />,
+                onClick: () => (window.location.href = "/"),
+              },
+              {
+                label: "Cari saham",
+                variant: "secondary",
+                icon: <Filter className="h-3 w-3" aria-hidden />,
+                onClick: () => (window.location.href = "/search"),
+              },
+            ]}
+          />
         )}
 
         {/* Sort + Filter bar (only when has items) */}
@@ -368,9 +373,11 @@ export default function WatchlistPage() {
               ].map((opt) => (
                 <button
                   key={opt.key}
+                  type="button"
                   onClick={() => setSortBy(opt.key as SortBy)}
+                  aria-pressed={sortBy === opt.key}
                   className={cn(
-                    "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
+                    "shrink-0 inline-flex min-h-9 items-center rounded-full px-3 py-1 text-xs font-bold transition-colors",
                     sortBy === opt.key
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted hover:bg-accent",
@@ -483,10 +490,15 @@ export default function WatchlistPage() {
 
         {/* Loading skeletons */}
         {loading && items.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Memuat data watchlist">
             {items.map((i) => (
-              <Card key={i.ticker} className="p-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Card key={i.ticker} className="p-4 space-y-2 animate-pulse">
+                <div className="h-4 w-20 rounded bg-muted" />
+                <div className="h-3 w-32 rounded bg-muted" />
+                <div className="flex justify-between pt-1">
+                  <div className="h-4 w-20 rounded bg-muted" />
+                  <div className="h-4 w-14 rounded bg-muted" />
+                </div>
               </Card>
             ))}
           </div>

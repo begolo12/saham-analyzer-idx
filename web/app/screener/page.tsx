@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/alert";
 import { TopHeader } from "@/components/top-header";
+import { EmptyState } from "@/components/empty-state";
 import { SCREENER_PRESETS, type ScreenerType, type ScreenerResult } from "@/lib/screener";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
@@ -123,7 +124,7 @@ export default function ScreenerPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <Filter className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+            <Filter className="h-6 w-6 sm:h-7 sm:w-7 text-primary" aria-hidden />
             Stock Screener
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -133,13 +134,16 @@ export default function ScreenerPage() {
 
         {/* Category Filter - Sticky pills */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar" role="tablist" aria-label="Kategori screener">
             {Object.keys(CATEGORY_LABELS).map((cat) => (
               <button
                 key={cat}
+                type="button"
+                role="tab"
+                aria-selected={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                  "shrink-0 inline-flex min-h-9 items-center rounded-full px-4 py-2 text-sm font-medium transition-colors",
                   activeCategory === cat
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-secondary text-secondary-foreground hover:bg-accent",
@@ -158,10 +162,12 @@ export default function ScreenerPage() {
             return (
               <button
                 key={preset.id}
+                type="button"
                 onClick={() => loadScreen(preset.id, true)}
                 disabled={loading && active}
+                aria-pressed={active}
                 className={cn(
-                  "w-full text-left rounded-2xl border-2 p-4 transition-all",
+                  "w-full min-h-14 text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.99]",
                   active
                     ? "border-primary bg-primary/5 shadow-md"
                     : "border-border bg-card hover:border-primary/40 hover:bg-accent/30",
@@ -179,6 +185,7 @@ export default function ScreenerPage() {
                             : "bg-amber-100 dark:bg-amber-700/30"
                         : "bg-secondary",
                     )}
+                    aria-hidden
                   >
                     {preset.icon}
                   </div>
@@ -193,7 +200,7 @@ export default function ScreenerPage() {
                         {preset.name}
                       </span>
                       {active && loading && (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" aria-label="Memindai" />
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 leading-snug">
@@ -205,6 +212,7 @@ export default function ScreenerPage() {
                       "shrink-0 h-5 w-5 text-muted-foreground transition-transform",
                       active && "translate-x-1 text-primary",
                     )}
+                    aria-hidden
                   />
                 </div>
               </button>
@@ -218,9 +226,10 @@ export default function ScreenerPage() {
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <div>
               <h3 className="font-bold text-base flex items-center gap-2">
-                {selectedPreset?.icon} {selectedPreset?.name}
+                <span aria-hidden>{selectedPreset?.icon}</span>
+                <span>{selectedPreset?.name}</span>
               </h3>
-              <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+              <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap" aria-live="polite">
                 <span>
                   {loading ? (
                     "⏳ Scanning..."
@@ -235,7 +244,7 @@ export default function ScreenerPage() {
                   <>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
+                      <Calendar className="h-3 w-3" aria-hidden />
                       {lastUpdatedText}
                     </span>
                   </>
@@ -253,12 +262,13 @@ export default function ScreenerPage() {
               size="sm"
               onClick={() => loadScreen(selectedScreen)}
               disabled={loading}
-              className="shrink-0"
+              aria-label="Refresh hasil screener"
+              className="min-h-9 shrink-0"
             >
               {loading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               )}
               <span className="ml-1.5 hidden sm:inline">Refresh</span>
             </Button>
@@ -267,34 +277,35 @@ export default function ScreenerPage() {
           {/* Search Filter for Results */}
           {!loading && results.length > 3 && (
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
               <Input
                 type="search"
                 placeholder="Filter hasil..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-10 text-sm"
+                aria-label="Filter hasil screener"
               />
             </div>
           )}
 
           {/* Loading State */}
           {loading && (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="rounded-xl border bg-card/50 p-4">
+            <div className="space-y-2" role="status" aria-label="Memindai saham">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border bg-card/50 p-4 animate-pulse">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-16 bg-secondary rounded shimmer" />
+                    <div className="h-10 w-16 bg-secondary rounded" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-3 w-24 bg-secondary rounded shimmer" />
-                      <div className="h-3 w-40 bg-secondary rounded shimmer" />
+                      <div className="h-3 w-24 bg-secondary rounded" />
+                      <div className="h-3 w-40 bg-secondary rounded" />
                     </div>
-                    <div className="h-8 w-20 bg-secondary rounded shimmer" />
+                    <div className="h-8 w-20 bg-secondary rounded" />
                   </div>
                 </div>
               ))}
               <div className="text-center text-xs text-muted-foreground py-3">
-                <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                <Loader2 className="h-4 w-4 animate-spin inline mr-1" aria-hidden />
                 {method === "deep"
                   ? "Deep scan: analisis teknikal 3 bulan (10-30 detik)..."
                   : "Scanning..."}
@@ -312,13 +323,20 @@ export default function ScreenerPage() {
 
           {/* Search No Match */}
           {!loading && filteredResults.length === 0 && results.length > 0 && (
-            <div className="text-center py-8">
-              <Search className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Tidak ada saham yang cocok dengan "{searchTerm}"
-              </p>
-            </div>
+            <EmptyState
+              icon={<Search className="h-5 w-5" aria-hidden />}
+              title={`Tidak ada saham cocok "${searchTerm}"`}
+              description="Coba kata kunci lain, atau reset filter untuk lihat semua hasil."
+              actions={[
+                {
+                  label: "Reset filter",
+                  variant: "secondary",
+                  onClick: () => setSearchTerm(""),
+                },
+              ]}
+            />
           )}
+
 
           {/* Results */}
           {!loading && filteredResults.length > 0 && (
@@ -336,7 +354,7 @@ export default function ScreenerPage() {
 
         {/* Info Footer */}
         <Alert variant="info" className="text-xs">
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className="h-4 w-4" aria-hidden />
           <div>
             <strong>💡 Tip:</strong> Data di-cache 1 jam. Untuk hasil real-time
             saat jam trading, klik <strong>Refresh</strong>. Tap kartu saham untuk

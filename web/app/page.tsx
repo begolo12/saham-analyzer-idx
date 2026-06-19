@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Search,
   ChevronRight,
-  Loader2,
   ArrowDownRight,
   Activity,
   Filter,
@@ -15,6 +14,8 @@ import {
   FlaskConical,
   BarChart3,
   TrendingUp,
+  TrendingDown,
+  Inbox,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
@@ -25,6 +26,9 @@ import { ForeignFlow } from "@/components/foreign-flow";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { CompactStockRow } from "@/components/compact-stock-row";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { StockRowSkeleton } from "@/components/stock-row-skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorBanner } from "@/components/error-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Disclaimer } from "@/components/alert";
@@ -40,14 +44,23 @@ interface MarketStock {
   changePct: number;
 }
 
+const RETRY_LIMIT = 1;
+
 export default function HomePage() {
   const [topGainers, setTopGainers] = useState<MarketStock[]>([]);
   const [topLosers, setTopLosers] = useState<MarketStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
+  const fetchOverview = () => {
+    setLoading(true);
+    setError(null);
     fetch("/api/market/overview")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Gagal memuat pergerakan pasar");
+        return r.json();
+      })
       .then((data) => {
         const stocks: MarketStock[] = data.stocks || [];
         const sorted = [...stocks].sort((a, b) => b.changePct - a.changePct);
@@ -57,9 +70,21 @@ export default function HomePage() {
       })
       .catch((err) => {
         console.error(err);
+        setError(err instanceof Error ? err.message : "Gagal memuat data");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchOverview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleRetry = () => {
+    if (retryCount >= RETRY_LIMIT) return;
+    setRetryCount((c) => c + 1);
+    fetchOverview();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -88,7 +113,7 @@ export default function HomePage() {
           title="Pergerakan Hari Ini"
           icon={<Activity className="h-4 w-4 text-primary" />}
           accessory={
-            !loading && (
+            !loading && !error && (
               <span className="text-[10px] text-muted-foreground">
                 {topGainers.length + topLosers.length}
               </span>
@@ -100,27 +125,44 @@ export default function HomePage() {
             <Link
               href="/screener"
               onClick={(e) => e.stopPropagation()}
-              className="text-[10px] font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
+              className="inline-flex min-h-9 items-center gap-0.5 rounded-full px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label="Buka screener untuk lihat semua saham"
             >
               Semua →
             </Link>
           }
           framed={false}
         >
-          {loading ? (
-            <div className="flex items-center justify-center py-3 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-              Loading...
+          {error ? (
+            <div className="px-2 py-2">
+              <ErrorBanner
+                message={error}
+                onRetry={retryCount < RETRY_LIMIT ? handleRetry : undefined}
+              />
+            </div>
+          ) : loading ? (
+            <div className="px-1 py-1">
+              <StockRowSkeleton count={6} />
             </div>
           ) : topGainers.length === 0 && topLosers.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              Belum ada data
-            </p>
+            <EmptyState
+              icon={<Inbox className="h-5 w-5" aria-hidden />}
+              title="Belum ada pergerakan"
+              description="Market mungkin sedang tutup. Coba lagi saat jam bursa (09:00–16:00 WIB)."
+              actions={[
+                {
+                  label: "Buka screener",
+                  icon: <Filter className="h-3 w-3" aria-hidden />,
+                  onClick: () => (window.location.href = "/screener"),
+                },
+              ]}
+            />
           ) : (
             <div className="divide-y divide-border/40">
               {topGainers.length > 0 && (
-                <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  🟢 Gainers
+                <div className="flex items-center gap-1 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <TrendingUp className="h-3 w-3 text-bull-600" aria-hidden />
+                  <span>Top Gainers</span>
                 </div>
               )}
               {topGainers.map((stock) => (
@@ -135,8 +177,9 @@ export default function HomePage() {
                 />
               ))}
               {topLosers.length > 0 && (
-                <div className="px-2 py-1 mt-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  🔴 Losers
+                <div className="flex items-center gap-1 px-2 py-1.5 mt-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <TrendingDown className="h-3 w-3 text-bear-600" aria-hidden />
+                  <span>Top Losers</span>
                 </div>
               )}
               {topLosers.map((stock) => (
@@ -224,7 +267,8 @@ function QuickChip({
   return (
     <Link
       href={href}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-accent transition-colors text-xs font-medium whitespace-nowrap shrink-0"
+      aria-label={`Buka ${label}`}
+      className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-muted px-3 text-xs font-medium whitespace-nowrap shrink-0 transition-colors hover:bg-accent active:bg-accent/70"
     >
       {icon}
       {label}

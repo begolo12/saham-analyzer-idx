@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { AIChatbot } from "@/components/ai-chatbot";
+import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({
         <KeyboardShortcuts />
         <ServiceWorkerRegister />
         <AIChatbot />
+        <CommandPalette />
       </body>
     </html>
   );

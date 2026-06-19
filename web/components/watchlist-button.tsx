@@ -106,7 +106,13 @@ export function clearAllWatchlist(): void {
   setWatchlist([]);
 }
 
-export function WatchlistButton({ ticker }: { ticker: string }) {
+export function WatchlistButton({
+  ticker,
+  compact = false,
+}: {
+  ticker: string;
+  compact?: boolean;
+}) {
   const [isWatched, setIsWatched] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -153,10 +159,12 @@ export function WatchlistButton({ ticker }: { ticker: string }) {
       size="icon"
       onClick={toggle}
       className={cn(
-        "transition-all",
+        compact ? "min-h-11 min-w-11" : "min-h-9",
         isWatched && "bg-amber-500 hover:bg-amber-600 border-amber-500",
       )}
-      aria-label={isWatched ? "Remove from watchlist" : "Add to watchlist"}
+      aria-label={
+        isWatched ? `Hapus ${ticker} dari watchlist` : `Tambah ${ticker} ke watchlist`
+      }
     >
       <Star className={cn("h-4 w-4", isWatched && "fill-white")} />
     </Button>

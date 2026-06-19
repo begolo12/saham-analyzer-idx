@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Share2, ArrowLeft, Loader2, Check, Plus, Copy, Star } from "lucide-react";
@@ -8,6 +8,8 @@ import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/alert";
+import { EmptyState } from "@/components/empty-state";
+import { StockRowSkeleton } from "@/components/stock-row-skeleton";
 import { useWatchlist, addToWatchlist } from "@/lib/watchlist-storage";
 import { POPULAR_STOCKS } from "@/lib/popular-stocks";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
@@ -32,6 +34,14 @@ type RawStock = {
 };
 
 export default function ShareWatchlistPage() {
+  return (
+    <Suspense fallback={<ShareWatchlistSkeleton />}>
+      <ShareWatchlistContent />
+    </Suspense>
+  );
+}
+
+function ShareWatchlistContent() {
   const params = useSearchParams();
   const listParam = params.get("list") || "";
   const title = params.get("title") || "Watchlist";
@@ -138,32 +148,31 @@ export default function ShareWatchlistPage() {
       <TopHeader />
       <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
         <div className="flex items-center gap-2">
-          <Link href="/watchlist">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
+          <Link href="/watchlist" aria-label="Kembali ke Watchlist">
+            <Button variant="ghost" size="sm" className="min-h-9">
+              <ArrowLeft className="h-4 w-4 mr-1" aria-hidden />
               <span className="hidden sm:inline">Watchlist</span>
             </Button>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <Share2 className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+            <Share2 className="h-6 w-6 sm:h-7 sm:w-7 text-primary" aria-hidden />
             Watchlist Sharing
           </h1>
         </div>
 
         {tickers.length === 0 ? (
-          <Card className="p-6 text-center">
-            <Share2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <h2 className="text-lg font-bold mb-2">Tidak Ada Watchlist</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Link share harus mengandung parameter <code>?list=BBCA,BMRI</code>.
-            </p>
-            <Link href="/watchlist">
-              <Button>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Kembali ke Watchlist
-              </Button>
-            </Link>
-          </Card>
+          <EmptyState
+            icon={<Share2 className="h-6 w-6 text-primary" aria-hidden />}
+            title="Tidak ada watchlist untuk diimpor"
+            description="Link share harus mengandung parameter ?list=BBCA,BMRI atau ?list=BBCA&title=Porto Saya."
+            actions={[
+              {
+                label: "Buka watchlist",
+                icon: <Star className="h-3 w-3" aria-hidden />,
+                onClick: () => (window.location.href = "/watchlist"),
+              },
+            ]}
+          />
         ) : (
           <>
             <Card className="p-5">
@@ -178,16 +187,17 @@ export default function ShareWatchlistPage() {
                   size="sm"
                   variant="outline"
                   onClick={handleCopyLink}
-                  className="shrink-0"
+                  aria-label={copied ? "Link tersalin" : "Salin link watchlist"}
+                  className="min-h-9 shrink-0"
                 >
                   {copied ? (
                     <>
-                      <Check className="h-4 w-4 mr-1" />
+                      <Check className="h-4 w-4 mr-1" aria-hidden />
                       Tersalin
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4 mr-1" />
+                      <Copy className="h-4 w-4 mr-1" aria-hidden />
                       Salin Link
                     </>
                   )}
@@ -198,17 +208,18 @@ export default function ShareWatchlistPage() {
                 <Button
                   onClick={handleImport}
                   disabled={allExisting}
-                  className="w-full"
+                  className="min-h-11 w-full"
                   size="lg"
+                  aria-label={allExisting ? "Semua saham sudah ada" : `Tambah ${newTickers.length} saham ke watchlist`}
                 >
                   {allExisting ? (
                     <>
-                      <Check className="h-4 w-4 mr-2" />
+                      <Check className="h-4 w-4 mr-2" aria-hidden />
                       Semua Sudah di Watchlist
                     </>
                   ) : (
                     <>
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4 mr-2" aria-hidden />
                       Tambah {newTickers.length} Saham ke Watchlist Saya
                     </>
                   )}
@@ -226,14 +237,11 @@ export default function ShareWatchlistPage() {
             {/* Stock list */}
             <Card className="p-3 sm:p-4">
               <h3 className="text-sm font-bold mb-2 flex items-center gap-1.5">
-                <Star className="h-4 w-4 text-amber-500" />
+                <Star className="h-4 w-4 text-amber-500" aria-hidden />
                 Isi Watchlist
               </h3>
               {loading ? (
-                <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Memuat data saham...
-                </div>
+                <StockRowSkeleton count={Math.min(tickers.length, 6)} />
               ) : (
                 <div className="space-y-1.5">
                   {stocks.map((s) => {
@@ -278,6 +286,22 @@ export default function ShareWatchlistPage() {
             </Card>
           </>
         )}
+      </main>
+    </div>
+  );
+}
+
+function ShareWatchlistSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <TopHeader />
+      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4" aria-busy="true">
+        <div className="h-9 w-32 bg-secondary rounded shimmer" />
+        <div className="space-y-2 animate-pulse">
+          <div className="h-6 w-48 bg-muted rounded" />
+          <div className="h-4 w-40 bg-muted rounded" />
+        </div>
+        <StockRowSkeleton count={4} />
       </main>
     </div>
   );

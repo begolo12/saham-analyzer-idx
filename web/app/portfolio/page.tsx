@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Loader2,
-  Inbox,
   Target,
   Award,
   Activity,
@@ -44,6 +43,7 @@ import { CashModal } from "@/components/cash-modal";
 import { SectorDonut, processSectors } from "@/components/sector-donut";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { IHSGBenchmark } from "@/components/ihsg-benchmark";
+import { EmptyState } from "@/components/empty-state";
 import {
   getSnapshots,
   recordTodaySnapshot,
@@ -341,10 +341,16 @@ export default function PortfolioPage() {
 
   if (!mounted) {
     return (
-      <div className="container py-6 pb-24">
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="container py-6 pb-24 space-y-4" aria-busy="true">
+        <div className="space-y-2 animate-pulse">
+          <div className="h-8 w-40 bg-muted rounded" />
+          <div className="h-4 w-56 bg-muted rounded" />
         </div>
+        <Card className="p-5 space-y-3 animate-pulse">
+          <div className="h-3 w-20 bg-muted rounded" />
+          <div className="h-10 w-44 bg-muted rounded" />
+          <div className="h-3 w-32 bg-muted rounded" />
+        </Card>
       </div>
     );
   }
@@ -355,41 +361,41 @@ export default function PortfolioPage() {
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <Briefcase className="h-6 w-6 sm:h-7 sm:w-7 text-primary shrink-0" />
+            <Briefcase className="h-6 w-6 sm:h-7 sm:w-7 text-primary shrink-0" aria-hidden />
             Portfolio
           </h1>
           <p className="text-sm text-muted-foreground">
             Virtual trading untuk simulasi investasi
           </p>
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="hidden sm:flex gap-1.5 shrink-0">
           <Button
             onClick={() => setCashModalType("TOPUP")}
             size="lg"
             variant="outline"
-            className="h-12 px-3 sm:px-4 rounded-full border-bull-500/40 text-bull-700 dark:text-bull-500 hover:bg-bull-50 dark:hover:bg-bull-700/20 shadow-sm"
-            aria-label="Top Up"
+            className="min-h-10 px-3 sm:px-4 rounded-full border-bull-500/40 text-bull-700 dark:text-bull-500 hover:bg-bull-50 dark:hover:bg-bull-700/20 shadow-sm"
+            aria-label="Top up modal kas"
           >
-            <ArrowDownToLine className="h-4 w-4 sm:mr-1" />
+            <ArrowDownToLine className="h-4 w-4 sm:mr-1" aria-hidden />
             <span className="hidden sm:inline">Top Up</span>
           </Button>
           <Button
             onClick={() => setCashModalType("WITHDRAW")}
             size="lg"
             variant="outline"
-            className="h-12 px-3 sm:px-4 rounded-full border-bear-500/40 text-bear-700 dark:text-bear-500 hover:bg-bear-50 dark:hover:bg-bear-700/20 shadow-sm"
-            aria-label="Withdraw"
+            className="min-h-10 px-3 sm:px-4 rounded-full border-bear-500/40 text-bear-700 dark:text-bear-500 hover:bg-bear-50 dark:hover:bg-bear-700/20 shadow-sm"
+            aria-label="Tarik modal kas"
           >
-            <ArrowUpFromLine className="h-4 w-4 sm:mr-1" />
+            <ArrowUpFromLine className="h-4 w-4 sm:mr-1" aria-hidden />
             <span className="hidden sm:inline">Withdraw</span>
           </Button>
           <Button
             onClick={() => setShowAddModal(true)}
             size="lg"
-            className="h-12 px-3 sm:px-4 rounded-full shadow-lg"
-            aria-label="Tambah Transaksi"
+            className="min-h-10 px-3 sm:px-4 rounded-full shadow-lg"
+            aria-label="Catat transaksi beli atau jual"
           >
-            <Plus className="h-5 w-5 sm:mr-1" />
+            <Plus className="h-5 w-5 sm:mr-1" aria-hidden />
             <span className="hidden sm:inline">Beli/Jual</span>
           </Button>
         </div>
@@ -398,32 +404,55 @@ export default function PortfolioPage() {
       {/* Disclaimer */}
       <Alert variant="info">
         <strong>📌 Virtual Portfolio:</strong> Track transaksi beli/jual Anda untuk
-        hitung profit/loss real-time. Top Up & Withdraw untuk atur modal kas.
+        hitung profit/loss real-time. Top Up &amp; Withdraw untuk atur modal kas.
         Data tersimpan lokal (localStorage).
       </Alert>
 
       {/* Empty State */}
       {transactions.length === 0 && cashEntries.length === 0 && (
-        <Card className="p-8 sm:p-12 text-center">
-          <div className="inline-flex p-4 rounded-full bg-primary/10 mb-4">
-            <Inbox className="h-10 w-10 text-primary" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Portfolio Kosong</h2>
-          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Mulai dengan Top Up modal, lalu beli saham pertama Anda untuk track
-            performa investasi.
-          </p>
-          <div className="flex gap-2 justify-center flex-wrap">
-            <Button onClick={() => setCashModalType("TOPUP")} size="lg" variant="outline" className="border-bull-500/40 text-bull-700 dark:text-bull-500">
-              <ArrowDownToLine className="h-5 w-5 mr-2" />
-              Top Up Modal
+        <EmptyState
+          icon={<Briefcase className="h-6 w-6 text-primary" aria-hidden />}
+          title="Portfolio kosong"
+          description="Mulai dengan Top Up modal, lalu beli saham pertama Anda untuk track performa investasi."
+          actions={[
+            {
+              label: "Top Up modal",
+              icon: <ArrowDownToLine className="h-3 w-3" aria-hidden />,
+              onClick: () => setCashModalType("TOPUP"),
+            },
+            {
+              label: "Beli saham",
+              variant: "secondary",
+              icon: <Plus className="h-3 w-3" aria-hidden />,
+              onClick: () => setShowAddModal(true),
+            },
+          ]}
+        />
+      )}
+
+      {/* Sticky mobile action bar */}
+      {(transactions.length > 0 || cashEntries.length > 0) && (
+        <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-background/95 px-3 py-2 backdrop-blur sm:hidden">
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setCashModalType("TOPUP")}
+              variant="outline"
+              className="min-h-11 flex-1 border-bull-500/40 text-bull-700 dark:text-bull-500"
+              aria-label="Top up modal kas"
+            >
+              <ArrowDownToLine className="h-4 w-4 mr-1.5" aria-hidden />
+              Top Up
             </Button>
-            <Button onClick={() => setShowAddModal(true)} size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              Beli Saham
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="min-h-11 flex-[2]"
+              aria-label="Catat transaksi beli atau jual"
+            >
+              <Plus className="h-5 w-5 mr-1.5" aria-hidden />
+              Beli/Jual
             </Button>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Summary Cards */}

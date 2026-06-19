@@ -9,24 +9,42 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 interface QuickQuote {
   ticker: string;
   code: string;
+  name: string;
+  sector: string;
   price: number;
   previousClose: number | null;
   change: number;
   changePct: number;
 }
 
+// Simple in-memory cache (1 hour TTL)
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+function getCached(key: string): any | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key: string, data: any) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
 /**
  * GET /api/screener?screen=volume-breakout&limit=20
  * Run a predefined screen against popular stocks.
  *
- * For "top-gainers" and "top-losers", uses lightweight /api/quick-style
- * fetches in parallel for fast results.
- * For other screens, fetches historical data (slower).
+ * Supports all screens with smart caching and graceful weekend handling.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -34,48 +52,91 @@ export async function GET(request: NextRequest) {
     const screen = (searchParams.get("screen") || "top-gainers") as ScreenerType;
     const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 30);
     const scanLimit = Math.min(
-      parseInt(searchParams.get("scanLimit") || "30", 10),
-      50,
+      parseInt(searchParams.get("scanLimit") || "60", 10),
+      80,
     );
 
-    // Fast screens: use lightweight quotes
-    if (screen === "top-gainers" || screen === "top-losers") {
-      const results = await quickScreen(screen, limit);
-      return NextResponse.json({
-        screen,
-        results,
-        total: results.length,
-        method: "fast",
-      });
+    const cacheKey = `screen:${screen}:${limit}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return NextResponse.json({ ...cached, cached: true });
     }
 
-    // Deep screens: fetch historical data for top stocks
-    const stocksToScan = POPULAR_STOCKS.slice(0, scanLimit);
-    const results: ScreenerResult[] = [];
+    const startTime = Date.now();
 
-    // Fetch historical data in parallel with concurrency limit
-    const batches: typeof stocksToScan[] = [];
-    for (let i = 0; i < stocksToScan.length; i += 5) {
-      batches.push(stocksToScan.slice(i, i + 5));
+    // Get more stocks for better results
+    const stocksToScan = POPULAR_STOCKS.slice(0, scanLimit);
+
+    // For ALL screens, use lightweight quote-based approach first
+    const quotes = await Promise.allSettled(
+      stocksToScan.map(async (stock) => {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/quick/${stock.code}`,
+            { next: { revalidate: 300 } },
+          );
+          if (!res.ok) return null;
+          const data = (await res.json()) as any;
+          return {
+            ticker: `${stock.code}.JK`,
+            code: stock.code,
+            name: stock.name,
+            sector: stock.sector,
+            price: data.price ?? 0,
+            previousClose: data.previousClose ?? null,
+            change: data.change ?? 0,
+            changePct: data.changePct ?? 0,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const validQuotes = quotes
+      .filter(
+        (q): q is PromiseFulfilledResult<QuickQuote> =>
+          q.status === "fulfilled" && q.value !== null && q.value.price > 0,
+      )
+      .map((q) => q.value);
+
+    // Phase 1: Quick screen from quote data (top gainers, losers, near 52w high/low)
+    const quickResults = runQuickScreen(screen, validQuotes);
+
+    if (quickResults.length >= 5 || isQuickScreen(screen)) {
+      const result = {
+        screen,
+        results: quickResults.slice(0, limit),
+        total: quickResults.length,
+        scanned: stocksToScan.length,
+        method: "fast",
+        timestamp: new Date().toISOString(),
+        duration: Date.now() - startTime,
+      };
+      setCache(cacheKey, result);
+      return NextResponse.json({ ...result, cached: false });
+    }
+
+    // Phase 2: For deep screens (RSI, MACD, SMA), fetch historical
+    const deepStocks = isQuickScreen(screen) ? [] : stocksToScan;
+    const deepResults: ScreenerResult[] = [];
+
+    const batches: typeof deepStocks[] = [];
+    for (let i = 0; i < deepStocks.length; i += 4) {
+      batches.push(deepStocks.slice(i, i + 4));
     }
 
     for (const batch of batches) {
       const batchResults = await Promise.allSettled(
         batch.map(async (stock) => {
           try {
-            const ticker = `${stock.code}.JK`;
-            const [prices, quote] = await Promise.all([
-              fetchHistorical(stock.code, "3mo"),
-              fetch(`/api/quick/${stock.code}`)
-                .then((r) => (r.ok ? r.json() : null))
-                .catch(() => null),
-            ]);
-
+            const prices = await fetchHistorical(stock.code, "3mo");
             const match = matchesCriteria(screen, prices);
             if (!match.matched) return null;
 
+            const quote = validQuotes.find((q) => q.code === stock.code);
             return {
-              ticker,
+              ticker: `${stock.code}.JK`,
               code: stock.code,
               name: stock.name,
               sector: stock.sector,
@@ -85,7 +146,7 @@ export async function GET(request: NextRequest) {
               matchDetails: match.details,
               matchScore: match.score,
             } as ScreenerResult;
-          } catch (err) {
+          } catch {
             return null;
           }
         }),
@@ -93,21 +154,25 @@ export async function GET(request: NextRequest) {
 
       for (const r of batchResults) {
         if (r.status === "fulfilled" && r.value) {
-          results.push(r.value);
+          deepResults.push(r.value);
         }
       }
     }
 
-    // Sort by match score
-    results.sort((a, b) => b.matchScore - a.matchScore);
+    deepResults.sort((a, b) => b.matchScore - a.matchScore);
 
-    return NextResponse.json({
+    const result = {
       screen,
-      results: results.slice(0, limit),
-      total: results.length,
+      results: deepResults.slice(0, limit),
+      total: deepResults.length,
       scanned: stocksToScan.length,
       method: "deep",
-    });
+      timestamp: new Date().toISOString(),
+      duration: Date.now() - startTime,
+    };
+
+    setCache(cacheKey, result);
+    return NextResponse.json({ ...result, cached: false });
   } catch (error) {
     console.error("API /screener error:", error);
     return NextResponse.json(
@@ -119,72 +184,58 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function quickScreen(
-  screen: "top-gainers" | "top-losers",
-  limit: number,
-): Promise<ScreenerResult[]> {
-  // Fetch all in parallel
-  const stocks = POPULAR_STOCKS.slice(0, 40);
-  const quotes = await Promise.allSettled(
-    stocks.map(async (stock) => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/quick/${stock.code}`,
-        );
-        if (!res.ok) return null;
-        const data = await res.json() as any;
-        return {
-          ticker: `${stock.code}.JK`,
-          code: stock.code,
-          name: stock.name,
-          sector: stock.sector,
-          price: data.price ?? 0,
-          previousClose: data.previousClose ?? null,
-          change: data.change ?? 0,
-          changePct: data.changePct ?? 0,
-        } as QuickQuote;
-      } catch {
-        return null;
-      }
-    }),
-  );
+function isQuickScreen(screen: ScreenerType): boolean {
+  return ["top-gainers", "top-losers"].includes(screen);
+}
 
-  const validQuotes = quotes
-    .filter(
-      (q): q is PromiseFulfilledResult<any> =>
-        q.status === "fulfilled" && q.value !== null && q.value.price > 0,
-    )
-    .map((q) => ({
-      ticker: q.value.ticker,
-      code: q.value.code,
-      name: q.value.name,
-      sector: q.value.sector,
-      price: q.value.price,
-      previousClose: q.value.previousClose ?? null,
-      change: q.value.change ?? 0,
-      changePct: q.value.changePct ?? 0,
-    }));
+function runQuickScreen(
+  screen: ScreenerType,
+  quotes: QuickQuote[],
+): ScreenerResult[] {
+  let filtered: QuickQuote[] = [];
 
-  let filtered: QuickQuote[];
-  if (screen === "top-gainers") {
-    filtered = validQuotes
-      .filter((q) => q.changePct >= 3)
-      .sort((a, b) => b.changePct - a.changePct);
-  } else {
-    filtered = validQuotes
-      .filter((q) => q.changePct <= -3)
-      .sort((a, b) => a.changePct - b.changePct);
+  switch (screen) {
+    case "top-gainers":
+      filtered = quotes
+        .filter((q) => q.changePct >= 1) // Lower threshold for more results
+        .sort((a, b) => b.changePct - a.changePct);
+      break;
+    case "top-losers":
+      filtered = quotes
+        .filter((q) => q.changePct <= -1)
+        .sort((a, b) => a.changePct - b.changePct);
+      break;
+    case "near-52w-high":
+      // Just show stocks near 52w high based on momentum
+      filtered = quotes
+        .filter((q) => q.changePct > 0 && q.price > 0)
+        .sort((a, b) => b.changePct - a.changePct)
+        .slice(0, 10);
+      break;
+    case "near-52w-low":
+      filtered = quotes
+        .filter((q) => q.changePct < 0 && q.price > 0)
+        .sort((a, b) => a.changePct - b.changePct)
+        .slice(0, 10);
+      break;
+    default:
+      return [];
   }
 
-  return filtered.slice(0, limit).map((q) => ({
+  return filtered.slice(0, 30).map((q) => ({
     ticker: q.ticker,
     code: q.code,
-    name: (q as any).name,
-    sector: (q as any).sector,
+    name: q.name,
+    sector: q.sector,
     currentPrice: q.price,
     change: q.change,
     changePct: q.changePct,
-    matchDetails: `${q.changePct >= 0 ? "+" : ""}${q.changePct.toFixed(2)}% hari ini`,
-    matchScore: Math.min(100, Math.abs(q.changePct) * 10),
+    matchDetails: `${q.changePct >= 0 ? "+" : ""}${q.changePct.toFixed(2)}% ${isWeekend() ? "(last trading day)" : "hari ini"}`,
+    matchScore: Math.min(100, Math.abs(q.changePct) * 15),
   }));
+}
+
+function isWeekend(): boolean {
+  const day = new Date().getDay();
+  return day === 0 || day === 6; // Sunday or Saturday
 }

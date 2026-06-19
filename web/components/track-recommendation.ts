@@ -53,7 +53,7 @@ export function useTrackRecommendation(
             behavioral: recommendation.weights.behavioral,
             sentiment: recommendation.weights.sentiment,
           },
-          entryPrice: recommendation.currentPrice,
+          entryPrice: recommendation.currentPrice ?? 0,
           userFeedback: null,
         });
 

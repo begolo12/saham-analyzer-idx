@@ -18,7 +18,7 @@ export async function GET(_request: NextRequest) {
         const ticker = validateTicker(stock.code);
         const [summary, historical] = await Promise.all([
           fetchSummary(stock.code),
-          fetchHistorical(stock.code, "5d"),
+          fetchHistorical(stock.code, "1mo"),
         ]);
 
         const lastPrice =

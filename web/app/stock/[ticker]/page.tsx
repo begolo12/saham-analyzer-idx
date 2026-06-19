@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { ArrowLeft, TrendingUp, TrendingDown, Briefcase } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,6 +25,7 @@ import { BehavioralPatterns } from "@/components/behavioral-patterns";
 import { NewsList } from "@/components/news-list";
 import { PriceChart } from "@/components/price-chart";
 import { WatchlistButton } from "@/components/watchlist-button";
+import { AddTransactionModal } from "@/components/add-transaction-modal";
 import { useTrackRecommendation } from "@/components/track-recommendation";
 import { formatIDR, formatNumber, formatPercent, cn } from "@/lib/utils";
 
@@ -44,6 +47,8 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<"1mo" | "3mo" | "6mo" | "1y" | "2y">("1y");
+  const [activeTab, setActiveTab] = useState<string>("technical");
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   useEffect(() => {
     if (!ticker) return;
@@ -103,15 +108,25 @@ export default function StockDetailPage() {
       <TopHeader />
 
       <main className="container py-4 sm:py-6">
-        {/* Back button + ticker */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Back button + actions */}
+        <div className="flex items-center justify-between gap-2 mb-4">
           <Link href="/">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Beranda</span>
             </Button>
           </Link>
-          <WatchlistButton ticker={ticker} />
+          <div className="flex items-center gap-2">
+            <WatchlistButton ticker={ticker} />
+            <Button
+              onClick={() => setShowBuyModal(true)}
+              size="sm"
+              className="bg-bull-600 hover:bg-bull-700"
+            >
+              <Briefcase className="h-4 w-4 mr-1" />
+              <span>Beli</span>
+            </Button>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -260,15 +275,17 @@ export default function StockDetailPage() {
               </div>
               {recommendation?.reasoning && (
                 <div className="mt-4 pt-4 border-t">
-                  <pre className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
-                    {recommendation.reasoning}
-                  </pre>
+                  <div className="text-xs sm:text-sm text-foreground/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2 [&_li]:my-0.5">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {recommendation.reasoning}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
             </Card>
 
             {/* Detailed Tabs */}
-            <Tabs defaultValue="technical">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full grid grid-cols-4">
                 <TabsTrigger value="technical">📊 Tech</TabsTrigger>
                 <TabsTrigger value="fundamental">💼 Fund</TabsTrigger>
@@ -392,6 +409,15 @@ export default function StockDetailPage() {
 
         <Footer />
       </main>
+
+      {/* Buy to Portfolio Modal */}
+      {showBuyModal && lastPrice && (
+        <AddTransactionModal
+          defaultTicker={ticker}
+          defaultPrice={lastPrice}
+          onClose={() => setShowBuyModal(false)}
+        />
+      )}
     </div>
   );
 }

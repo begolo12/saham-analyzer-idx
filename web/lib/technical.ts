@@ -164,19 +164,45 @@ function analyzeMACD(prices: StockPrice[]): IndicatorResult {
   let score: number;
   let explanation: string;
 
-  if (macd > signalLine && histogram > 0 && histogram > prevHist) {
+  if (
+    macd !== undefined &&
+    signalLine !== undefined &&
+    histogram !== undefined &&
+    macd > signalLine &&
+    histogram > 0 &&
+    histogram > prevHist
+  ) {
     signal = "STRONG_BUY";
     score = 2;
     explanation = `MACD ${macd.toFixed(2)} > Signal ${signalLine.toFixed(2)}, histogram menebal — momentum bullish kuat`;
-  } else if (macd > signalLine && histogram > 0) {
+  } else if (
+    macd !== undefined &&
+    signalLine !== undefined &&
+    histogram !== undefined &&
+    macd > signalLine &&
+    histogram > 0
+  ) {
     signal = "BUY";
     score = 1;
     explanation = `MACD ${macd.toFixed(2)} di atas Signal — tren naik`;
-  } else if (macd < signalLine && histogram < 0 && histogram < prevHist) {
+  } else if (
+    macd !== undefined &&
+    signalLine !== undefined &&
+    histogram !== undefined &&
+    macd < signalLine &&
+    histogram < 0 &&
+    histogram < prevHist
+  ) {
     signal = "STRONG_SELL";
     score = -2;
     explanation = `MACD ${macd.toFixed(2)} < Signal ${signalLine.toFixed(2)}, histogram menebal — momentum bearish kuat`;
-  } else if (macd < signalLine && histogram < 0) {
+  } else if (
+    macd !== undefined &&
+    signalLine !== undefined &&
+    histogram !== undefined &&
+    macd < signalLine &&
+    histogram < 0
+  ) {
     signal = "SELL";
     score = -1;
     explanation = `MACD ${macd.toFixed(2)} di bawah Signal — tren turun`;
@@ -188,7 +214,7 @@ function analyzeMACD(prices: StockPrice[]): IndicatorResult {
 
   return {
     name: "MACD",
-    value: Math.round(macd * 10000) / 10000,
+    value: macd !== undefined ? Math.round(macd * 10000) / 10000 : null,
     signal,
     score,
     explanation,

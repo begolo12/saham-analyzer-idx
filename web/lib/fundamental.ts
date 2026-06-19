@@ -6,7 +6,7 @@
  * karena perbedaan reporting standard. Module ini robust terhadap missing data.
  */
 
-import type { StockInfo } from "./yahoo";
+import type { StockSummary as StockInfo } from "./yahoo";
 
 export type FundamentalSignal =
   | "EXCELLENT"

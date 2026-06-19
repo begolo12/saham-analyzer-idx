@@ -77,10 +77,12 @@ async function fetchGoogleNews(
 
       // Filter: must mention ticker or company name
       const titleLower = title.toLowerCase();
-      if (
-        ticker.toLowerCase() in titleLower ||
-        name.toLowerCase().split(" ").some((w) => w.length > 3 && titleLower.includes(w.toLowerCase()))
-      ) {
+      const tickerLower = ticker.toLowerCase();
+      const nameWords = name.toLowerCase().split(" ");
+      const nameMatch = nameWords.some(
+        (w) => w.length > 3 && titleLower.includes(w.toLowerCase()),
+      );
+      if (titleLower.includes(tickerLower) || nameMatch) {
         articles.push({
           title: title.substring(0, 200),
           source: "Google News",

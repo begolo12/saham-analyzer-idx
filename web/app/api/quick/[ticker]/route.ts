@@ -17,7 +17,7 @@ export async function GET(
 
     const [summary, historical] = await Promise.all([
       fetchSummary(ticker),
-      fetchHistorical(ticker, "5d"),
+      fetchHistorical(ticker, "1mo"),
     ]);
 
     const lastPrice =

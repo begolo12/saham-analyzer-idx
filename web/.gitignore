@@ -41,3 +41,5 @@ next-env.d.ts
 
 # Sentiment lexicon data (for Next.js API)
 # This is the Indonesian sentiment word list bundled into the app
+
+.vercel

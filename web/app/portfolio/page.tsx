@@ -10,7 +10,6 @@ import {
   Trash2,
   ArrowUpRight,
   ArrowDownRight,
-  X,
   Loader2,
   Inbox,
   Target,
@@ -20,7 +19,6 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/alert";
 import {
   calculateHoldings,
@@ -28,13 +26,9 @@ import {
   normalizeTicker,
   type Transaction,
 } from "@/lib/portfolio";
-import {
-  usePortfolio,
-  addTransaction,
-  removeTransaction,
-  clearAllTransactions,
-} from "@/lib/portfolio-storage";
+import { usePortfolio, removeTransaction, clearAllTransactions } from "@/lib/portfolio-storage";
 import { formatIDR, formatPercent, cn } from "@/lib/utils";
+import { AddTransactionModal } from "@/components/add-transaction-modal";
 import { toast } from "sonner";
 
 interface PriceData {
@@ -105,16 +99,6 @@ export default function PortfolioPage() {
     () => calculateSummary(holdings, transactions),
     [holdings, transactions],
   );
-
-  const handleAddTransaction = (
-    tx: Omit<Transaction, "id" | "createdAt">,
-  ) => {
-    addTransaction(tx);
-    toast.success(
-      `${tx.type === "BUY" ? "🟢 Buy" : "🔴 Sell"} ${tx.quantity} lembar ${tx.ticker} @ Rp ${tx.price.toLocaleString("id-ID")}`,
-    );
-    setShowAddModal(false);
-  };
 
   const handleDeleteTransaction = (id: string) => {
     if (confirm("Hapus transaksi ini?")) {
@@ -364,10 +348,7 @@ export default function PortfolioPage() {
 
       {/* Add Transaction Modal */}
       {showAddModal && (
-        <AddTransactionModal
-          onClose={() => setShowAddModal(false)}
-          onSubmit={handleAddTransaction}
-        />
+        <AddTransactionModal onClose={() => setShowAddModal(false)} />
       )}
     </div>
   );
@@ -574,209 +555,4 @@ function TransactionRow({
   );
 }
 
-function AddTransactionModal({
-  onClose,
-  onSubmit,
-}: {
-  onClose: () => void;
-  onSubmit: (tx: Omit<Transaction, "id" | "createdAt">) => void;
-}) {
-  const [type, setType] = useState<"BUY" | "SELL">("BUY");
-  const [ticker, setTicker] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [price, setPrice] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [fee, setFee] = useState("0.15");
-  const [notes, setNotes] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const priceNum = parseFloat(price.replace(/[^0-9.]/g, ""));
-    const qtyNum = parseInt(quantity.replace(/[^0-9]/g, ""), 10);
-    const feeNum = parseFloat(fee) || 0;
-    if (!ticker.trim() || !priceNum || !qtyNum) {
-      toast.error("Lengkapi semua field");
-      return;
-    }
-    onSubmit({
-      ticker: ticker.trim(),
-      type,
-      date,
-      price: priceNum,
-      quantity: qtyNum,
-      fee: feeNum,
-      notes: notes.trim() || undefined,
-    });
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <Card
-        className="w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl rounded-b-none sm:rounded-b-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <form onSubmit={handleSubmit} className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Tambah Transaksi</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Buy/Sell Toggle */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <button
-              type="button"
-              onClick={() => setType("BUY")}
-              className={cn(
-                "rounded-xl border-2 p-3 font-semibold transition-all",
-                type === "BUY"
-                  ? "border-bull-500 bg-bull-50 dark:bg-bull-700/20 text-bull-700 dark:text-bull-500"
-                  : "border-border hover:border-bull-500/50",
-              )}
-            >
-              <TrendingUp className="h-5 w-5 mx-auto mb-1" />
-              BUY
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("SELL")}
-              className={cn(
-                "rounded-xl border-2 p-3 font-semibold transition-all",
-                type === "SELL"
-                  ? "border-bear-500 bg-bear-50 dark:bg-bear-700/20 text-bear-700 dark:text-bear-500"
-                  : "border-border hover:border-bear-500/50",
-              )}
-            >
-              <TrendingDown className="h-5 w-5 mx-auto mb-1" />
-              SELL
-            </button>
-          </div>
-
-          {/* Ticker */}
-          <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Kode Saham
-            </label>
-            <Input
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="BBCA"
-              className="mt-1 h-12 text-base uppercase"
-              required
-            />
-          </div>
-
-          {/* Date */}
-          <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Tanggal
-            </label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 h-12"
-              required
-            />
-          </div>
-
-          {/* Price */}
-          <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Harga per Lembar
-            </label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="6500"
-              className="mt-1 h-12 text-base tabular-nums"
-              required
-            />
-          </div>
-
-          {/* Quantity */}
-          <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Jumlah Lembar (1 lot = 100 lembar)
-            </label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="100"
-              className="mt-1 h-12 text-base tabular-nums"
-              required
-            />
-          </div>
-
-          {/* Fee */}
-          <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Fee / Komisi (%)
-            </label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={fee}
-              onChange={(e) => setFee(e.target.value)}
-              placeholder="0.15"
-              className="mt-1 h-12 text-base tabular-nums"
-            />
-          </div>
-
-          {/* Notes */}
-          <div className="mb-4">
-            <label className="text-xs font-medium text-muted-foreground">
-              Catatan (opsional)
-            </label>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Buy untuk jangka panjang..."
-              className="mt-1 h-10"
-            />
-          </div>
-
-          {/* Total Preview */}
-          {price && quantity && (
-            <div className="rounded-lg bg-secondary p-3 mb-4">
-              <div className="text-xs text-muted-foreground">
-                Total {type === "BUY" ? "Pembelian" : "Penjualan"}
-              </div>
-              <div className="text-xl font-bold tabular-nums">
-                {formatIDR(
-                  parseFloat(price.replace(/[^0-9.]/g, "") || "0") *
-                    parseInt(quantity.replace(/[^0-9]/g, "") || "0"),
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Submit */}
-          <Button
-            type="submit"
-            size="lg"
-            className={cn(
-              "w-full",
-              type === "BUY" ? "bg-bull-600 hover:bg-bull-700" : "bg-bear-600 hover:bg-bear-700",
-            )}
-          >
-            {type === "BUY" ? "🟢" : "🔴"} Konfirmasi {type}
-          </Button>
-        </form>
-      </Card>
-    </div>
-  );
-}

@@ -191,7 +191,7 @@ function analyzeMomentum(prices: StockPrice[]): BehavioralPattern {
     pattern,
     signal,
     score,
-    desc,
+    description: desc,
     implication: impl,
   };
 }
@@ -251,7 +251,7 @@ function analyzeVolatility(prices: StockPrice[]): BehavioralPattern {
     pattern,
     signal,
     score,
-    desc,
+    description: desc,
     implication: impl,
   };
 }

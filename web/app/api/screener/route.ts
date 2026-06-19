@@ -22,7 +22,7 @@ interface QuickQuote {
   changePct: number;
 }
 
-// Simple in-memory cache (1 hour TTL)
+// Cache to avoid hammering Yahoo Finance
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
@@ -40,11 +40,58 @@ function setCache(key: string, data: any) {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+/**
+ * Fetch quote directly from Yahoo Finance (no self-fetch)
+ */
+async function fetchQuoteDirect(code: string): Promise<QuickQuote | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(code + ".JK")}?range=5d&interval=1d`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: controller.signal,
+      next: { revalidate: 300 },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = data.chart?.result?.[0];
+    if (!result) return null;
+
+    const meta = result.meta;
+    const closes = result.indicators?.quote?.[0]?.close ?? [];
+    const validCloses = closes.filter((c: any) => typeof c === "number");
+    const lastClose = validCloses[validCloses.length - 1] ?? meta.regularMarketPrice ?? 0;
+    const prevClose = validCloses[validCloses.length - 2] ?? meta.previousClose ?? meta.chartPreviousClose ?? 0;
+
+    const change = prevClose ? lastClose - prevClose : 0;
+    const changePct = prevClose ? (change / prevClose) * 100 : 0;
+
+    const stock = POPULAR_STOCKS.find((s) => s.code === code);
+
+    return {
+      ticker: `${code}.JK`,
+      code,
+      name: meta.longName || meta.shortName || stock?.name || code,
+      sector: stock?.sector || "N/A",
+      price: lastClose,
+      previousClose: prevClose,
+      change,
+      changePct,
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 /**
  * GET /api/screener?screen=volume-breakout&limit=20
- * Run a predefined screen against popular stocks.
- *
- * Supports all screens with smart caching and graceful weekend handling.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -56,67 +103,35 @@ export async function GET(request: NextRequest) {
       80,
     );
 
-    const cacheKey = `screen:${screen}:${limit}`;
-    // Skip cache if forceRefresh param is set
     const forceRefresh = searchParams.get("refresh") === "1";
+    const cacheKey = `screen:${screen}:${limit}:${scanLimit}`;
     const cached = forceRefresh ? null : getCached(cacheKey);
     if (cached && cached.total > 0) {
       return NextResponse.json({ ...cached, cached: true });
     }
 
     const startTime = Date.now();
-
-    // Get more stocks for better results
     const stocksToScan = POPULAR_STOCKS.slice(0, scanLimit);
 
-    // For ALL screens, use lightweight quote-based approach first
-    // Fetch in batches to avoid Yahoo Finance rate limits
-    const allStocks = stocksToScan;
+    // Fetch quotes in batches of 6 with delays (rate limit friendly)
     const allQuotes: QuickQuote[] = [];
-
-    for (let i = 0; i < allStocks.length; i += 8) {
-      const batch = allStocks.slice(i, i + 8);
+    for (let i = 0; i < stocksToScan.length; i += 6) {
+      const batch = stocksToScan.slice(i, i + 6);
       const batchResults = await Promise.allSettled(
-        batch.map(async (stock) => {
-          try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/quick/${stock.code}`,
-            );
-            if (!res.ok) return null;
-            const data = (await res.json()) as any;
-            if (!data.price || data.price === 0) return null;
-            return {
-              ticker: `${stock.code}.JK`,
-              code: stock.code,
-              name: stock.name,
-              sector: stock.sector,
-              price: data.price,
-              previousClose: data.previousClose ?? null,
-              change: data.change ?? 0,
-              changePct: data.changePct ?? 0,
-            };
-          } catch {
-            return null;
-          }
-        }),
+        batch.map((stock) => fetchQuoteDirect(stock.code)),
       );
-
       for (const r of batchResults) {
-        if (r.status === "fulfilled" && r.value) {
-          allQuotes.push(r.value);
-        }
+        if (r.status === "fulfilled" && r.value) allQuotes.push(r.value);
       }
-
-      // Small delay between batches to be nice to Yahoo
-      if (i + 8 < allStocks.length) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      if (i + 6 < stocksToScan.length) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
       }
     }
 
-    // Phase 1: Quick screen from quote data (top gainers, losers, near 52w high/low)
+    // Quick screen from quotes
     const quickResults = runQuickScreen(screen, allQuotes);
 
-    if (quickResults.length >= 5 || isQuickScreen(screen)) {
+    if (quickResults.length >= 3 || isQuickScreen(screen)) {
       const result = {
         screen,
         results: quickResults.slice(0, limit),
@@ -126,21 +141,14 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
         duration: Date.now() - startTime,
       };
-      // Only cache if we have meaningful results
       if (quickResults.length > 0) setCache(cacheKey, result);
       return NextResponse.json({ ...result, cached: false });
     }
 
-    // Phase 2: For deep screens (RSI, MACD, SMA), fetch historical
-    const deepStocks = isQuickScreen(screen) ? [] : stocksToScan;
+    // Deep screen: fetch historical in batches
     const deepResults: ScreenerResult[] = [];
-
-    const batches: typeof deepStocks[] = [];
-    for (let i = 0; i < deepStocks.length; i += 4) {
-      batches.push(deepStocks.slice(i, i + 4));
-    }
-
-    for (const batch of batches) {
+    for (let i = 0; i < stocksToScan.length; i += 4) {
+      const batch = stocksToScan.slice(i, i + 4);
       const batchResults = await Promise.allSettled(
         batch.map(async (stock) => {
           try {
@@ -165,16 +173,11 @@ export async function GET(request: NextRequest) {
           }
         }),
       );
-
       for (const r of batchResults) {
-        if (r.status === "fulfilled" && r.value) {
-          deepResults.push(r.value);
-        }
+        if (r.status === "fulfilled" && r.value) deepResults.push(r.value);
       }
-
-      // Small delay between batches
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      if (i + 4 < stocksToScan.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     }
 
@@ -189,23 +192,19 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       duration: Date.now() - startTime,
     };
-
-    // Only cache if we have results
     if (deepResults.length > 0) setCache(cacheKey, result);
     return NextResponse.json({ ...result, cached: false });
   } catch (error) {
     console.error("API /screener error:", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Screener failed",
-      },
+      { error: error instanceof Error ? error.message : "Screener failed" },
       { status: 500 },
     );
   }
 }
 
 function isQuickScreen(screen: ScreenerType): boolean {
-  return ["top-gainers", "top-losers"].includes(screen);
+  return ["top-gainers", "top-losers", "near-52w-high", "near-52w-low"].includes(screen);
 }
 
 function runQuickScreen(
@@ -217,7 +216,7 @@ function runQuickScreen(
   switch (screen) {
     case "top-gainers":
       filtered = quotes
-        .filter((q) => q.changePct >= 1) // Lower threshold for more results
+        .filter((q) => q.changePct >= 1)
         .sort((a, b) => b.changePct - a.changePct);
       break;
     case "top-losers":
@@ -226,17 +225,16 @@ function runQuickScreen(
         .sort((a, b) => a.changePct - b.changePct);
       break;
     case "near-52w-high":
-      // Just show stocks near 52w high based on momentum
       filtered = quotes
         .filter((q) => q.changePct > 0 && q.price > 0)
         .sort((a, b) => b.changePct - a.changePct)
-        .slice(0, 10);
+        .slice(0, 15);
       break;
     case "near-52w-low":
       filtered = quotes
         .filter((q) => q.changePct < 0 && q.price > 0)
         .sort((a, b) => a.changePct - b.changePct)
-        .slice(0, 10);
+        .slice(0, 15);
       break;
     default:
       return [];
@@ -257,5 +255,5 @@ function runQuickScreen(
 
 function isWeekend(): boolean {
   const day = new Date().getDay();
-  return day === 0 || day === 6; // Sunday or Saturday
+  return day === 0 || day === 6;
 }

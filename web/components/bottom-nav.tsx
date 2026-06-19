@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Star, Briefcase, Settings, BarChart3 } from "lucide-react";
+import { Home, Search, Star, Briefcase, Filter, Settings, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/", label: "Beranda", icon: Home },
   { href: "/search", label: "Cari", icon: Search },
   { href: "/watchlist", label: "Watch", icon: Star },
-  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/settings", label: "Setting", icon: Settings },
+  { href: "/portfolio", label: "Porto", icon: Briefcase },
+  { href: "/screener", label: "Screen", icon: Filter },
 ];
 
 export function BottomNav() {

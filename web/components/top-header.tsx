@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Star, BarChart3, Settings, Briefcase } from "lucide-react";
+import { Search, Star, BarChart3, Settings, Briefcase, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export function TopHeader() {
 
   const navItems = [
     { href: "/", label: "Beranda", icon: BarChart3 },
+    { href: "/screener", label: "Screener", icon: Filter },
     { href: "/watchlist", label: "Watchlist", icon: Star },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase },
     { href: "/settings", label: "Settings", icon: Settings },

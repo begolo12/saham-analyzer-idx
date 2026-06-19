@@ -17,6 +17,7 @@ import {
   Activity,
   ShoppingCart,
   Banknote,
+  Bell,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,68 @@ export default function PortfolioPage() {
     () => calculateSummary(holdings, transactions),
     [holdings, transactions],
   );
+
+  // Sell Signals: detect holdings that should be sold
+  const sellSignals = useMemo(() => {
+    const signals: Array<{
+      ticker: string;
+      reason: string;
+      severity: "warning" | "danger";
+      currentPrice: number;
+      plPercent: number;
+      changePct: number;
+    }> = [];
+
+    for (const h of holdings) {
+      if (h.totalShares <= 0) continue;
+      const priceData = currentPrices[h.ticker];
+      const currentPrice = priceData?.price ?? h.currentPrice ?? 0;
+      const plPct = h.unrealizedPLPercent ?? 0;
+      const changePct = priceData?.changePct ?? 0;
+
+      // Stop loss hit (>15% loss)
+      if (plPct < -15) {
+        signals.push({
+          ticker: h.ticker,
+          reason: `Cut loss: rugi ${plPct.toFixed(1)}% dari harga beli`,
+          severity: "danger",
+          currentPrice,
+          plPercent: plPct,
+          changePct,
+        });
+      }
+      // Big drop today (>5%)
+      else if (changePct < -5) {
+        signals.push({
+          ticker: h.ticker,
+          reason: `Turun tajam ${changePct.toFixed(2)}% hari ini`,
+          severity: "warning",
+          currentPrice,
+          plPercent: plPct,
+          changePct,
+        });
+      }
+      // Big gain, consider taking profit (>25%)
+      else if (plPct > 25) {
+        signals.push({
+          ticker: h.ticker,
+          reason: `Take profit: profit ${plPct.toFixed(1)}%, pertimbangkan jual sebagian`,
+          severity: "warning",
+          currentPrice,
+          plPercent: plPct,
+          changePct,
+        });
+      }
+    }
+
+    // Sort: danger first, then warning, then by severity
+    return signals.sort((a, b) => {
+      if (a.severity !== b.severity) {
+        return a.severity === "danger" ? -1 : 1;
+      }
+      return a.plPercent - b.plPercent;
+    });
+  }, [holdings, currentPrices]);
 
   const handleDeleteTransaction = (id: string) => {
     if (confirm("Hapus transaksi ini?")) {
@@ -237,6 +300,107 @@ export default function PortfolioPage() {
               positive={summary.totalUnrealizedPL >= 0}
             />
           </div>
+
+          {/* Sell Signals - Critical Alerts */}
+          {sellSignals.length > 0 && (
+            <Card
+              className={cn(
+                "p-4 border-2",
+                sellSignals.some((s) => s.severity === "danger")
+                  ? "border-bear-500/50 bg-gradient-to-br from-bear-50 to-orange-50 dark:from-bear-700/10 dark:to-orange-900/10"
+                  : "border-amber-500/50 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-700/10 dark:to-yellow-900/10",
+              )}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Bell className="h-5 w-5 text-bear-600 animate-pulse" />
+                <h2 className="font-bold text-base text-bear-700 dark:text-bear-500">
+                  🚨 Sinyal Jual ({sellSignals.length})
+                </h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Berdasarkan analisis P&L dan pergerakan harga:
+              </p>
+              <div className="space-y-2">
+                {sellSignals.map((signal) => (
+                  <Link
+                    key={signal.ticker}
+                    href={`/stock/${signal.ticker}`}
+                    className="block"
+                  >
+                    <div
+                      className={cn(
+                        "rounded-xl border-2 p-3 transition-colors cursor-pointer",
+                        signal.severity === "danger"
+                          ? "border-bear-500 bg-white/80 dark:bg-background hover:bg-bear-50"
+                          : "border-amber-500 bg-white/80 dark:bg-background hover:bg-amber-50",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">{signal.ticker}</span>
+                            <span className="text-xl">
+                              {signal.severity === "danger" ? "🔴" : "⚠️"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {signal.reason}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-bold tabular-nums">
+                            {formatIDR(signal.currentPrice)}
+                          </div>
+                          <div
+                            className={cn(
+                              "text-[10px] font-bold tabular-nums",
+                              signal.plPercent >= 0 ? "text-bull-600" : "text-bear-600",
+                            )}
+                          >
+                            {signal.plPercent >= 0 ? "+" : ""}
+                            {signal.plPercent.toFixed(1)}%
+                          </div>
+                          {signal.changePct !== 0 && (
+                            <div
+                              className={cn(
+                                "text-[10px] tabular-nums",
+                                signal.changePct >= 0 ? "text-bull-600" : "text-bear-600",
+                              )}
+                            >
+                              today {signal.changePct >= 0 ? "+" : ""}
+                              {signal.changePct.toFixed(2)}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Quick sell button */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const holding = holdings.find((h) => h.ticker === signal.ticker);
+                          if (holding) {
+                            const maxLot = Math.floor(holding.totalShares / 100);
+                            setQuickAction({
+                              ticker: signal.ticker,
+                              price: signal.currentPrice,
+                              type: "SELL",
+                              maxLot,
+                            });
+                          }
+                        }}
+                        className="mt-2 w-full text-xs font-bold py-2 rounded-lg bg-bear-500 hover:bg-bear-600 text-white transition-colors"
+                      >
+                        🔴 Jual Sekarang ({Math.floor(
+                          (holdings.find((h) => h.ticker === signal.ticker)?.totalShares ?? 0) / 100,
+                        )} lot)
+                      </button>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Holdings */}
           {holdings.filter((h) => h.totalShares > 0).length > 0 && (

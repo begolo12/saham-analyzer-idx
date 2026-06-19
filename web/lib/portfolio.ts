@@ -70,9 +70,17 @@ export function calculateHoldings(
   const holdings: Holding[] = [];
 
   for (const ticker in byTicker) {
-    const txs = byTicker[ticker].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
+    // FIFO queue of buys. Sort by date ascending; tiebreak by createdAt then id
+    // (both unique) so that SELL never precedes its BUY when same-day trades
+    // land in the array newest-first (addTransaction uses unshift).
+    const txs = byTicker[ticker].sort((a, b) => {
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const createdDiff =
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (createdDiff !== 0) return createdDiff;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
 
     let totalShares = 0;
     let totalCost = 0;

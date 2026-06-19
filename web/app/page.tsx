@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Activity,
 } from "lucide-react";
-import { Navbar } from "@/components/navbar";
+import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <TopHeader />
 
       <main className="container py-6 sm:py-10">
         {/* Hero */}

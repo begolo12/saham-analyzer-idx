@@ -10,11 +10,9 @@ import { analyzeFundamental } from "@/lib/fundamental";
 import { analyzeBehavioral } from "@/lib/behavioral";
 import { fetchNews, summarizeSentiment } from "@/lib/news";
 import { generateRecommendation } from "@/lib/recommender";
-import { getStockByCode } from "@/lib/popular-stocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Allow up to 60s for full analysis (news scraping can be slow)
 export const maxDuration = 60;
 
 /**
@@ -40,17 +38,23 @@ export async function GET(
     const includeNews = searchParams.get("includeNews") !== "false";
 
     // Fetch all data in parallel
-    const [summary, historical, info] = await Promise.all([
+    const [summaryBase, historical, info] = await Promise.all([
       fetchSummary(code),
       fetchHistorical(code, period),
       fetchInfo(code),
     ]);
 
-    const currentPrice = summary.currentPrice ?? historical[historical.length - 1]?.close ?? null;
+    // Merge summary with info (fundamentals)
+    const summary = { ...summaryBase, ...info };
+
+    const currentPrice =
+      summary.currentPrice ??
+      historical[historical.length - 1]?.close ??
+      null;
 
     // Run analyses
     const technical = analyzeTechnical(historical);
-    const fundamental = analyzeFundamental(info);
+    const fundamental = analyzeFundamental(summary);
     const behavioral = analyzeBehavioral(historical);
 
     // News + sentiment (optional, may be slow)

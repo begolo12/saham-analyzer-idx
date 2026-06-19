@@ -5,11 +5,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/quick/[ticker]?period=1y
- * Quick stock data for watchlist - just summary + last 30 days
+ * GET /api/quick/[ticker]
+ * Quick stock data for watchlist
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { ticker: string } },
 ) {
   try {
@@ -17,11 +17,13 @@ export async function GET(
 
     const [summary, historical] = await Promise.all([
       fetchSummary(ticker),
-      fetchHistorical(ticker, "3mo"),
+      fetchHistorical(ticker, "5d"),
     ]);
 
-    const lastPrice = historical[historical.length - 1]?.close ?? summary.currentPrice;
-    const prevPrice = historical[historical.length - 2]?.close ?? summary.previousClose;
+    const lastPrice =
+      historical[historical.length - 1]?.close ?? summary.currentPrice;
+    const prevPrice =
+      historical[historical.length - 2]?.close ?? summary.previousClose;
 
     let change: number | null = null;
     let changePct: number | null = null;
@@ -32,9 +34,9 @@ export async function GET(
     }
 
     return NextResponse.json({
-      summary,
-      lastPrice,
-      previousClose: prevPrice,
+      name: summary.name,
+      sector: summary.sector,
+      price: lastPrice,
       change,
       changePct,
     });

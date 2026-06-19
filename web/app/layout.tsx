@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
+import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,7 +10,6 @@ export const metadata: Metadata = {
   keywords: ["saham", "IDX", "analisa", "BBCA", "TLKM", "ASII", "indonesia"],
   authors: [{ name: "Saham Analyzer" }],
   manifest: "/manifest.json",
-  themeColor: "#1E88E5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -39,6 +39,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background">
         {children}
         <Toaster position="top-center" richColors />
+        <BottomNav />
       </body>
     </html>
   );

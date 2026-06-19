@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, Trash2, Loader2, TrendingUp, TrendingDown, ArrowLeft, Inbox } from "lucide-react";
-import { Navbar } from "@/components/navbar";
+import { TopHeader } from "@/components/top-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,8 +83,8 @@ export default function WatchlistPage() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container py-6">
+        <TopHeader />
+        <main className="container py-6 pb-24">
           <div className="flex items-center justify-center min-h-[50vh]">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
@@ -95,9 +95,9 @@ export default function WatchlistPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <TopHeader />
 
-      <main className="container py-4 sm:py-6">
+      <main className="container py-4 sm:py-6 pb-24 md:pb-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

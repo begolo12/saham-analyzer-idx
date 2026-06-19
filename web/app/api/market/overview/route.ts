@@ -8,11 +8,10 @@ export const maxDuration = 60;
 
 /**
  * GET /api/market/overview
- * Quick market overview of popular stocks (for landing page)
+ * Quick market overview of popular stocks
  */
 export async function GET(_request: NextRequest) {
   try {
-    // Fetch top 8 stocks in parallel
     const topStocks = POPULAR_STOCKS.slice(0, 8);
     const results = await Promise.allSettled(
       topStocks.map(async (stock) => {
@@ -38,7 +37,8 @@ export async function GET(_request: NextRequest) {
           name: summary.name,
           sector: stock.sector,
           price: lastPrice,
-          change: lastPrice && prevPrice ? lastPrice - prevPrice : 0,
+          change:
+            lastPrice && prevPrice ? lastPrice - prevPrice : null,
           changePct,
         };
       }),

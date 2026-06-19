@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
-import { Navbar } from "@/components/navbar";
+import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { BehavioralPatterns } from "@/components/behavioral-patterns";
 import { NewsList } from "@/components/news-list";
 import { PriceChart } from "@/components/price-chart";
 import { WatchlistButton } from "@/components/watchlist-button";
+import { useTrackRecommendation } from "@/components/track-recommendation";
 import { formatIDR, formatNumber, formatPercent, cn } from "@/lib/utils";
 
 interface AnalysisData {
@@ -85,6 +86,9 @@ export default function StockDetailPage() {
   const behavioral = data?.behavioral;
   const sentiment = data?.sentiment;
 
+  // Auto-track this recommendation untuk self-analysis
+  useTrackRecommendation(ticker, recommendation);
+
   // Calculate price change for metrics
   const lastPrice = summary?.currentPrice;
   const prevClose = summary?.previousClose;
@@ -96,7 +100,7 @@ export default function StockDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <TopHeader />
 
       <main className="container py-4 sm:py-6">
         {/* Back button + ticker */}

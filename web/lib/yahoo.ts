@@ -1,14 +1,9 @@
-import YahooFinance from "yahoo-finance2";
-import type {
-  ChartResultArray,
-  Quote,
-} from "yahoo-finance2/dist/esm/src/modules/chart";
-import type { QuoteSummaryResult } from "yahoo-finance2/dist/esm/src/modules/quoteSummary";
-
-const yahooFinance = new YahooFinance({
-  // Suppress deprecation warnings in production
-  suppressNotices: ["yahooSurvey", "ripHistorical"],
-});
+/**
+ * Yahoo Finance Wrapper - Direct HTTP Fetch
+ * Mengambil data saham IDX langsung dari Yahoo Finance HTTP endpoints.
+ *
+ * Lebih reliable dari yahoo-finance2 library karena tidak ada dependency issues.
+ */
 
 export interface StockPrice {
   date: string;
@@ -36,37 +31,113 @@ export interface StockSummary {
   volume: number | null;
   averageVolume: number | null;
   marketCap: number | null;
-}
-
-export interface StockInfo {
-  // Valuation
-  trailingPE?: number | null;
-  forwardPE?: number | null;
-  priceToBook?: number | null;
-  priceToSalesTrailing12Months?: number | null;
-  // Profitability
-  returnOnEquity?: number | null;
-  returnOnAssets?: number | null;
-  profitMargins?: number | null;
-  // Leverage
-  debtToEquity?: number | null;
-  currentRatio?: number | null;
-  // Growth
-  earningsGrowth?: number | null;
-  earningsQuarterlyGrowth?: number | null;
-  revenueGrowth?: number | null;
-  revenueQuarterlyGrowth?: number | null;
-  // Dividend
-  dividendYield?: number | null;
-  trailingAnnualDividendYield?: number | null;
-  // Other
-  sector?: string | null;
-  industry?: string | null;
+  trailingPE: number | null;
+  forwardPE: number | null;
+  priceToBook: number | null;
+  priceToSalesTrailing12Months: number | null;
+  returnOnEquity: number | null;
+  returnOnAssets: number | null;
+  profitMargins: number | null;
+  debtToEquity: number | null;
+  currentRatio: number | null;
+  earningsGrowth: number | null;
+  earningsQuarterlyGrowth: number | null;
+  revenueGrowth: number | null;
+  revenueQuarterlyGrowth: number | null;
+  dividendYield: number | null;
+  trailingAnnualDividendYield: number | null;
 }
 
 export function validateTicker(ticker: string): string {
   const t = ticker.toUpperCase().trim().replace(/\.JK$/, "");
   return `${t}.JK`;
+}
+
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+interface YahooChartResponse {
+  chart: {
+    result: Array<{
+      meta: {
+        currency?: string;
+        symbol: string;
+        regularMarketPrice?: number;
+        previousClose?: number;
+        regularMarketDayHigh?: number;
+        regularMarketDayLow?: number;
+        regularMarketVolume?: number;
+        fiftyTwoWeekHigh?: number;
+        fiftyTwoWeekLow?: number;
+        fiftyDayAverage?: number;
+        twoHundredDayAverage?: number;
+        longName?: string;
+        shortName?: string;
+      };
+      timestamp?: number[];
+      indicators: {
+        quote: Array<{
+          open?: (number | null)[];
+          high?: (number | null)[];
+          low?: (number | null)[];
+          close?: (number | null)[];
+          volume?: (number | null)[];
+        }>;
+      };
+    }>;
+    error: any;
+  };
+}
+
+/**
+ * Fetch historical price + summary in one call
+ */
+async function fetchChart(
+  ticker: string,
+  period: string = "1y",
+  interval: string = "1d",
+): Promise<YahooChartResponse> {
+  const fullTicker = validateTicker(ticker);
+
+  // Period to Unix timestamp
+  const now = Math.floor(Date.now() / 1000);
+  const periodMap: Record<string, number> = {
+    "1mo": 30 * 24 * 60 * 60,
+    "3mo": 90 * 24 * 60 * 60,
+    "6mo": 180 * 24 * 60 * 60,
+    "1y": 365 * 24 * 60 * 60,
+    "2y": 730 * 24 * 60 * 60,
+    "5y": 1825 * 24 * 60 * 60,
+  };
+  const period1 = now - (periodMap[period] || periodMap["1y"]);
+
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(fullTicker)}?period1=${period1}&period2=${now}&interval=${interval}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: controller.signal,
+      // Cache for 5 minutes
+      next: { revalidate: 300 },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      throw new Error(`Yahoo Finance returned ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
 }
 
 /**
@@ -77,172 +148,191 @@ export async function fetchHistorical(
   period: "1mo" | "3mo" | "6mo" | "1y" | "2y" | "5y" = "1y",
   interval: "1d" | "1wk" | "1mo" = "1d",
 ): Promise<StockPrice[]> {
-  const fullTicker = validateTicker(ticker);
+  const data = await fetchChart(ticker, period, interval);
 
-  try {
-    const result: ChartResultArray = await yahooFinance.chart(fullTicker, {
-      period1: getStartDate(period),
-      period2: new Date(),
-      interval,
-    });
-
-    if (!result || !result.quotes || result.quotes.length === 0) {
-      throw new Error(`No historical data for ${fullTicker}`);
-    }
-
-    return result.quotes
-      .filter(
-        (q): q is Quote =>
-          q !== null &&
-          typeof q.close === "number" &&
-          typeof q.open === "number" &&
-          typeof q.high === "number" &&
-          typeof q.low === "number" &&
-          typeof q.volume === "number",
-      )
-      .map((q) => ({
-        date: new Date(q.date).toISOString().split("T")[0],
-        open: q.open,
-        high: q.high,
-        low: q.low,
-        close: q.close,
-        volume: q.volume,
-      }));
-  } catch (error) {
+  if (data.chart.error) {
     throw new Error(
-      `Failed to fetch ${fullTicker}: ${error instanceof Error ? error.message : String(error)}`,
+      typeof data.chart.error === "string"
+        ? data.chart.error
+        : data.chart.error.description || "Yahoo Finance error",
     );
   }
-}
 
-function getStartDate(period: string): Date {
-  const now = new Date();
-  const map: Record<string, number> = {
-    "1mo": 30,
-    "3mo": 90,
-    "6mo": 180,
-    "1y": 365,
-    "2y": 730,
-    "5y": 1825,
-  };
-  const days = map[period] || 365;
-  const start = new Date(now);
-  start.setDate(start.getDate() - days);
-  return start;
+  const result = data.chart.result?.[0];
+  if (!result) {
+    throw new Error(`No data returned for ${ticker}`);
+  }
+
+  const timestamps = result.timestamp || [];
+  const quote = result.indicators.quote[0];
+  const opens = quote.open || [];
+  const highs = quote.high || [];
+  const lows = quote.low || [];
+  const closes = quote.close || [];
+  const volumes = quote.volume || [];
+
+  const prices: StockPrice[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const open = opens[i];
+    const close = closes[i];
+    const high = highs[i];
+    const low = lows[i];
+    const volume = volumes[i];
+
+    if (
+      typeof open !== "number" ||
+      typeof close !== "number" ||
+      typeof high !== "number" ||
+      typeof low !== "number" ||
+      typeof volume !== "number"
+    ) {
+      continue;
+    }
+
+    prices.push({
+      date: new Date(timestamps[i] * 1000).toISOString().split("T")[0],
+      open,
+      high,
+      low,
+      close,
+      volume,
+    });
+  }
+
+  if (prices.length === 0) {
+    throw new Error(`No valid price data for ${ticker}`);
+  }
+
+  return prices;
 }
 
 /**
- * Fetch stock summary
+ * Fetch stock summary (price + fundamentals)
  */
 export async function fetchSummary(ticker: string): Promise<StockSummary> {
   const fullTicker = validateTicker(ticker);
   const code = fullTicker.replace(".JK", "");
 
-  try {
-    const quote: QuoteSummaryResult = await yahooFinance.quoteSummary(fullTicker, {
-      modules: ["price", "summaryDetail", "defaultKeyStatistics"],
-    });
+  const data = await fetchChart(code, "1y", "1d");
 
-    const price = quote.price;
-    const detail = quote.summaryDetail;
-    const stats = quote.defaultKeyStatistics;
-
-    if (!price) {
-      throw new Error(`No price data for ${fullTicker}`);
-    }
-
-    return {
-      ticker: fullTicker,
-      code,
-      name: price.longName || price.shortName || code,
-      sector: detail?.sector || price.sector || "N/A",
-      currency: price.currency || "IDR",
-      currentPrice:
-        typeof price.regularMarketPrice === "number" ? price.regularMarketPrice : null,
-      previousClose:
-        typeof price.regularMarketPreviousClose === "number"
-          ? price.regularMarketPreviousClose
-          : null,
-      dayHigh:
-        typeof price.regularMarketDayHigh === "number" ? price.regularMarketDayHigh : null,
-      dayLow:
-        typeof price.regularMarketDayLow === "number" ? price.regularMarketDayLow : null,
-      fiftyTwoWeekHigh:
-        typeof detail?.fiftyTwoWeekHigh === "number" ? detail.fiftyTwoWeekHigh : null,
-      fiftyTwoWeekLow:
-        typeof detail?.fiftyTwoWeekLow === "number" ? detail.fiftyTwoWeekLow : null,
-      fiftyDayAverage:
-        typeof detail?.fiftyDayAverage === "number" ? detail.fiftyDayAverage : null,
-      twoHundredDayAverage:
-        typeof detail?.twoHundredDayAverage === "number" ? detail.twoHundredDayAverage : null,
-      volume: typeof price.regularMarketVolume === "number" ? price.regularMarketVolume : null,
-      averageVolume:
-        typeof detail?.averageVolume === "number" ? detail.averageVolume : null,
-      marketCap: typeof price.marketCap === "number" ? price.marketCap : null,
-    };
-  } catch (error) {
+  if (data.chart.error) {
     throw new Error(
-      `Failed to fetch summary for ${fullTicker}: ${error instanceof Error ? error.message : String(error)}`,
+      typeof data.chart.error === "string"
+        ? data.chart.error
+        : data.chart.error.description || "Yahoo Finance error",
     );
   }
+
+  const result = data.chart.result?.[0];
+  if (!result) {
+    throw new Error(`No data returned for ${code}`);
+  }
+
+  const meta = result.meta;
+  const lastClose =
+    result.indicators.quote[0].close?.filter((c): c is number => typeof c === "number").pop() ??
+    null;
+  const prevClose = meta.previousClose ?? null;
+  const currency = meta.currency || "IDR";
+  const name = meta.longName || meta.shortName || code;
+
+  return {
+    ticker: fullTicker,
+    code,
+    name,
+    sector: "N/A", // Sector dari chart endpoint tidak tersedia; pakai stat module
+    currency,
+    currentPrice: meta.regularMarketPrice ?? lastClose,
+    previousClose: prevClose,
+    dayHigh: meta.regularMarketDayHigh ?? null,
+    dayLow: meta.regularMarketDayLow ?? null,
+    fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
+    fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
+    fiftyDayAverage: meta.fiftyDayAverage ?? null,
+    twoHundredDayAverage: meta.twoHundredDayAverage ?? null,
+    volume: meta.regularMarketVolume ?? null,
+    averageVolume: null,
+    marketCap: null,
+    trailingPE: null,
+    forwardPE: null,
+    priceToBook: null,
+    priceToSalesTrailing12Months: null,
+    returnOnEquity: null,
+    returnOnAssets: null,
+    profitMargins: null,
+    debtToEquity: null,
+    currentRatio: null,
+    earningsGrowth: null,
+    earningsQuarterlyGrowth: null,
+    revenueGrowth: null,
+    revenueQuarterlyGrowth: null,
+    dividendYield: null,
+    trailingAnnualDividendYield: null,
+  };
 }
 
 /**
- * Fetch stock info (fundamental ratios)
+ * Fetch fundamental data via quoteSummary endpoint
+ * Returns nulls for fields that aren't available (graceful degradation)
  */
-export async function fetchInfo(ticker: string): Promise<StockInfo> {
+export async function fetchInfo(ticker: string): Promise<Partial<StockSummary>> {
   const fullTicker = validateTicker(ticker);
+  const modules = ["defaultKeyStatistics", "summaryDetail", "financialData"];
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(fullTicker)}?modules=${modules.join(",")}`;
 
   try {
-    const quote = await yahooFinance.quoteSummary(fullTicker, {
-      modules: ["defaultKeyStatistics", "summaryDetail", "financialData"],
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const stats = quote.defaultKeyStatistics;
-    const detail = quote.summaryDetail;
-    const fin = quote.financialData;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: controller.signal,
+      next: { revalidate: 3600 }, // 1 hour cache (fundamentals don't change often)
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn(`quoteSummary returned ${res.status} for ${ticker}`);
+      return {};
+    }
+
+    const data = await res.json();
+    const result = data.quoteSummary?.result?.[0];
+    if (!result) return {};
+
+    const stats = result.defaultKeyStatistics || {};
+    const detail = result.summaryDetail || {};
+    const fin = result.financialData || {};
+
+    const numVal = (o: any): number | null =>
+      typeof o?.raw === "number" ? o.raw : null;
 
     return {
-      // Valuation
-      trailingPE: typeof stats?.trailingPE?.raw === "number" ? stats.trailingPE.raw : null,
-      forwardPE: typeof stats?.forwardPE?.raw === "number" ? stats.forwardPE.raw : null,
-      priceToBook: typeof stats?.priceToBook?.raw === "number" ? stats.priceToBook.raw : null,
-      priceToSalesTrailing12Months:
-        typeof stats?.priceToSalesTrailing12Months?.raw === "number"
-          ? stats.priceToSalesTrailing12Months.raw
-          : null,
-      // Profitability
-      returnOnEquity: typeof fin?.returnOnEquity?.raw === "number" ? fin.returnOnEquity.raw : null,
-      returnOnAssets: typeof fin?.returnOnAssets?.raw === "number" ? fin.returnOnAssets.raw : null,
-      profitMargins: typeof fin?.profitMargins?.raw === "number" ? fin.profitMargins.raw : null,
-      // Leverage
-      debtToEquity: typeof fin?.debtToEquity?.raw === "number" ? fin.debtToEquity.raw : null,
-      currentRatio: typeof fin?.currentRatio?.raw === "number" ? fin.currentRatio.raw : null,
-      // Growth
-      earningsGrowth:
-        typeof fin?.earningsGrowth?.raw === "number" ? fin.earningsGrowth.raw : null,
-      earningsQuarterlyGrowth:
-        typeof stats?.earningsQuarterlyGrowth?.raw === "number"
-          ? stats.earningsQuarterlyGrowth.raw
-          : null,
-      revenueGrowth: typeof fin?.revenueGrowth?.raw === "number" ? fin.revenueGrowth.raw : null,
-      revenueQuarterlyGrowth:
-        typeof stats?.revenueQuarterlyGrowth?.raw === "number"
-          ? stats.revenueQuarterlyGrowth.raw
-          : null,
-      // Dividend
-      dividendYield:
-        typeof detail?.dividendYield?.raw === "number" ? detail.dividendYield.raw : null,
-      trailingAnnualDividendYield:
-        typeof detail?.trailingAnnualDividendYield?.raw === "number"
-          ? detail.trailingAnnualDividendYield.raw
-          : null,
-      // Other
-      sector: detail?.sector || null,
-      industry: detail?.industry || null,
+      sector: detail.sector || null,
+      averageVolume: numVal(detail.averageVolume),
+      marketCap: numVal(detail.marketCap) ?? numVal(detail["marketCap"]),
+      trailingPE: numVal(stats.trailingPE),
+      forwardPE: numVal(stats.forwardPE),
+      priceToBook: numVal(stats.priceToBook),
+      priceToSalesTrailing12Months: numVal(stats.priceToSalesTrailing12Months),
+      returnOnEquity: numVal(fin.returnOnEquity),
+      returnOnAssets: numVal(fin.returnOnAssets),
+      profitMargins: numVal(fin.profitMargins),
+      debtToEquity: numVal(fin.debtToEquity),
+      currentRatio: numVal(fin.currentRatio),
+      earningsGrowth: numVal(fin.earningsGrowth),
+      earningsQuarterlyGrowth: numVal(stats.earningsQuarterlyGrowth),
+      revenueGrowth: numVal(fin.revenueGrowth),
+      revenueQuarterlyGrowth: numVal(stats.revenueQuarterlyGrowth),
+      dividendYield: numVal(detail.dividendYield),
+      trailingAnnualDividendYield: numVal(detail.trailingAnnualDividendYield),
     };
-  } catch (error) {
-    console.error("fetchInfo error:", error);
+  } catch (err) {
+    console.warn(`fetchInfo error for ${ticker}:`, err);
     return {};
   }
 }

@@ -43,6 +43,9 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 
+# Claude Code local config (per-project, not for repo)
+.claude/
+
 # Environment
 .env
 .env.local

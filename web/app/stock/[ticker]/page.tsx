@@ -24,7 +24,7 @@ import { FundamentalMetrics } from "@/components/fundamental-metrics";
 import { BehavioralPatterns } from "@/components/behavioral-patterns";
 import { NewsList } from "@/components/news-list";
 import { PriceChart } from "@/components/price-chart";
-import { WatchlistButton } from "@/components/watchlist-button";
+import { WatchlistButton, bumpWatchView } from "@/components/watchlist-button";
 import { AddTransactionModal } from "@/components/add-transaction-modal";
 import { useTrackRecommendation } from "@/components/track-recommendation";
 import { formatIDR, formatNumber, formatPercent, cn } from "@/lib/utils";
@@ -54,6 +54,9 @@ export default function StockDetailPage() {
     if (!ticker) return;
     setLoading(true);
     setError(null);
+
+    // Self-learning: bump view count if ticker is in watchlist
+    bumpWatchView(ticker);
 
     fetch(`/api/analysis/${ticker}?period=${period}&includeNews=true`)
       .then(async (res) => {

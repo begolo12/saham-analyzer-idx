@@ -18,6 +18,8 @@ import {
   ShoppingCart,
   Banknote,
   Bell,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +32,23 @@ import {
   type Transaction,
 } from "@/lib/portfolio";
 import { usePortfolio, removeTransaction, clearAllTransactions } from "@/lib/portfolio-storage";
+import { calculateCashSummary, type CashEntry, type CashEntryType } from "@/lib/cash-ledger";
+import {
+  useCashLedger,
+  addCashEntry,
+  removeCashEntry,
+  clearAllCashEntries,
+} from "@/lib/cash-storage";
 import { AddTransactionModal } from "@/components/add-transaction-modal";
+import { CashModal } from "@/components/cash-modal";
+import { SectorDonut, processSectors } from "@/components/sector-donut";
+import { PortfolioChart } from "@/components/portfolio-chart";
+import { IHSGBenchmark } from "@/components/ihsg-benchmark";
+import {
+  getSnapshots,
+  recordTodaySnapshot,
+  type PortfolioSnapshot,
+} from "@/lib/portfolio-snapshots";
 import { formatIDR, formatPercent, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -40,13 +58,58 @@ interface PriceData {
   price: number | null;
   change: number | null;
   changePct: number | null;
+  sector?: string;
+  recentCloses?: number[];
+}
+
+// ============== Trailing Stop Helpers ==============
+const PEAK_KEY = "saham_peak_prices";
+
+function getPeakPrices(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(PEAK_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getPeakPrice(ticker: string): number {
+  const peaks = getPeakPrices();
+  return peaks[ticker.toUpperCase()] ?? 0;
+}
+
+/**
+ * Update peak price for a ticker if currentPrice is higher.
+ * Called on every portfolio page load.
+ */
+function updatePeakPrices(prices: Record<string, number>): void {
+  if (typeof window === "undefined") return;
+  const peaks = getPeakPrices();
+  let changed = false;
+  for (const [ticker, price] of Object.entries(prices)) {
+    if (price > 0) {
+      const key = ticker.toUpperCase();
+      if (!peaks[key] || price > peaks[key]) {
+        peaks[key] = price;
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    localStorage.setItem(PEAK_KEY, JSON.stringify(peaks));
+  }
 }
 
 export default function PortfolioPage() {
   const { transactions, mounted } = usePortfolio();
+  const { entries: cashEntries } = useCashLedger();
   const [currentPrices, setCurrentPrices] = useState<Record<string, PriceData>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [cashModalType, setCashModalType] = useState<CashEntryType | null>(null);
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [quickAction, setQuickAction] = useState<{
     ticker: string;
     price: number;
@@ -85,8 +148,35 @@ export default function PortfolioPage() {
       }
       setCurrentPrices(map);
       setLoadingPrices(false);
+
+      // Record today's snapshot (no-op if already saved today)
+      const priceMapForSnap: Record<string, number> = {};
+      for (const [t, d] of entries) {
+        if (d?.price !== null && d?.price !== undefined && Number.isFinite(d.price)) {
+          priceMapForSnap[t] = d.price;
+        }
+      }
+      recordTodaySnapshot(transactions, [], priceMapForSnap);
+      // Update peak prices for trailing stop
+      updatePeakPrices(priceMapForSnap);
+      setSnapshots(getSnapshots());
     });
-  }, [uniqueTickers, mounted]);
+  }, [uniqueTickers, mounted, transactions]);
+
+  // Reload snapshots when transactions change (e.g. cash ledger update)
+  useEffect(() => {
+    if (!mounted) return;
+    setSnapshots(getSnapshots());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions.length, cashEntries.length]);
+
+  // Reload snapshots on portfolio-updated event
+  useEffect(() => {
+    if (!mounted) return;
+    const handler = () => setSnapshots(getSnapshots());
+    window.addEventListener("portfolio-updated", handler);
+    return () => window.removeEventListener("portfolio-updated", handler);
+  }, [mounted]);
 
   // Calculate holdings & summary
   const priceMap = useMemo(() => {
@@ -109,6 +199,38 @@ export default function PortfolioPage() {
     [holdings, transactions],
   );
 
+  // Active holdings — those with shares > 0
+  const activeHoldings = useMemo(
+    () => holdings.filter((h) => h.totalShares > 0),
+    [holdings],
+  );
+
+  // Cash summary (topup - withdraw) — saldo kas user
+  const cashSummary = useMemo(
+    () => calculateCashSummary(cashEntries),
+    [cashEntries],
+  );
+
+  // Total portfolio = cash + current stock value
+  const totalPortfolioValue = useMemo(() => {
+    const stockValue = holdings.reduce(
+      (sum, h) => sum + (h.currentValue ?? 0),
+      0,
+    );
+    return cashSummary.cashBalance + stockValue;
+  }, [cashSummary, holdings]);
+
+  // Return % = (current total - net invested) / net invested
+  // Net invested = totalTopup - totalWithdraw + (cost basis yang masih aktif di saham)
+  // Lebih intuitif: return % = (current total - modal awal) / modal awal
+  const totalTopup = cashSummary.totalTopup;
+  const totalWithdraw = cashSummary.totalWithdraw;
+  const netInvested = totalTopup - totalWithdraw; // Kas yang pernah dimasukkin user
+  const totalReturnPercent =
+    netInvested > 0
+      ? ((totalPortfolioValue - netInvested) / netInvested) * 100
+      : 0;
+
   // Sell Signals: detect holdings that should be sold
   const sellSignals = useMemo(() => {
     const signals: Array<{
@@ -127,7 +249,7 @@ export default function PortfolioPage() {
       const plPct = h.unrealizedPLPercent ?? 0;
       const changePct = priceData?.changePct ?? 0;
 
-      // Stop loss hit (>15% loss)
+      // 1. Stop loss hit (>15% loss) — danger
       if (plPct < -15) {
         signals.push({
           ticker: h.ticker,
@@ -137,9 +259,11 @@ export default function PortfolioPage() {
           plPercent: plPct,
           changePct,
         });
+        continue;
       }
-      // Big drop today (>5%)
-      else if (changePct < -5) {
+
+      // 2. Big drop today (>5%) — warning
+      if (changePct < -5) {
         signals.push({
           ticker: h.ticker,
           reason: `Turun tajam ${changePct.toFixed(2)}% hari ini`,
@@ -148,9 +272,28 @@ export default function PortfolioPage() {
           plPercent: plPct,
           changePct,
         });
+        continue;
       }
-      // Big gain, consider taking profit (>25%)
-      else if (plPct > 25) {
+
+      // 3. Trailing stop — price dropped > 7% from peak
+      const peak = getPeakPrice(h.ticker);
+      if (peak > 0 && currentPrice > 0) {
+        const dropFromPeak = ((peak - currentPrice) / peak) * 100;
+        if (dropFromPeak >= 7) {
+          signals.push({
+            ticker: h.ticker,
+            reason: `Trailing stop: turun ${dropFromPeak.toFixed(1)}% dari peak ${formatIDR(peak)}`,
+            severity: "warning",
+            currentPrice,
+            plPercent: plPct,
+            changePct,
+          });
+          continue;
+        }
+      }
+
+      // 4. Big gain — consider taking profit (>25%)
+      if (plPct > 25) {
         signals.push({
           ticker: h.ticker,
           reason: `Take profit: profit ${plPct.toFixed(1)}%, pertimbangkan jual sebagian`,
@@ -159,6 +302,24 @@ export default function PortfolioPage() {
           plPercent: plPct,
           changePct,
         });
+        continue;
+      }
+
+      // 5. Breakdown below MA20 — danger (jika data historical ada)
+      const recentCloses = priceData?.recentCloses;
+      if (recentCloses && recentCloses.length >= 20) {
+        const ma20 =
+          recentCloses.slice(-20).reduce((a, b) => a + b, 0) / 20;
+        if (currentPrice < ma20 * 0.97 && plPct < 0) {
+          signals.push({
+            ticker: h.ticker,
+            reason: `Breakdown: harga di bawah MA20 (${formatIDR(ma20)}) — tren melemah`,
+            severity: "warning",
+            currentPrice,
+            plPercent: plPct,
+            changePct,
+          });
+        }
       }
     }
 
@@ -191,67 +352,97 @@ export default function PortfolioPage() {
   return (
     <div className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <Briefcase className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+            <Briefcase className="h-6 w-6 sm:h-7 sm:w-7 text-primary shrink-0" />
             Portfolio
           </h1>
           <p className="text-sm text-muted-foreground">
             Virtual trading untuk simulasi investasi
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddModal(true)}
-          size="lg"
-          className="rounded-full h-12 px-4 shadow-lg"
-        >
-          <Plus className="h-5 w-5 mr-1" />
-          <span className="hidden sm:inline">Tambah</span>
-        </Button>
+        <div className="flex gap-1.5 shrink-0">
+          <Button
+            onClick={() => setCashModalType("TOPUP")}
+            size="lg"
+            variant="outline"
+            className="h-12 px-3 sm:px-4 rounded-full border-bull-500/40 text-bull-700 dark:text-bull-500 hover:bg-bull-50 dark:hover:bg-bull-700/20 shadow-sm"
+            aria-label="Top Up"
+          >
+            <ArrowDownToLine className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Top Up</span>
+          </Button>
+          <Button
+            onClick={() => setCashModalType("WITHDRAW")}
+            size="lg"
+            variant="outline"
+            className="h-12 px-3 sm:px-4 rounded-full border-bear-500/40 text-bear-700 dark:text-bear-500 hover:bg-bear-50 dark:hover:bg-bear-700/20 shadow-sm"
+            aria-label="Withdraw"
+          >
+            <ArrowUpFromLine className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Withdraw</span>
+          </Button>
+          <Button
+            onClick={() => setShowAddModal(true)}
+            size="lg"
+            className="h-12 px-3 sm:px-4 rounded-full shadow-lg"
+            aria-label="Tambah Transaksi"
+          >
+            <Plus className="h-5 w-5 sm:mr-1" />
+            <span className="hidden sm:inline">Beli/Jual</span>
+          </Button>
+        </div>
       </div>
 
       {/* Disclaimer */}
       <Alert variant="info">
         <strong>📌 Virtual Portfolio:</strong> Track transaksi beli/jual Anda untuk
-        hitung profit/loss real-time. Data tersimpan lokal (localStorage).
+        hitung profit/loss real-time. Top Up & Withdraw untuk atur modal kas.
+        Data tersimpan lokal (localStorage).
       </Alert>
 
       {/* Empty State */}
-      {transactions.length === 0 && (
+      {transactions.length === 0 && cashEntries.length === 0 && (
         <Card className="p-8 sm:p-12 text-center">
           <div className="inline-flex p-4 rounded-full bg-primary/10 mb-4">
             <Inbox className="h-10 w-10 text-primary" />
           </div>
           <h2 className="text-xl font-bold mb-2">Portfolio Kosong</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Mulai dengan menambahkan transaksi beli pertama Anda untuk track
+            Mulai dengan Top Up modal, lalu beli saham pertama Anda untuk track
             performa investasi.
           </p>
-          <Button onClick={() => setShowAddModal(true)} size="lg">
-            <Plus className="h-5 w-5 mr-2" />
-            Tambah Transaksi Pertama
-          </Button>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Button onClick={() => setCashModalType("TOPUP")} size="lg" variant="outline" className="border-bull-500/40 text-bull-700 dark:text-bull-500">
+              <ArrowDownToLine className="h-5 w-5 mr-2" />
+              Top Up Modal
+            </Button>
+            <Button onClick={() => setShowAddModal(true)} size="lg">
+              <Plus className="h-5 w-5 mr-2" />
+              Beli Saham
+            </Button>
+          </div>
         </Card>
       )}
 
       {/* Summary Cards */}
-      {transactions.length > 0 && (
+      {(transactions.length > 0 || cashEntries.length > 0) && (
         <>
-          {/* Total P&L Card */}
+          {/* Total P&L Card — overall portfolio (cash + stocks) vs modal awal */}
           <Card
             className={cn(
               "p-5 sm:p-6 border-2",
-              summary.totalPL >= 0
+              totalPortfolioValue - netInvested >= 0
                 ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5"
                 : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5",
             )}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-medium">
-                Total P&L
+                Total Portfolio
               </div>
-              {summary.totalPL >= 0 ? (
+              {totalPortfolioValue - netInvested >= 0 ? (
                 <ArrowUpRight className="h-5 w-5 text-bull-600" />
               ) : (
                 <ArrowDownRight className="h-5 w-5 text-bear-600" />
@@ -260,33 +451,58 @@ export default function PortfolioPage() {
             <div
               className={cn(
                 "text-3xl sm:text-5xl font-black tabular-nums leading-none",
-                summary.totalPL >= 0 ? "text-bull-700 dark:text-bull-500" : "text-bear-700 dark:text-bear-500",
+                totalPortfolioValue - netInvested >= 0
+                  ? "text-bull-700 dark:text-bull-500"
+                  : "text-bear-700 dark:text-bear-500",
               )}
             >
-              {summary.totalPL >= 0 ? "+" : ""}
-              {formatIDR(summary.totalPL)}
+              {formatIDR(totalPortfolioValue)}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span
                 className={cn(
                   "text-sm font-bold tabular-nums",
-                  summary.totalPLPercent >= 0 ? "text-bull-600" : "text-bear-600",
+                  totalPortfolioValue - netInvested >= 0
+                    ? "text-bull-600"
+                    : "text-bear-600",
                 )}
               >
-                {formatPercent(summary.totalPLPercent)}
+                {formatIDR(totalPortfolioValue - netInvested)}
               </span>
-              <span className="text-xs text-muted-foreground">return</span>
+              <span className="text-xs text-muted-foreground">
+                vs modal{" "}
+                <strong className="text-foreground">
+                  {formatIDR(netInvested)}
+                </strong>
+              </span>
+              {netInvested > 0 && (
+                <span
+                  className={cn(
+                    "text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                    totalReturnPercent >= 0
+                      ? "bg-bull-100 text-bull-700 dark:bg-bull-700/30 dark:text-bull-500"
+                      : "bg-bear-100 text-bear-700 dark:bg-bear-700/30 dark:text-bear-500",
+                  )}
+                >
+                  {formatPercent(totalReturnPercent)}
+                </span>
+              )}
             </div>
           </Card>
 
-          {/* Stat Grid */}
+          {/* Stat Grid — Kas, Modal Saham, Nilai Saat Ini, Realized P&L, Unrealized P&L */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <StatCard
-              label="Modal"
+              label="Kas"
+              value={formatIDR(cashSummary.cashBalance)}
+              highlight={cashSummary.cashBalance > 0 ? "bull" : undefined}
+            />
+            <StatCard
+              label="Modal di Saham"
               value={formatIDR(summary.totalCost)}
             />
             <StatCard
-              label="Nilai Saat Ini"
+              label="Nilai Saham"
               value={formatIDR(summary.totalValue)}
             />
             <StatCard
@@ -299,7 +515,37 @@ export default function PortfolioPage() {
               value={`${summary.totalUnrealizedPL >= 0 ? "+" : ""}${formatIDR(summary.totalUnrealizedPL)}`}
               positive={summary.totalUnrealizedPL >= 0}
             />
+            <StatCard
+              label="Total Top Up"
+              value={formatIDR(cashSummary.totalTopup)}
+            />
           </div>
+
+          {/* Performance + Allocation Charts */}
+          {(snapshots.length > 0 || activeHoldings.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <PortfolioChart snapshots={snapshots} />
+              <SectorDonut
+                data={processSectors(
+                  activeHoldings
+                    .filter((h) => h.currentValue !== null && h.currentValue > 0)
+                    .map((h) => ({
+                      sector: currentPrices[h.ticker]?.sector ?? h.ticker,
+                      value: h.currentValue ?? 0,
+                    })),
+                )}
+                totalValue={summary.totalValue}
+              />
+            </div>
+          )}
+
+          {/* IHSG Benchmark — how does portfolio compare to market? */}
+          {netInvested > 0 && (
+            <IHSGBenchmark
+              portfolioValue={totalPortfolioValue}
+              initialDeposit={netInvested}
+            />
+          )}
 
           {/* Sell Signals - Critical Alerts */}
           {sellSignals.length > 0 && (
@@ -485,6 +731,46 @@ export default function PortfolioPage() {
             </div>
           )}
 
+          {/* Cash Ledger History */}
+          {cashEntries.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Banknote className="h-5 w-5 text-primary" />
+                  Cash Ledger ({cashEntries.length})
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm("Hapus semua cash ledger?")) {
+                      clearAllCashEntries();
+                      toast.success("Cash ledger dihapus");
+                    }
+                  }}
+                  className="text-xs text-muted-foreground"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                {cashEntries.map((entry) => (
+                  <CashEntryRow
+                    key={entry.id}
+                    entry={entry}
+                    onDelete={() => {
+                      if (confirm("Hapus entry ini?")) {
+                        removeCashEntry(entry.id);
+                        toast.success("Entry dihapus");
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Transaction History */}
           <div>
             <div className="flex items-center justify-between mb-2 px-1">
@@ -528,6 +814,15 @@ export default function PortfolioPage() {
         </>
       )}
 
+      {/* Cash Modal (Top Up / Withdraw) */}
+      {cashModalType && (
+        <CashModal
+          defaultType={cashModalType}
+          currentCash={cashSummary.cashBalance}
+          onClose={() => setCashModalType(null)}
+        />
+      )}
+
       {/* Add Transaction Modal */}
       {showAddModal && (
         <AddTransactionModal onClose={() => setShowAddModal(false)} />
@@ -552,10 +847,12 @@ function StatCard({
   label,
   value,
   positive,
+  highlight,
 }: {
   label: string;
   value: string;
   positive?: boolean;
+  highlight?: "bull" | "bear";
 }) {
   return (
     <Card className="p-3">
@@ -567,6 +864,8 @@ function StatCard({
           "text-base sm:text-lg font-bold tabular-nums mt-0.5",
           positive === true && "text-bull-600",
           positive === false && "text-bear-600",
+          highlight === "bull" && "text-bull-700 dark:text-bull-500",
+          highlight === "bear" && "text-bear-700 dark:text-bear-500",
         )}
       >
         {value}
@@ -789,6 +1088,72 @@ function TransactionRow({
           onDelete();
         }}
         className="shrink-0 text-muted-foreground hover:text-bear-600"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+function CashEntryRow({
+  entry,
+  onDelete,
+}: {
+  entry: CashEntry;
+  onDelete: () => void;
+}) {
+  const isTopup = entry.type === "TOPUP";
+
+  return (
+    <div className="flex items-center gap-2 rounded-xl border bg-card p-3 hover:bg-accent/30 transition-colors">
+      <div
+        className={cn(
+          "shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
+          isTopup
+            ? "bg-bull-100 dark:bg-bull-700/30"
+            : "bg-bear-100 dark:bg-bear-700/30",
+        )}
+      >
+        {isTopup ? (
+          <ArrowDownToLine className="h-4 w-4 text-bull-600" />
+        ) : (
+          <ArrowUpFromLine className="h-4 w-4 text-bear-600" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant={isTopup ? "bull" : "bear"}
+            className="text-[10px]"
+          >
+            {entry.type}
+          </Badge>
+          <span
+            className={cn(
+              "font-bold text-sm tabular-nums",
+              isTopup ? "text-bull-600" : "text-bear-600",
+            )}
+          >
+            {isTopup ? "+" : "−"}
+            {formatIDR(entry.amount)}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
+          {entry.date}
+          {entry.notes && (
+            <>
+              {" • "}
+              <span className="italic">{entry.notes}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onDelete}
+        className="shrink-0 text-muted-foreground hover:text-bear-600"
+        aria-label="Hapus entry"
       >
         <Trash2 className="h-4 w-4" />
       </Button>

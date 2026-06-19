@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Settings as SettingsIcon,
@@ -10,6 +10,7 @@ import {
   Award,
   Target,
   Activity,
+  Bell,
   Trash2,
   Info,
   CheckCircle2,
@@ -31,6 +32,22 @@ import {
   type SystemHealth,
   type TrackedAction,
 } from "@/lib/self-analysis";
+import {
+  exportToFile,
+  importFromFile,
+  getBackupStats,
+  resetAllData,
+  getTotalItemCount,
+} from "@/lib/backup";
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  isNotificationsEnabled,
+  setNotificationsEnabled,
+  requestNotificationPermission,
+  showNotification,
+  NotificationTemplates,
+} from "@/lib/notifications";
 import { formatIDR, formatPercent, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -503,6 +520,15 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* Backup & Restore */}
+      <BackupRestoreCard />
+
+      {/* Reset All Data */}
+      <ResetAllDataCard />
+
+      {/* Notifications */}
+      <NotificationSettingsCard />
+
       {/* Quick Links */}
       <div className="grid grid-cols-2 gap-2 pt-2">
         <Link href="/">
@@ -522,6 +548,279 @@ export default function SettingsPage() {
   );
 }
 
+function BackupRestoreCard() {
+  const [stats, setStats] = useState<ReturnType<typeof getBackupStats> | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setStats(getBackupStats());
+  }, []);
+
+  const refreshStats = () => setStats(getBackupStats());
+
+  const handleExport = () => {
+    try {
+      exportToFile(`saham-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      toast.success("📦 Backup didownload", {
+        description: "Simpan file JSON ini di tempat aman (cloud/local).",
+        duration: 5000,
+      });
+    } catch (err) {
+      toast.error("Gagal export backup");
+      console.error(err);
+    }
+  };
+
+  const handleImport = async (file: File) => {
+    if (!confirm(
+      "Import akan MENGGANTI data saat ini (watchlist, portfolio, cash ledger, snapshots, alerts) dengan data dari file. Lanjutkan?"
+    )) {
+      return;
+    }
+    setImporting(true);
+    try {
+      const result = await importFromFile(file);
+      toast.success(
+        `✅ Restore berhasil! ${result.imported.length} kategori diimport`,
+        {
+          description: result.skipped.length > 0
+            ? `${result.skipped.length} dilewati (kosong)`
+            : undefined,
+          duration: 5000,
+        },
+      );
+      refreshStats();
+    } catch (err) {
+      toast.error(
+        `Gagal import: ${err instanceof Error ? err.message : "unknown error"}`,
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const sizeKB = stats ? (stats.sizeBytes / 1024).toFixed(1) : "0";
+  const totalItems =
+    (stats?.watchlistCount ?? 0) +
+    (stats?.portfolioCount ?? 0) +
+    (stats?.cashCount ?? 0) +
+    (stats?.snapshotCount ?? 0) +
+    (stats?.alertCount ?? 0);
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Heart className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Backup & Restore</h2>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Data Anda tersimpan di browser (localStorage). Export untuk backup ke file JSON, atau
+        import untuk restore dari backup sebelumnya.
+      </p>
+
+      {stats && (
+        <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+          <div className="rounded-lg border bg-card p-2">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Items
+            </div>
+            <div className="text-lg font-black tabular-nums">{totalItems}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-2">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Storage
+            </div>
+            <div className="text-lg font-black tabular-nums">{sizeKB} KB</div>
+          </div>
+          <div className="rounded-lg border bg-card p-2">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Alerts
+            </div>
+            <div className="text-lg font-black tabular-nums">
+              {stats.alertCount}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <Button
+          onClick={handleExport}
+          variant="outline"
+          className="h-11"
+        >
+          📦 Export Backup (JSON)
+        </Button>
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          variant="outline"
+          disabled={importing}
+          className="h-11"
+        >
+          {importing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Importing...
+            </>
+          ) : (
+            <>📥 Import Backup</>
+          )}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImport(file);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      <p className="text-[10px] text-muted-foreground mt-3 italic">
+        💡 Tips: Export backup setiap minggu. Simpan di cloud (Google Drive / Dropbox) supaya
+        tidak hilang kalau ganti browser atau clear cache.
+      </p>
+    </Card>
+  );
+}
+
+function ResetAllDataCard() {
+  const [confirmStep, setConfirmStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [itemCount, setItemCount] = useState(0);
+
+  useEffect(() => {
+    setItemCount(getTotalItemCount());
+  }, []);
+
+  const handleResetClick = () => {
+    if (confirmStep === 0) {
+      if (itemCount === 0) {
+        toast("Tidak ada data untuk direset", { icon: "ℹ️" });
+        return;
+      }
+      setConfirmStep(1);
+    } else if (confirmStep === 1) {
+      setConfirmStep(2);
+    } else {
+      setBusy(true);
+      try {
+        const { removed } = resetAllData();
+        toast.success(
+          `🧹 ${removed.length} kategori data dihapus. Mulai dari awal!`,
+          { description: "Refresh halaman untuk melihat empty state.", duration: 5000 },
+        );
+        setConfirmStep(0);
+        setItemCount(0);
+        // Trigger reload supaya UI fresh ke empty state
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        toast.error("Gagal reset data");
+        console.error(err);
+      } finally {
+        setBusy(false);
+      }
+    }
+  };
+
+  const handleCancel = () => setConfirmStep(0);
+
+  return (
+    <Card className="p-5 border-2 border-bear-500/30 bg-bear-50/30 dark:bg-bear-700/10">
+      <div className="flex items-center gap-2 mb-2">
+        <Trash2 className="h-5 w-5 text-bear-600" />
+        <h2 className="font-bold text-lg text-bear-700 dark:text-bear-500">
+          Reset Semua Data
+        </h2>
+        <Badge variant="bear" className="text-[10px]">
+          Berbahaya
+        </Badge>
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">
+        Hapus <strong>semua</strong> data app: portfolio, cash ledger, watchlist,
+        price alerts, snapshots, dan history self-analysis ({itemCount} item).
+        Tidak bisa di-undo.
+      </p>
+      <p className="text-[11px] text-amber-700 dark:text-amber-500 mb-3 italic">
+        ⚠️ Saran: Export backup dulu di atas sebelum reset, supaya bisa restore kalau berubah pikiran.
+      </p>
+
+      {confirmStep === 0 && (
+        <Button
+          onClick={handleResetClick}
+          variant="outline"
+          disabled={itemCount === 0 || busy}
+          className="w-full h-11 border-bear-500/50 text-bear-700 dark:text-bear-500 hover:bg-bear-100 dark:hover:bg-bear-700/20"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Reset Semua Data
+        </Button>
+      )}
+
+      {confirmStep === 1 && (
+        <div className="space-y-2">
+          <div className="rounded-lg border-2 border-bear-500/50 bg-bear-100/50 dark:bg-bear-700/20 p-3">
+            <p className="text-sm font-bold text-bear-700 dark:text-bear-500 mb-1">
+              ⚠️ Yakin reset {itemCount} item?
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Watchlist, portfolio, cash ledger, alerts — semuanya akan hilang.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={handleCancel} variant="outline" className="h-11">
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetClick}
+              variant="default"
+              className="h-11 bg-bear-600 hover:bg-bear-700"
+            >
+              Ya, Lanjut →
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {confirmStep === 2 && (
+        <div className="space-y-2">
+          <div className="rounded-lg border-2 border-bear-600 bg-bear-200/60 dark:bg-bear-700/40 p-3">
+            <p className="text-sm font-black text-bear-800 dark:text-bear-300 mb-1">
+              🔴 KONFIRMASI TERAKHIR
+            </p>
+            <p className="text-[11px] text-bear-700 dark:text-bear-400">
+              Klik tombol merah di bawah untuk <strong>MENGHAPUS PERMANEN</strong>{" "}
+              semua data. Tidak ada undo.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={handleCancel} variant="outline" className="h-11">
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetClick}
+              disabled={busy}
+              className="h-11 bg-bear-700 hover:bg-bear-800 text-white font-black"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                "🗑️ Hapus Permanen"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 function MetricCard({
   label,
   value,
@@ -684,5 +983,141 @@ function RecordCard({
         </div>
       )}
     </div>
+  );
+}
+
+function NotificationSettingsCard() {
+  const [mounted, setMounted] = useState(false);
+  type PermState = "default" | "granted" | "denied" | "unsupported";
+  const [permission, setPermission] = useState<PermState>("default");
+  const [enabled, setEnabled] = useState(true);
+  const [supported, setSupported] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setSupported(isNotificationSupported());
+    setPermission(getNotificationPermission() as PermState);
+    setEnabled(isNotificationsEnabled());
+  }, []);
+
+  const handleRequestPermission = async () => {
+    const result = await requestNotificationPermission();
+    setPermission(result);
+    if (result === "granted") {
+      toast.success("🔔 Notifikasi diizinkan! Kamu akan dapat alert real-time.");
+      // Test notification
+      showNotification({
+        title: "🔔 Notifikasi Aktif!",
+        body: "Kamu akan dapat alert saat saham menyentuh target.",
+        tag: "test-notification",
+      });
+    } else if (result === "denied") {
+      toast.error(
+        "Notifikasi diblokir. Buka Settings browser untuk mengizinkan.",
+      );
+    }
+  };
+
+  const handleToggle = (v: boolean) => {
+    setNotificationsEnabled(v);
+    setEnabled(v);
+    if (v) {
+      toast.success("Notifikasi diaktifkan");
+    } else {
+      toast("Notifikasi dimatikan", { icon: "🔕" });
+    }
+  };
+
+  if (!mounted) return null;
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Push Notifications</h2>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Dapatkan alert real-time di browser saat harga menyentuh target.
+        Hanya bekerja saat tab ini terbuka.
+      </p>
+
+      {!supported && (
+        <Alert variant="warning">
+          Browser kamu tidak support Push Notifications. Coba Chrome, Firefox,
+          atau Edge versi terbaru.
+        </Alert>
+      )}
+
+      {supported && (
+        <div className="space-y-3">
+          {/* Permission status */}
+          <div className="rounded-lg border p-3 flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">Status Izin Browser</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {permission === "default" &&
+                  "Belum diminta. Klik untuk izinkan."}
+                {permission === "granted" && "✅ Diizinkan — alert akan muncul"}
+                {permission === "denied" &&
+                  "❌ Diblokir. Ubah di Settings browser."}
+                {permission === "unsupported" && "Browser tidak support"}
+              </div>
+            </div>
+            {permission === "default" && (
+              <Button onClick={handleRequestPermission} size="sm">
+                Izinkan
+              </Button>
+            )}
+            {permission === "granted" && (
+              <Button
+                onClick={() => {
+                  showNotification({
+                    title: "Test Notifikasi",
+                    body: "Kalau kamu lihat ini, notifikasi berfungsi!",
+                  });
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Test
+              </Button>
+            )}
+          </div>
+
+          {/* Toggle */}
+          <div className="rounded-lg border p-3 flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">Aktifkan Notifikasi</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {enabled
+                  ? "Aktif — alert akan muncul saat trigger"
+                  : "Nonaktif — tidak ada notifikasi"}
+              </div>
+            </div>
+            <button
+              onClick={() => handleToggle(!enabled)}
+              className={cn(
+                "relative w-12 h-6 rounded-full transition-colors",
+                enabled ? "bg-bull-500" : "bg-muted",
+              )}
+              aria-label="Toggle notifications"
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                  enabled ? "left-6" : "left-0.5",
+                )}
+              />
+            </button>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground italic mt-2">
+            💡 Notifikasi fired saat: alert harga triggered, watchlist drop
+            besar. Aktif hanya saat tab ini terbuka (untuk background push perlu
+            PWA install).
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }

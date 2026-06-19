@@ -16,9 +16,13 @@ import {
   Briefcase,
   Star,
   Activity,
+  Scale,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
+import { DailyBriefing } from "@/components/daily-briefing";
+import { SectorHeatmap } from "@/components/sector-heatmap";
+import { FundamentalScreener } from "@/components/fundamental-screener";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,8 +91,17 @@ export default function HomePage() {
 
         <Disclaimer />
 
+        {/* Daily Briefing — personal dashboard */}
+        <DailyBriefing />
+
+        {/* Sector Heatmap */}
+        <SectorHeatmap />
+
+        {/* Fundamental Screener — jawab "saham apa yang akan dibeli" */}
+        <FundamentalScreener />
+
         {/* Quick Actions */}
-        <section className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           <Link href="/screener">
             <Card className="p-4 card-hover text-center">
               <Filter className="h-6 w-6 mx-auto mb-1 text-primary" />
@@ -110,11 +123,25 @@ export default function HomePage() {
               <div className="text-[10px] text-muted-foreground">Saham favorit</div>
             </Card>
           </Link>
+          <Link href="/compare">
+            <Card className="p-4 card-hover text-center">
+              <Scale className="h-6 w-6 mx-auto mb-1 text-cyan-500" />
+              <div className="text-sm font-bold">Compare</div>
+              <div className="text-[10px] text-muted-foreground">Bandingkan 2-3 saham</div>
+            </Card>
+          </Link>
           <Link href="/settings">
             <Card className="p-4 card-hover text-center">
               <BarChart3 className="h-6 w-6 mx-auto mb-1 text-purple-500" />
-              <div className="text-sm font-bold">Self-Analysis</div>
+              <div className="text-sm font-bold">Settings</div>
               <div className="text-[10px] text-muted-foreground">Akurasi sistem</div>
+            </Card>
+          </Link>
+          <Link href="/portfolio">
+            <Card className="p-4 card-hover text-center sm:hidden lg:flex">
+              <Scale className="h-6 w-6 mx-auto mb-1 text-blue-500" />
+              <div className="text-sm font-bold">Analisa</div>
+              <div className="text-[10px] text-muted-foreground">Cari ticker</div>
             </Card>
           </Link>
         </section>

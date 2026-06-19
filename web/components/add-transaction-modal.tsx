@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ import { toast } from "sonner";
 interface AddTransactionModalProps {
   defaultTicker?: string;
   defaultPrice?: number;
+  defaultType?: "BUY" | "SELL";
+  defaultLot?: number;
+  maxLot?: number; // For SELL validation
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -20,26 +23,51 @@ interface AddTransactionModalProps {
 export function AddTransactionModal({
   defaultTicker = "",
   defaultPrice,
+  defaultType = "BUY",
+  defaultLot = 1,
+  maxLot,
   onClose,
   onSuccess,
 }: AddTransactionModalProps) {
-  const [type, setType] = useState<"BUY" | "SELL">("BUY");
+  const [type, setType] = useState<"BUY" | "SELL">(defaultType);
   const [ticker, setTicker] = useState(defaultTicker);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [price, setPrice] = useState(defaultPrice?.toString() ?? "");
-  const [quantity, setQuantity] = useState("100");
+  const [lotInput, setLotInput] = useState(defaultLot.toString());
   const [fee, setFee] = useState("0.15");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Sync type when defaultType changes (e.g., opening for SELL from a holding)
+  useEffect(() => {
+    setType(defaultType);
+  }, [defaultType]);
+
+  // Sync lot when defaultLot changes
+  useEffect(() => {
+    setLotInput(defaultLot.toString());
+  }, [defaultLot]);
+
+  const priceNum = parseFloat(price.replace(/[^0-9.]/g, ""));
+  const lotNum = parseInt(lotInput.replace(/[^0-9]/g, ""), 10);
+  const lembarNum = lotNum * 100;
+  const feeNum = parseFloat(fee) || 0;
+  const total = priceNum * lembarNum;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const priceNum = parseFloat(price.replace(/[^0-9.]/g, ""));
-    const qtyNum = parseInt(quantity.replace(/[^0-9]/g, ""), 10);
-    const feeNum = parseFloat(fee) || 0;
+    if (!ticker.trim() || !priceNum || !lotNum) {
+      toast.error("Lengkapi ticker, harga, dan jumlah lot");
+      return;
+    }
 
-    if (!ticker.trim() || !priceNum || !qtyNum) {
-      toast.error("Lengkapi ticker, harga, dan jumlah");
+    if (lotNum <= 0) {
+      toast.error("Jumlah lot harus lebih dari 0");
+      return;
+    }
+
+    if (maxLot !== undefined && lotNum > maxLot && type === "SELL") {
+      toast.error(`Maksimal jual ${maxLot} lot (${maxLot * 100} lembar)`);
       return;
     }
 
@@ -50,13 +78,13 @@ export function AddTransactionModal({
         type,
         date,
         price: priceNum,
-        quantity: qtyNum,
-        fee: feeNum,
+        quantity: lembarNum, // Store as lembar
+        fee: (total * feeNum) / 100,
         notes: notes.trim() || undefined,
       });
 
       toast.success(
-        `${type === "BUY" ? "🟢 Beli" : "🔴 Jual"} ${qtyNum} lembar ${normalizeTicker(ticker)} @ ${formatIDR(priceNum)}`,
+        `${type === "BUY" ? "🟢 Beli" : "🔴 Jual"} ${lotNum} lot (${lembarNum.toLocaleString("id-ID")} lembar) ${normalizeTicker(ticker)} @ ${formatIDR(priceNum)}`,
         {
           description: "Tersimpan ke portfolio. Data aman di browser.",
           duration: 4000,
@@ -72,10 +100,6 @@ export function AddTransactionModal({
       setSubmitting(false);
     }
   };
-
-  const totalPreview =
-    parseFloat(price.replace(/[^0-9.]/g, "") || "0") *
-    parseInt(quantity.replace(/[^0-9]/g, "") || "0");
 
   return (
     <div
@@ -180,34 +204,42 @@ export function AddTransactionModal({
             />
           </div>
 
-          {/* Quantity (lots) */}
+          {/* Lot Quantity */}
           <div className="mb-3">
             <label className="text-xs font-medium text-muted-foreground">
-              Jumlah Lembar (1 lot = 100 lembar)
+              Jumlah Lot (1 lot = 100 lembar)
             </label>
             <div className="flex gap-2 mt-1">
               <Input
                 type="text"
                 inputMode="numeric"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="100"
+                value={lotInput}
+                onChange={(e) => setLotInput(e.target.value)}
+                placeholder="1"
                 className="h-12 text-base tabular-nums flex-1"
                 required
               />
               <div className="flex gap-1">
-                {[100, 500, 1000].map((qty) => (
+                {[1, 5, 10, 50, 100].map((lot) => (
                   <button
-                    key={qty}
+                    key={lot}
                     type="button"
-                    onClick={() => setQuantity(qty.toString())}
-                    className="px-3 h-12 rounded-xl border bg-secondary text-xs font-medium hover:bg-accent"
+                    onClick={() => setLotInput(lot.toString())}
+                    className={cn(
+                      "px-3 h-12 rounded-xl border bg-secondary text-xs font-medium hover:bg-accent shrink-0",
+                      lotInput === lot.toString() && "border-primary bg-primary/10 text-primary",
+                    )}
                   >
-                    {qty}
+                    {lot}
                   </button>
                 ))}
               </div>
             </div>
+            {maxLot !== undefined && type === "SELL" && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Dimiliki: {maxLot} lot ({maxLot * 100} lembar)
+              </p>
+            )}
           </div>
 
           {/* Fee */}
@@ -239,16 +271,23 @@ export function AddTransactionModal({
           </div>
 
           {/* Total Preview */}
-          {price && quantity && totalPreview > 0 && (
-            <div className="rounded-lg bg-secondary p-3 mb-4">
+          {priceNum && lotNum > 0 && (
+            <div
+              className={cn(
+                "rounded-lg p-3 mb-4",
+                type === "BUY" ? "bg-bull-50 dark:bg-bull-700/20" : "bg-bear-50 dark:bg-bear-700/20",
+              )}
+            >
               <div className="text-xs text-muted-foreground">
                 Total {type === "BUY" ? "Pembelian" : "Penjualan"}
               </div>
-              <div className="text-xl font-bold tabular-nums">
-                {formatIDR(totalPreview)}
+              <div className="text-2xl font-black tabular-nums">
+                {formatIDR(total)}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                + Fee {formatIDR((totalPreview * (parseFloat(fee) || 0)) / 100)}
+              <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                {lotNum} lot × {lembarNum.toLocaleString("id-ID")} lembar ×{" "}
+                {formatIDR(priceNum)}
+                {feeNum > 0 && ` + Fee ${formatIDR((total * feeNum) / 100)}`}
               </div>
             </div>
           )}
@@ -272,7 +311,8 @@ export function AddTransactionModal({
               </>
             ) : (
               <>
-                {type === "BUY" ? "🟢" : "🔴"} Konfirmasi {type === "BUY" ? "Beli" : "Jual"}
+                {type === "BUY" ? "🟢" : "🔴"} Konfirmasi{" "}
+                {type === "BUY" ? "Beli" : "Jual"} {lotNum || 0} Lot
               </>
             )}
           </Button>

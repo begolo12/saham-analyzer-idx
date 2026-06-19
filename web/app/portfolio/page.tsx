@@ -15,6 +15,8 @@ import {
   Target,
   Award,
   Activity,
+  ShoppingCart,
+  Banknote,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,8 +29,8 @@ import {
   type Transaction,
 } from "@/lib/portfolio";
 import { usePortfolio, removeTransaction, clearAllTransactions } from "@/lib/portfolio-storage";
-import { formatIDR, formatPercent, cn } from "@/lib/utils";
 import { AddTransactionModal } from "@/components/add-transaction-modal";
+import { formatIDR, formatPercent, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface PriceData {
@@ -44,6 +46,12 @@ export default function PortfolioPage() {
   const [currentPrices, setCurrentPrices] = useState<Record<string, PriceData>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [quickAction, setQuickAction] = useState<{
+    ticker: string;
+    price: number;
+    type: "BUY" | "SELL";
+    maxLot?: number;
+  } | null>(null);
 
   // Get unique tickers from transactions
   const uniqueTickers = useMemo(() => {
@@ -241,7 +249,17 @@ export default function PortfolioPage() {
                 {holdings
                   .filter((h) => h.totalShares > 0)
                   .map((h) => (
-                    <HoldingCard key={h.ticker} holding={h} />
+                    <HoldingCard
+                      key={h.ticker}
+                      holding={h}
+                      currentPrice={currentPrices[h.ticker]?.price ?? null}
+                      onQuickBuy={(ticker, price) =>
+                        setQuickAction({ ticker, price, type: "BUY" })
+                      }
+                      onQuickSell={(ticker, price, maxLot) =>
+                        setQuickAction({ ticker, price, type: "SELL", maxLot })
+                      }
+                    />
                   ))}
               </div>
             </div>
@@ -350,6 +368,18 @@ export default function PortfolioPage() {
       {showAddModal && (
         <AddTransactionModal onClose={() => setShowAddModal(false)} />
       )}
+
+      {/* Quick Action Modal (from holdings) */}
+      {quickAction && (
+        <AddTransactionModal
+          defaultTicker={quickAction.ticker}
+          defaultPrice={quickAction.price}
+          defaultType={quickAction.type}
+          defaultLot={quickAction.type === "SELL" ? Math.min(1, quickAction.maxLot || 1) : 1}
+          maxLot={quickAction.maxLot}
+          onClose={() => setQuickAction(null)}
+        />
+      )}
     </div>
   );
 }
@@ -381,35 +411,49 @@ function StatCard({
   );
 }
 
-function HoldingCard({ holding }: { holding: ReturnType<typeof calculateHoldings>[0] }) {
+function HoldingCard({
+  holding,
+  currentPrice,
+  onQuickBuy,
+  onQuickSell,
+}: {
+  holding: ReturnType<typeof calculateHoldings>[0];
+  currentPrice: number | null;
+  onQuickBuy: (ticker: string, price: number) => void;
+  onQuickSell: (ticker: string, price: number, maxLot: number) => void;
+}) {
   const isPL = holding.unrealizedPL ?? 0;
   const isUp = isPL >= 0;
-  const priceChange = holding.currentPrice
-    ? holding.currentPrice - holding.averagePrice
-    : 0;
-  const priceChangePct = holding.averagePrice > 0
-    ? (priceChange / holding.averagePrice) * 100
-    : 0;
+  const priceChange = currentPrice ? currentPrice - holding.averagePrice : 0;
+  const priceChangePct =
+    holding.averagePrice > 0 ? (priceChange / holding.averagePrice) * 100 : 0;
+
+  const totalLot = Math.floor(holding.totalShares / 100);
+  const extraLembar = holding.totalShares % 100;
 
   return (
-    <Link href={`/stock/${holding.ticker}`}>
-      <Card className="p-4 card-hover">
-        <div className="flex items-start justify-between gap-2 mb-3">
+    <Card className="p-4">
+      {/* Header - Link to stock detail */}
+      <Link href={`/stock/${holding.ticker}`}>
+        <div className="flex items-start justify-between gap-2 mb-3 cursor-pointer">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-base">{holding.ticker}</span>
-              <Badge variant="secondary" className="text-[10px]">
-                {holding.totalShares} lembar
+              <Badge variant="bull" className="text-[10px]">
+                {totalLot} lot {extraLembar > 0 && `+ ${extraLembar}`}
               </Badge>
+              <span className="text-[10px] text-muted-foreground">
+                ({holding.totalShares.toLocaleString("id-ID")} lembar)
+              </span>
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
               Avg: {formatIDR(holding.averagePrice)} • {holding.buyTransactions} buy
             </div>
           </div>
-          {holding.currentPrice && (
+          {currentPrice && (
             <div className="text-right">
               <div className="text-sm font-bold tabular-nums">
-                {formatIDR(holding.currentPrice)}
+                {formatIDR(currentPrice)}
               </div>
               <div
                 className={cn(
@@ -422,53 +466,84 @@ function HoldingCard({ holding }: { holding: ReturnType<typeof calculateHoldings
             </div>
           )}
         </div>
+      </Link>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <div className="text-muted-foreground">Modal</div>
-            <div className="font-semibold tabular-nums">
-              {formatIDR(holding.totalCost)}
-            </div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">Nilai</div>
-            <div className="font-semibold tabular-nums">
-              {holding.currentValue !== null
-                ? formatIDR(holding.currentValue)
-                : "—"}
-            </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <div className="text-muted-foreground">Modal</div>
+          <div className="font-semibold tabular-nums">
+            {formatIDR(holding.totalCost)}
           </div>
         </div>
-
-        <div
-          className={cn(
-            "mt-3 pt-3 border-t flex items-center justify-between",
-            isUp ? "border-bull-500/20" : "border-bear-500/20",
-          )}
-        >
-          <span className="text-xs text-muted-foreground">Unrealized P&L</span>
-          <div className="text-right">
-            <div
-              className={cn(
-                "font-bold text-sm tabular-nums",
-                isUp ? "text-bull-600" : "text-bear-600",
-              )}
-            >
-              {isPL >= 0 ? "+" : ""}
-              {formatIDR(isPL)}
-            </div>
-            <div
-              className={cn(
-                "text-[10px] tabular-nums",
-                isUp ? "text-bull-600" : "text-bear-600",
-              )}
-            >
-              {formatPercent(holding.unrealizedPLPercent ?? 0)}
-            </div>
+        <div>
+          <div className="text-muted-foreground">Nilai</div>
+          <div className="font-semibold tabular-nums">
+            {holding.currentValue !== null ? formatIDR(holding.currentValue) : "—"}
           </div>
         </div>
-      </Card>
-    </Link>
+      </div>
+
+      {/* Unrealized P&L */}
+      <div
+        className={cn(
+          "mt-3 pt-3 border-t flex items-center justify-between",
+          isUp ? "border-bull-500/20" : "border-bear-500/20",
+        )}
+      >
+        <span className="text-xs text-muted-foreground">Unrealized P&L</span>
+        <div className="text-right">
+          <div
+            className={cn(
+              "font-bold text-sm tabular-nums",
+              isUp ? "text-bull-600" : "text-bear-600",
+            )}
+          >
+            {isPL >= 0 ? "+" : ""}
+            {formatIDR(isPL)}
+          </div>
+          <div
+            className={cn(
+              "text-[10px] tabular-nums",
+              isUp ? "text-bull-600" : "text-bear-600",
+            )}
+          >
+            {formatPercent(holding.unrealizedPLPercent ?? 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Action Buttons */}
+      {currentPrice && (
+        <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-bull-500/40 text-bull-700 dark:text-bull-500 hover:bg-bull-50 dark:hover:bg-bull-700/20"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onQuickBuy(holding.ticker, currentPrice);
+            }}
+          >
+            <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+            Beli Lagi
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-bear-500/40 text-bear-700 dark:text-bear-500 hover:bg-bear-50 dark:hover:bg-bear-700/20"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onQuickSell(holding.ticker, currentPrice, totalLot);
+            }}
+          >
+            <Banknote className="h-3.5 w-3.5 mr-1" />
+            Jual
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -533,7 +608,9 @@ function TransactionRow({
           </Badge>
         </div>
         <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
-          {tx.quantity} lembar × {formatIDR(tx.price)} • {tx.date}
+          {Math.floor(tx.quantity / 100)} lot ({tx.quantity.toLocaleString("id-ID")} lembar)
+          {" × "}
+          {formatIDR(tx.price)} • {tx.date}
         </div>
         <div className="text-[10px] text-muted-foreground tabular-nums">
           Total: {formatIDR(tx.price * tx.quantity)}

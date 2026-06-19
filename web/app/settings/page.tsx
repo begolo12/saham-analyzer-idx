@@ -33,6 +33,7 @@ import {
   type TrackedAction,
 } from "@/lib/self-analysis";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { CompactModeToggle } from "@/components/compact-mode-toggle";
 import {
   exportToFile,
   importFromFile,
@@ -523,6 +524,9 @@ export default function SettingsPage() {
 
       {/* Backup & Restore */}
       <BackupRestoreCard />
+
+      {/* Mode Tampilan (Compact / Normal) */}
+      <CompactModeToggle />
 
       {/* Language */}
       <LanguageSwitcher />

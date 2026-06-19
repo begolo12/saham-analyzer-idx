@@ -146,3 +146,147 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ============ COMPACT MODE ============ */
+/* Tighter spacing + smaller fonts when html has .compact class */
+html.compact {
+  font-size: 13px;
+}
+
+html.compact body {
+  line-height: 1.4;
+}
+
+html.compact .container {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+html.compact main {
+  gap: 0.5rem;
+}
+
+html.compact main > * {
+  margin-bottom: 0;
+}
+
+html.compact h1 {
+  font-size: 1.5rem;
+}
+
+html.compact h2 {
+  font-size: 1.125rem;
+}
+
+html.compact h3 {
+  font-size: 0.875rem;
+}
+
+html.compact p {
+  margin-bottom: 0.25rem;
+}
+
+html.compact .text-sm {
+  font-size: 0.75rem;
+}
+
+html.compact .text-base {
+  font-size: 0.875rem;
+}
+
+html.compact .text-lg {
+  font-size: 1rem;
+}
+
+html.compact .text-xl {
+  font-size: 1.125rem;
+}
+
+html.compact .text-2xl {
+  font-size: 1.25rem;
+}
+
+html.compact .text-3xl {
+  font-size: 1.5rem;
+}
+
+html.compact .p-3 {
+  padding: 0.5rem;
+}
+
+html.compact .p-4 {
+  padding: 0.625rem;
+}
+
+html.compact .p-5 {
+  padding: 0.75rem;
+}
+
+html.compact .p-6 {
+  padding: 0.875rem;
+}
+
+html.compact .py-3 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+html.compact .py-4 {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+html.compact .py-5 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+html.compact .py-6 {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
+
+html.compact .gap-3 {
+  gap: 0.5rem;
+}
+
+html.compact .gap-4 {
+  gap: 0.625rem;
+}
+
+html.compact .gap-5 {
+  gap: 0.75rem;
+}
+
+html.compact .space-y-3 > * + * {
+  margin-top: 0.5rem;
+}
+
+html.compact .space-y-4 > * + * {
+  margin-top: 0.625rem;
+}
+
+html.compact .space-y-5 > * + * {
+  margin-top: 0.75rem;
+}
+
+html.compact .mb-2 {
+  margin-bottom: 0.25rem;
+}
+
+html.compact .mb-3 {
+  margin-bottom: 0.5rem;
+}
+
+html.compact .mb-4 {
+  margin-bottom: 0.625rem;
+}
+
+html.compact .mt-1 {
+  margin-top: 0.125rem;
+}
+
+html.compact .mt-2 {
+  margin-top: 0.25rem;
+}
+

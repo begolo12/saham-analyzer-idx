@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { X, TrendingUp, TrendingDown, Loader2, Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addTransaction } from "@/lib/portfolio-storage";
 import { normalizeTicker, type Transaction } from "@/lib/portfolio";
+import { POPULAR_STOCKS, type PopularStock } from "@/lib/popular-stocks";
 import { formatIDR, cn } from "@/lib/utils";
+import { TickerAutocomplete } from "@/components/ticker-autocomplete";
 import { toast } from "sonner";
 
 interface AddTransactionModalProps {
@@ -37,6 +39,31 @@ export function AddTransactionModal({
   const [fee, setFee] = useState("0.15");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceAutoFilled, setPriceAutoFilled] = useState(false);
+
+  // 5 quick-pick blue chips (popular & liquid IDX stocks)
+  const QUICK_PICKS = ["BBCA", "BBRI", "BMRI", "TLKM", "ASII"] as const;
+
+  // Fetch live price for a selected stock and auto-fill if user hasn't manually edited price.
+  const fetchAndFillPrice = async (stock: PopularStock) => {
+    setPriceLoading(true);
+    try {
+      const res = await fetch(`/api/quick/${stock.code}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.price && (priceAutoFilled || price === "")) {
+          // Round to nearest integer for cleaner display
+          setPrice(String(Math.round(data.price)));
+          setPriceAutoFilled(true);
+        }
+      }
+    } catch {
+      // Silently fail — user can type price manually
+    } finally {
+      setPriceLoading(false);
+    }
+  };
 
   // Sync type when defaultType changes (e.g., opening for SELL from a holding)
   useEffect(() => {
@@ -164,14 +191,40 @@ export function AddTransactionModal({
             <label className="text-xs font-medium text-muted-foreground">
               Kode Saham
             </label>
-            <Input
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="BBCA"
-              className="mt-1 h-12 text-base uppercase"
-              autoFocus
-              required
-            />
+            <div className="mt-1">
+              <TickerAutocomplete
+                value={ticker}
+                onChange={setTicker}
+                onSelect={fetchAndFillPrice}
+                placeholder="BBCA"
+                autoFocus
+              />
+            </div>
+            {/* Quick pick chips — visible only when ticker is empty */}
+            {!ticker && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-[10px] text-muted-foreground self-center mr-1">
+                  Cepat:
+                </span>
+                {QUICK_PICKS.map((code) => {
+                  const stock = POPULAR_STOCKS.find((s) => s.code === code);
+                  if (!stock) return null;
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => {
+                        setTicker(code);
+                        fetchAndFillPrice(stock);
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
+                    >
+                      {code}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Date */}
@@ -190,14 +243,30 @@ export function AddTransactionModal({
 
           {/* Price */}
           <div className="mb-3">
-            <label className="text-xs font-medium text-muted-foreground">
-              Harga per Lembar
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">
+                Harga per Lembar
+              </label>
+              {priceLoading ? (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Mengambil harga...
+                </span>
+              ) : priceAutoFilled ? (
+                <span className="text-[10px] font-semibold text-bull-600 dark:text-bull-500 flex items-center gap-1">
+                  <Zap className="h-3 w-3 fill-current" />
+                  Live dari Yahoo Finance
+                </span>
+              ) : null}
+            </div>
             <Input
               type="text"
               inputMode="numeric"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                setPriceAutoFilled(false);
+              }}
               placeholder="6500"
               className="mt-1 h-12 text-base tabular-nums"
               required

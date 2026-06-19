@@ -8,21 +8,102 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "saham_watchlist";
 
-function getWatchlist(): string[] {
+/**
+ * Watchlist item — extended with metadata for self-learning & smart UX.
+ * Backward compatible: if old format (just ticker strings) is found,
+ * it's migrated to the new shape on first read.
+ */
+export interface WatchlistItem {
+  ticker: string;
+  addedAt: number; // ms timestamp
+  viewCount: number;
+  lastViewed: number | null; // ms timestamp
+}
+
+function migrate(list: unknown): WatchlistItem[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((entry) => {
+    if (typeof entry === "string") {
+      return {
+        ticker: entry.toUpperCase(),
+        addedAt: Date.now(),
+        viewCount: 0,
+        lastViewed: null,
+      };
+    }
+    // Already an object — fill missing fields
+    const e = entry as Partial<WatchlistItem>;
+    return {
+      ticker: (e.ticker ?? "").toUpperCase(),
+      addedAt: e.addedAt ?? Date.now(),
+      viewCount: e.viewCount ?? 0,
+      lastViewed: e.lastViewed ?? null,
+    };
+  });
+}
+
+export function getWatchlist(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    return migrate(JSON.parse(stored ?? "[]")).map((i) => i.ticker);
   } catch {
     return [];
   }
 }
 
-function setWatchlist(list: string[]): void {
+export function getWatchlistItems(): WatchlistItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return migrate(JSON.parse(stored ?? "[]"));
+  } catch {
+    return [];
+  }
+}
+
+export function setWatchlist(tickers: string[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  // Notify other components
+  // Preserve metadata for tickers that already exist
+  const existing = getWatchlistItems();
+  const map = new Map(existing.map((i) => [i.ticker, i]));
+  const next: WatchlistItem[] = tickers.map((t) => {
+    const key = t.toUpperCase();
+    const prev = map.get(key);
+    return (
+      prev ?? {
+        ticker: key,
+        addedAt: Date.now(),
+        viewCount: 0,
+        lastViewed: null,
+      }
+    );
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent("watchlist-updated"));
+}
+
+/**
+ * Track view of a stock detail page — bumps viewCount + lastViewed.
+ * Only acts if ticker is in watchlist; no-op otherwise.
+ */
+export function bumpWatchView(ticker: string): void {
+  if (typeof window === "undefined") return;
+  const key = ticker.toUpperCase();
+  const items = getWatchlistItems();
+  const idx = items.findIndex((i) => i.ticker === key);
+  if (idx === -1) return; // not in watchlist
+  items[idx] = {
+    ...items[idx],
+    viewCount: items[idx].viewCount + 1,
+    lastViewed: Date.now(),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent("watchlist-updated"));
+}
+
+export function clearAllWatchlist(): void {
+  setWatchlist([]);
 }
 
 export function WatchlistButton({ ticker }: { ticker: string }) {
@@ -41,13 +122,18 @@ export function WatchlistButton({ ticker }: { ticker: string }) {
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const list = getWatchlist();
-    if (list.includes(ticker)) {
-      setWatchlist(list.filter((t) => t !== ticker));
+    const items = getWatchlistItems();
+    const isIn = items.some((i) => i.ticker === ticker.toUpperCase());
+    if (isIn) {
+      const next = items
+        .filter((i) => i.ticker !== ticker.toUpperCase())
+        .map((i) => i.ticker);
+      setWatchlist(next);
       setIsWatched(false);
       toast.success(`Removed ${ticker} from watchlist`);
     } else {
-      setWatchlist([...list, ticker]);
+      const next = [...items.map((i) => i.ticker), ticker.toUpperCase()];
+      setWatchlist(next);
       setIsWatched(true);
       toast.success(`⭐ ${ticker} added to watchlist`);
     }
@@ -72,11 +158,9 @@ export function WatchlistButton({ ticker }: { ticker: string }) {
       )}
       aria-label={isWatched ? "Remove from watchlist" : "Add to watchlist"}
     >
-      <Star
-        className={cn("h-4 w-4", isWatched && "fill-white")}
-      />
+      <Star className={cn("h-4 w-4", isWatched && "fill-white")} />
     </Button>
   );
 }
 
-export { getWatchlist, setWatchlist, STORAGE_KEY };
+export { STORAGE_KEY };

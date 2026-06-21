@@ -26,6 +26,15 @@ from modules.fundamental import FundamentalAnalyzer
 from modules.behavioral import BehavioralAnalyzer
 from modules.sentiment import analyze_sentiment, IndonesianSentimentAnalyzer
 from modules.recommender import Recommender, Action, TimeHorizon
+from modules.idx_realtime import (
+    fetch_realtime_quotes,
+    get_realtime_quote,
+    compute_foreign_flow_proxy,
+    compute_broker_summary_proxy,
+    cache_status as idx_cache_status,
+    clear_all_cache as idx_clear_cache,
+    WIB as IDX_WIB,
+)
 
 
 # === PAGE CONFIG ===
@@ -315,6 +324,42 @@ def format_idr(value):
     return f"Rp {value:,.0f}".replace(",", ".")
 
 
+def format_freshness(iso_ts: str) -> str:
+    """Format ISO timestamp → human-readable 'X detik/menit/jam yang lalu'"""
+    try:
+        from datetime import datetime
+        ts = datetime.fromisoformat(iso_ts)
+        delta = datetime.now(IDX_WIB) - ts
+        seconds = int(delta.total_seconds())
+        if seconds < 60:
+            return f"{seconds} detik lalu"
+        if seconds < 3600:
+            return f"{seconds // 60} menit lalu"
+        if seconds < 86400:
+            return f"{seconds // 3600} jam lalu"
+        return f"{seconds // 86400} hari lalu"
+    except Exception:
+        return "waktu tidak diketahui"
+
+
+@st.cache_data(ttl=300)
+def get_realtime_quotes_cached(tickers_tuple: tuple) -> dict:
+    """Cache real-time quotes (5 min TTL)"""
+    return {t: q.to_dict() for t, q in fetch_realtime_quotes(list(tickers_tuple), use_cache=True, ttl=300).items()}
+
+
+@st.cache_data(ttl=900)
+def get_foreign_flow_cached(ticker: str) -> Optional[dict]:
+    ff = compute_foreign_flow_proxy(ticker, use_cache=True, ttl=900)
+    return ff.to_dict() if ff else None
+
+
+@st.cache_data(ttl=900)
+def get_broker_summary_cached(ticker: str) -> Optional[dict]:
+    bs = compute_broker_summary_proxy(ticker, use_cache=True, ttl=900)
+    return bs.to_dict() if bs else None
+
+
 def get_rec_card_class(action_value: str) -> str:
     """Map action to CSS card class"""
     mapping = {
@@ -465,39 +510,111 @@ def render_watchlist():
 
 
 def render_market_overview():
-    """Render quick market overview"""
+    """Render quick market overview - real-time via TradingView scanner"""
     st.markdown("## 📊 Overview Pasar")
 
-    # Quick movers - top gainers/losers (simplified)
-    popular = ["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK", "UNVR.JK", "ICBP.JK"]
+    # Quick movers - top stocks via real-time data
+    popular = ["BBCA", "BBRI", "BMRI", "TLKM", "ASII", "UNVR", "ICBP", "KLBF", "GOTO", "AMMN", "ANTM", "ADRO"]
 
-    st.markdown("### 🏆 Saham Populer")
+    # Fetch real-time data
+    with st.spinner("🔄 Memuat data real-time..."):
+        rt_data = get_realtime_quotes_cached(tuple(popular))
+
+    if not rt_data:
+        st.warning("⚠️ Data real-time tidak tersedia. Cek koneksi internet.")
+        # Fallback ke yfinance
+        popular_yf = [t + ".JK" for t in popular[:6]]
+        cols = st.columns(2)
+        for i, ticker in enumerate(popular_yf[:6]):
+            with cols[i % 2]:
+                try:
+                    fetcher = StockDataFetcher(ticker)
+                    if fetcher.is_valid():
+                        summary = fetcher.get_summary()
+                        price = summary.get("current_price")
+                        prev = summary.get("previous_close")
+                        name = POPULAR_IDX_STOCKS.get(ticker, ticker)[:25]
+                        if price and prev:
+                            change = ((price - prev) / prev) * 100
+                            delta_emoji = "🟢" if change >= 0 else "🔴"
+                            if st.button(
+                                f"**{ticker.replace('.JK','')}** • {format_idr(price)} • {delta_emoji} {change:+.2f}%",
+                                key=f"market_{ticker}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.current_ticker = ticker.replace('.JK', '')
+                                st.rerun()
+                            st.caption(name)
+                except Exception:
+                    continue
+        return
+
+    # Data freshness indicator
+    sample_quote = next(iter(rt_data.values()))
+    fetched_at = sample_quote.get("fetched_at", "")
+    freshness = format_freshness(fetched_at)
+    st.markdown(
+        f'<div class="info-box">📡 <b>Data Real-time</b> (TradingView) • Update: {freshness} • {len(rt_data)} saham</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### 🏆 Saham Populer (Real-time)")
+
+    # Sort by absolute change (most active first)
+    sorted_quotes = sorted(
+        rt_data.values(),
+        key=lambda q: abs(q.get("change_pct", 0)),
+        reverse=True,
+    )
 
     cols = st.columns(2)
-    for i, ticker in enumerate(popular[:6]):
+    for i, q in enumerate(sorted_quotes[:10]):
+        base = q["ticker"]
+        price = q["price"]
+        change_pct = q["change_pct"]
+        delta_emoji = "🟢" if change_pct >= 0 else "🔴"
+        desc = q.get("description", base)[:25]
+        volume = q.get("volume", 0)
+        vol_str = f"{volume // 1000:,}K" if volume < 1_000_000 else f"{volume // 1_000_000:,}M"
+
         with cols[i % 2]:
-            try:
-                fetcher = StockDataFetcher(ticker)
-                if fetcher.is_valid():
-                    summary = fetcher.get_summary()
-                    price = summary.get("current_price")
-                    prev = summary.get("previous_close")
-                    name = POPULAR_IDX_STOCKS.get(ticker, ticker)[:25]
+            if st.button(
+                f"**{base}** • {format_idr(price)} • {delta_emoji} {change_pct:+.2f}%",
+                key=f"market_{base}",
+                use_container_width=True,
+            ):
+                st.session_state.current_ticker = base
+                st.rerun()
+            st.caption(f"{desc} • Vol: {vol_str}")
 
-                    if price and prev:
-                        change = ((price - prev) / prev) * 100
-                        delta_emoji = "🟢" if change >= 0 else "🔴"
+    # === TOP MOVERS ===
+    st.markdown("### 📈 Top Gainers")
+    gainers = sorted(rt_data.values(), key=lambda q: q.get("change_pct", 0), reverse=True)[:3]
+    cols = st.columns(3)
+    for i, q in enumerate(gainers):
+        with cols[i]:
+            st.markdown(f"""
+            <div class="metric-card" style="border-left: 4px solid #16a34a;">
+                <div class="metric-label">{q['ticker']}</div>
+                <div class="metric-value" style="font-size: 1.1rem;">{format_idr(q['price'])}</div>
+                <div class="metric-delta-up">🟢 {q['change_pct']:+.2f}%</div>
+                <div class="metric-label" style="margin-top: 0.5rem;">Vol: {q.get('volume', 0):,}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                        if st.button(
-                            f"**{ticker.replace('.JK','')}** • {format_idr(price)} • {delta_emoji} {change:+.2f}%",
-                            key=f"market_{ticker}",
-                            use_container_width=True,
-                        ):
-                            st.session_state.current_ticker = ticker.replace('.JK', '')
-                            st.rerun()
-                        st.caption(name)
-            except Exception:
-                continue
+    st.markdown("### 📉 Top Losers")
+    losers = sorted(rt_data.values(), key=lambda q: q.get("change_pct", 0))[:3]
+    cols = st.columns(3)
+    for i, q in enumerate(losers):
+        with cols[i]:
+            st.markdown(f"""
+            <div class="metric-card" style="border-left: 4px solid #dc2626;">
+                <div class="metric-label">{q['ticker']}</div>
+                <div class="metric-value" style="font-size: 1.1rem;">{format_idr(q['price'])}</div>
+                <div class="metric-delta-down">🔴 {q['change_pct']:+.2f}%</div>
+                <div class="metric-label" style="margin-top: 0.5rem;">Vol: {q.get('volume', 0):,}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # === STOCK DETAIL PAGE ===
@@ -536,6 +653,81 @@ def render_stock_detail(ticker_input: str):
     company_name = summary.get("name", ticker_clean)
 
     st.caption(f"**{company_name}** • {summary.get('sector', 'N/A')}")
+
+    # === REAL-TIME PANEL (NEW) ===
+    with st.spinner("📡 Memuat data real-time..."):
+        rt_quote = get_realtime_quote(ticker_clean, use_cache=True, ttl=300)
+        foreign_flow = get_foreign_flow_cached(ticker_clean)
+        broker_summary = get_broker_summary_cached(ticker_clean)
+
+    if rt_quote:
+        rt_dict = rt_quote.to_dict() if hasattr(rt_quote, "to_dict") else rt_quote
+        freshness = format_freshness(rt_dict.get("fetched_at", ""))
+        rt_change = rt_dict.get("change_pct", 0)
+        rt_delta_class = "metric-delta-up" if rt_change >= 0 else "metric-delta-down"
+        rt_delta_emoji = "🟢" if rt_change >= 0 else "🔴"
+
+        st.markdown(
+            f'<div class="info-box">📡 <b>Harga Real-time</b> via TradingView • Update: {freshness}</div>',
+            unsafe_allow_html=True,
+        )
+
+        cols = st.columns(3)
+        with cols[0]:
+            st.markdown(f"""
+            <div class="metric-card" style="border-left: 4px solid {('#16a34a' if rt_change >= 0 else '#dc2626')};">
+                <div class="metric-label">Harga RT</div>
+                <div class="metric-value">{format_idr(rt_dict.get('price'))}</div>
+                <div class="{rt_delta_class}">{rt_delta_emoji} {rt_change:+.2f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with cols[1]:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Volume</div>
+                <div class="metric-value" style="font-size: 1.1rem;">{rt_dict.get('volume', 0):,}</div>
+                <div class="metric-label">Value: {format_idr(rt_dict.get('value_idr', 0))}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with cols[2]:
+            mcap = rt_dict.get("market_cap")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Market Cap</div>
+                <div class="metric-value" style="font-size: 1.1rem;">{(f'{mcap/1e12:.2f}T' if mcap and mcap > 1e12 else (f'{mcap/1e9:.1f}B' if mcap else 'N/A'))}</div>
+                <div class="metric-label">IDR</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # === FOREIGN FLOW + BROKER SUMMARY (NEW) ===
+    if foreign_flow or broker_summary:
+        st.markdown("### 🌊 Bandarmologi (Proxy)")
+        cols = st.columns(2)
+        with cols[0]:
+            if foreign_flow:
+                ff_emoji = {"BUY": "🟢", "SELL": "🔴", "NEUTRAL": "🟡"}.get(foreign_flow.get("signal"), "⚪")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">Foreign Flow (estimasi)</div>
+                    <div class="metric-value" style="font-size: 1.25rem;">{ff_emoji} {foreign_flow.get('signal', 'N/A')}</div>
+                    <div class="metric-label">Confidence: {foreign_flow.get('confidence', 0)*100:.0f}%</div>
+                    <div class="metric-label" style="margin-top: 0.5rem;">{foreign_flow.get('reasoning', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        with cols[1]:
+            if broker_summary:
+                bs_score = broker_summary.get("accumulation_score", 0)
+                bs_emoji = "🟢 Akumulasi" if bs_score > 0.3 else ("🔴 Distribusi" if bs_score < -0.3 else "🟡 Netral")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">Aktivitas Broker (proxy)</div>
+                    <div class="metric-value" style="font-size: 1.25rem;">{bs_emoji}</div>
+                    <div class="metric-label">Block trade: {broker_summary.get('block_trade_count', 0)} • Score: {bs_score:+.2f}</div>
+                    <div class="metric-label" style="margin-top: 0.5rem;">{broker_summary.get('reasoning', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.caption("⚠️ Catatan: Foreign flow & broker summary adalah **estimasi berbasis price-volume** (IDX tidak expose data broker gratis). Untuk data real, gunakan VIP IDX feed.")
+
 
     # === METRIC CARDS (Mobile-friendly grid) ===
     price_change = float(df["Close"].iloc[-1] - df["Close"].iloc[-2])

@@ -50,6 +50,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         bull: {
           50: "#f0fdf4",
           100: "#dcfce7",
@@ -72,17 +80,81 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: [
+          "SF Pro Text",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Display",
+          "Inter",
+          "system-ui",
+          "sans-serif",
+        ],
+        display: [
+          "SF Pro Display",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Inter",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: [
+          "SF Mono",
+          "ui-monospace",
+          "JetBrains Mono",
+          "Menlo",
+          "Consolas",
+          "monospace",
+        ],
+        num: [
+          "SF Pro Display",
+          "Inter",
+          "system-ui",
+          "sans-serif",
+        ],
       },
-      animation: {
-        "fade-in": "fadeIn 0.3s ease-out",
-        "slide-up": "slideUp 0.4s ease-out",
-        "pulse-soft": "pulseSoft 2s ease-in-out infinite",
+      fontSize: {
+        // Apple HIG typography scale
+        "display-lg": ["2.75rem", { lineHeight: "1.1", letterSpacing: "-0.028em", fontWeight: "700" }],
+        "display": ["2.25rem", { lineHeight: "1.15", letterSpacing: "-0.026em", fontWeight: "700" }],
+        "title-1": ["1.75rem", { lineHeight: "1.2", letterSpacing: "-0.022em", fontWeight: "700" }],
+        "title-2": ["1.375rem", { lineHeight: "1.25", letterSpacing: "-0.02em", fontWeight: "600" }],
+        "title-3": ["1.125rem", { lineHeight: "1.3", letterSpacing: "-0.018em", fontWeight: "600" }],
+        "body": ["0.9375rem", { lineHeight: "1.5", letterSpacing: "-0.011em" }],
+        "callout": ["1rem", { lineHeight: "1.45", letterSpacing: "-0.015em" }],
+        "subhead": ["0.8125rem", { lineHeight: "1.4", letterSpacing: "-0.008em" }],
+        "footnote": ["0.75rem", { lineHeight: "1.4", letterSpacing: "-0.004em" }],
+        "caption-1": ["0.6875rem", { lineHeight: "1.35", letterSpacing: "0" }],
+        "caption-2": ["0.625rem", { lineHeight: "1.3", letterSpacing: "0.02em" }],
+      },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.32, 0.72, 0, 1)",
+        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
+        decel: "cubic-bezier(0, 0, 0.2, 1)",
+        accel: "cubic-bezier(0.4, 0, 1, 1)",
+      },
+      transitionDuration: {
+        instant: "100ms",
+        fast: "180ms",
+        base: "280ms",
+        slow: "420ms",
+      },
+      boxShadow: {
+        // iOS-style layered shadows — subtle, not heavy
+        xs: "0 1px 2px hsl(222 25% 11% / 0.04)",
+        sm: "0 1px 2px hsl(222 25% 11% / 0.04), 0 2px 4px hsl(222 25% 11% / 0.04)",
+        DEFAULT:
+          "0 1px 2px hsl(222 25% 11% / 0.05), 0 4px 12px hsl(222 25% 11% / 0.06)",
+        md: "0 2px 4px hsl(222 25% 11% / 0.05), 0 8px 20px hsl(222 25% 11% / 0.07)",
+        lg: "0 4px 8px hsl(222 25% 11% / 0.06), 0 16px 32px hsl(222 25% 11% / 0.08)",
+        xl: "0 8px 16px hsl(222 25% 11% / 0.08), 0 24px 48px hsl(222 25% 11% / 0.10)",
+        "inner-border": "inset 0 0 0 1px hsl(var(--border))",
       },
       keyframes: {
         fadeIn: {
@@ -93,10 +165,33 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        slideDown: {
+          from: { opacity: "0", transform: "translateY(-10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        scaleIn: {
+          from: { opacity: "0", transform: "scale(0.96)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
         pulseSoft: {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.6" },
+          "50%": { opacity: "0.55" },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      animation: {
+        "fade-in": "fadeIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "slide-up": "slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "slide-down": "slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "scale-in": "scaleIn 0.24s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "pulse-soft": "pulseSoft 2.4s ease-in-out infinite",
+        "shimmer": "shimmer 1.6s ease-in-out infinite",
+      },
+      backdropBlur: {
+        xs: "4px",
       },
     },
   },

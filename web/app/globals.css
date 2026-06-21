@@ -2,131 +2,355 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+ * DESIGN TOKENS — iOS 18 inspired
+ * Typography: SF Pro Display + SF Pro Text fallback + Inter + system
+ * Motion: Apple spring curves (cubic-bezier)
+ * Surfaces: layered depth via subtle shadows, not heavy gradients
+ * ============================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* === COLORS — light mode (cool blue gray palette) === */
+    --background: 210 20% 98%;
+    --foreground: 222 25% 11%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 25% 11%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 1rem;
+    --popover-foreground: 222 25% 11%;
+
+    --primary: 217 91% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 30% 96%;
+    --secondary-foreground: 222 25% 18%;
+
+    --muted: 210 30% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 30% 94%;
+    --accent-foreground: 222 25% 11%;
+
+    --destructive: 0 78% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 214 25% 90%;
+    --input: 214 25% 90%;
+    --ring: 217 91% 50%;
+
+    /* === TYPOGRAPHY === */
+    --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+      "Inter", system-ui, sans-serif;
+    --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter",
+      system-ui, sans-serif;
+    --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    --font-num: "SF Pro Display", "Inter", system-ui, sans-serif; /* tabular nums */
+
+    /* === RADIUS — iOS 18 continuous corners === */
+    --radius: 0.875rem; /* 14px default */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --radius-2xl: 1.5rem;
+
+    /* === MOTION — Apple spring curves === */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-decel: cubic-bezier(0, 0, 0.2, 1);
+    --ease-accel: cubic-bezier(0.4, 0, 1, 1);
+    --duration-instant: 100ms;
+    --duration-fast: 180ms;
+    --duration-base: 280ms;
+    --duration-slow: 420ms;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
+    --background: 222 25% 7%;
+    --foreground: 210 20% 98%;
+
+    --card: 222 22% 11%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 222 22% 11%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 217 91% 62%;
+    --primary-foreground: 222 25% 7%;
+
+    --secondary: 222 18% 16%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 222 18% 16%;
     --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 224 76% 48%;
+
+    --accent: 222 18% 19%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 58%;
+    --warning-foreground: 222 25% 7%;
+
+    --border: 222 18% 19%;
+    --input: 222 18% 19%;
+    --ring: 217 91% 62%;
   }
 
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
-  }
 
-  /* Mobile optimizations */
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-  }
-
-  /* Smooth scroll */
-  html {
     scroll-behavior: smooth;
+    /* Better font rendering on macOS/iOS */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* iOS safe-area support */
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    /* Body line-height 1.5 = 24px for 16px base — Apple HIG */
+    line-height: 1.5;
+    /* Tighter letter-spacing for natural feel */
+    letter-spacing: -0.011em;
+  }
+
+  /* Tabular numerals — critical for stock prices */
+  .font-num,
+  .num,
+  [data-num] {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "cv11" 1;
+    letter-spacing: -0.02em;
+  }
+
+  /* iOS safe-area */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* === HEADINGS — natural rhythm === */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+
+  h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -0.026em; font-weight: 700; }
+  h2 { font-size: 1.5rem; line-height: 1.2; }
+  h3 { font-size: 1.25rem; line-height: 1.25; }
+  h4 { font-size: 1.0625rem; line-height: 1.3; font-weight: 600; }
+
+  /* === SELECTION === */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  /* === FOCUS RING — accessible, subtle === */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline-offset: 3px;
   }
 }
 
 @layer components {
-  /* === MODERN CARD === */
-  .card-glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-sm;
-  }
-  .card-hover {
-    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  /* === CARDS — layered, not heavy === */
+  .card {
+    @apply bg-card text-card-foreground rounded-xl border border-border/60;
   }
 
-  /* === RECOMMENDATION CARDS === */
+  .card-elevated {
+    @apply bg-card text-card-foreground rounded-xl border border-border/40;
+    box-shadow:
+      0 1px 2px hsl(222 25% 11% / 0.04),
+      0 4px 12px hsl(222 25% 11% / 0.06);
+  }
+
+  .dark .card-elevated {
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.3),
+      0 4px 12px hsl(0 0% 0% / 0.2);
+  }
+
+  .card-glass {
+    @apply bg-card/80 backdrop-blur-2xl border border-border/40 rounded-xl;
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .card-inset {
+    @apply bg-muted/40 border border-border/40 rounded-lg;
+  }
+
+  /* === INTERACTIVE STATES === */
+  .card-hover {
+    transition:
+      transform var(--duration-fast) var(--ease-spring),
+      box-shadow var(--duration-fast) var(--ease-spring),
+      border-color var(--duration-fast) var(--ease-smooth);
+    will-change: transform;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 4px hsl(222 25% 11% / 0.06),
+      0 8px 24px hsl(222 25% 11% / 0.08);
+  }
+
+  .dark .card-hover:hover {
+    box-shadow:
+      0 2px 4px hsl(0 0% 0% / 0.3),
+      0 8px 24px hsl(0 0% 0% / 0.3);
+  }
+
+  .card-hover:active {
+    transform: translateY(0);
+    transition-duration: var(--duration-instant);
+  }
+
+  /* === RECOMMENDATION CARDS — semantic, not garish === */
   .rec-strong-buy {
-    @apply bg-gradient-to-br from-bull-600 to-bull-500 text-white shadow-lg shadow-bull-600/20;
+    @apply text-white;
+    background: linear-gradient(135deg, hsl(142 71% 38%) 0%, hsl(142 60% 48%) 100%);
   }
   .rec-buy {
-    @apply bg-gradient-to-br from-bull-600/90 to-bull-500/90 text-white shadow-lg shadow-bull-500/20;
+    @apply text-white;
+    background: linear-gradient(135deg, hsl(142 50% 42%) 0%, hsl(142 45% 52%) 100%);
   }
   .rec-hold {
-    @apply bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20;
+    @apply text-white;
+    background: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(28 92% 52%) 100%);
   }
   .rec-sell {
-    @apply bg-gradient-to-br from-bear-500 to-bear-600 text-white shadow-lg shadow-bear-500/20;
+    @apply text-white;
+    background: linear-gradient(135deg, hsl(0 78% 55%) 0%, hsl(0 70% 60%) 100%);
   }
   .rec-strong-sell {
-    @apply bg-gradient-to-br from-bear-700 to-bear-600 text-white shadow-lg shadow-bear-600/20;
+    @apply text-white;
+    background: linear-gradient(135deg, hsl(0 70% 42%) 0%, hsl(0 65% 50%) 100%);
+  }
+
+  /* Soft tints (for inline chips, not hero cards) */
+  .rec-tint-buy {
+    @apply bg-success/10 text-success border border-success/20;
+  }
+  .rec-tint-sell {
+    @apply bg-destructive/10 text-destructive border border-destructive/20;
+  }
+  .rec-tint-hold {
+    @apply bg-warning/10 text-warning border border-warning/20;
   }
 
   /* === SCORE BARS === */
   .score-bar {
-    @apply h-2 bg-secondary rounded-full overflow-hidden;
+    @apply h-1.5 bg-secondary rounded-full overflow-hidden;
   }
   .score-bar-fill {
-    @apply h-full transition-all duration-500;
+    @apply h-full rounded-full;
+    transition: width var(--duration-slow) var(--ease-spring);
   }
 
-  /* === SHIMMER (skeleton loading) === */
+  /* === SKELETON SHIMMER === */
   .shimmer {
-    @apply bg-gradient-to-r from-secondary via-muted to-secondary bg-[length:200%_100%] animate-[shimmer_1.5s_ease_infinite];
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.5) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* === BUTTONS — tactile, with motion === */
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium;
+    transition:
+      transform var(--duration-instant) var(--ease-spring),
+      background-color var(--duration-fast) var(--ease-smooth),
+      box-shadow var(--duration-fast) var(--ease-smooth);
+    will-change: transform;
+  }
+
+  .btn-base:active {
+    transform: scale(0.97);
+  }
+
+  /* === DIVIDER — subtle, not heavy === */
+  .divider {
+    @apply h-px bg-gradient-to-r from-transparent via-border to-transparent;
+  }
+
+  /* === STAGGER LIST === */
+  .stagger-item {
+    opacity: 0;
+    animation: stagger-fade 0.4s var(--ease-spring) forwards;
+  }
+
+  .stagger-item:nth-child(1) { animation-delay: 0ms; }
+  .stagger-item:nth-child(2) { animation-delay: 40ms; }
+  .stagger-item:nth-child(3) { animation-delay: 80ms; }
+  .stagger-item:nth-child(4) { animation-delay: 120ms; }
+  .stagger-item:nth-child(5) { animation-delay: 160ms; }
+  .stagger-item:nth-child(6) { animation-delay: 200ms; }
+  .stagger-item:nth-child(7) { animation-delay: 240ms; }
+  .stagger-item:nth-child(8) { animation-delay: 280ms; }
+  .stagger-item:nth-child(9) { animation-delay: 320ms; }
+  .stagger-item:nth-child(10) { animation-delay: 360ms; }
+
+  /* === PRICE-CHANGE — gentle flash on update === */
+  .price-flash-up {
+    animation: flash-up var(--duration-slow) var(--ease-smooth);
+  }
+  .price-flash-down {
+    animation: flash-down var(--duration-slow) var(--ease-smooth);
   }
 }
 
-/* Custom animations */
+/* ============================================================
+ * KEYFRAMES — natural, spring-based motion
+ * ============================================================ */
+
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-@keyframes fade-in {
+@keyframes stagger-fade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -134,21 +358,53 @@
   }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out;
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Hide scrollbar for cleaner mobile look */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes flash-up {
+  0% { background-color: hsl(var(--success) / 0.18); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-down {
+  0% { background-color: hsl(var(--destructive) / 0.18); }
+  100% { background-color: transparent; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.animate-fade-in {
+  animation: fade-in var(--duration-base) var(--ease-spring) both;
+}
+
+.animate-slide-up {
+  animation: slide-up var(--duration-base) var(--ease-spring) both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+/* Hide scrollbar for cleaner mobile */
+.no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* ============ COMPACT MODE ============ */
-/* Tighter spacing + smaller fonts when html has .compact class */
+/* ============================================================
+ * COMPACT MODE — tighter, info-dense
+ * ============================================================ */
 html.compact {
   font-size: 13px;
 }
@@ -156,6 +412,11 @@ html.compact {
 html.compact body {
   line-height: 1.4;
 }
+
+html.compact h1 { font-size: 1.5rem; }
+html.compact h2 { font-size: 1.125rem; }
+html.compact h3 { font-size: 0.9375rem; }
+html.compact h4 { font-size: 0.875rem; }
 
 html.compact .container {
   padding-left: 0.75rem;
@@ -166,127 +427,46 @@ html.compact main {
   gap: 0.5rem;
 }
 
-html.compact main > * {
-  margin-bottom: 0;
-}
+html.compact .text-sm { font-size: 0.75rem; }
+html.compact .text-base { font-size: 0.875rem; }
+html.compact .text-lg { font-size: 1rem; }
+html.compact .text-xl { font-size: 1.0625rem; }
+html.compact .text-2xl { font-size: 1.25rem; }
+html.compact .text-3xl { font-size: 1.5rem; }
 
-html.compact h1 {
-  font-size: 1.5rem;
-}
+html.compact .p-3 { padding: 0.5rem; }
+html.compact .p-4 { padding: 0.625rem; }
+html.compact .p-5 { padding: 0.75rem; }
+html.compact .p-6 { padding: 0.875rem; }
+html.compact .py-3 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+html.compact .py-4 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+html.compact .py-5 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+html.compact .py-6 { padding-top: 0.875rem; padding-bottom: 0.875rem; }
 
-html.compact h2 {
-  font-size: 1.125rem;
-}
+html.compact .gap-3 { gap: 0.5rem; }
+html.compact .gap-4 { gap: 0.625rem; }
+html.compact .gap-5 { gap: 0.75rem; }
 
-html.compact h3 {
-  font-size: 0.875rem;
-}
+html.compact .space-y-3 > * + * { margin-top: 0.5rem; }
+html.compact .space-y-4 > * + * { margin-top: 0.625rem; }
+html.compact .space-y-5 > * + * { margin-top: 0.75rem; }
 
-html.compact p {
-  margin-bottom: 0.25rem;
-}
+html.compact .mb-2 { margin-bottom: 0.25rem; }
+html.compact .mb-3 { margin-bottom: 0.5rem; }
+html.compact .mb-4 { margin-bottom: 0.625rem; }
+html.compact .mt-1 { margin-top: 0.125rem; }
+html.compact .mt-2 { margin-top: 0.25rem; }
 
-html.compact .text-sm {
-  font-size: 0.75rem;
+/* ============================================================
+ * MOTION SAFETY — respect user preferences
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-
-html.compact .text-base {
-  font-size: 0.875rem;
-}
-
-html.compact .text-lg {
-  font-size: 1rem;
-}
-
-html.compact .text-xl {
-  font-size: 1.125rem;
-}
-
-html.compact .text-2xl {
-  font-size: 1.25rem;
-}
-
-html.compact .text-3xl {
-  font-size: 1.5rem;
-}
-
-html.compact .p-3 {
-  padding: 0.5rem;
-}
-
-html.compact .p-4 {
-  padding: 0.625rem;
-}
-
-html.compact .p-5 {
-  padding: 0.75rem;
-}
-
-html.compact .p-6 {
-  padding: 0.875rem;
-}
-
-html.compact .py-3 {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-html.compact .py-4 {
-  padding-top: 0.625rem;
-  padding-bottom: 0.625rem;
-}
-
-html.compact .py-5 {
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-}
-
-html.compact .py-6 {
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-}
-
-html.compact .gap-3 {
-  gap: 0.5rem;
-}
-
-html.compact .gap-4 {
-  gap: 0.625rem;
-}
-
-html.compact .gap-5 {
-  gap: 0.75rem;
-}
-
-html.compact .space-y-3 > * + * {
-  margin-top: 0.5rem;
-}
-
-html.compact .space-y-4 > * + * {
-  margin-top: 0.625rem;
-}
-
-html.compact .space-y-5 > * + * {
-  margin-top: 0.75rem;
-}
-
-html.compact .mb-2 {
-  margin-bottom: 0.25rem;
-}
-
-html.compact .mb-3 {
-  margin-bottom: 0.5rem;
-}
-
-html.compact .mb-4 {
-  margin-bottom: 0.625rem;
-}
-
-html.compact .mt-1 {
-  margin-top: 0.125rem;
-}
-
-html.compact .mt-2 {
-  margin-top: 0.25rem;
-}
-

@@ -1,4 +1,4 @@
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ErrorBannerProps {
@@ -18,20 +18,31 @@ export function ErrorBanner({
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-3 rounded-xl border border-bear-500/30 bg-bear-500/10 px-3 py-2.5",
+        "flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/[0.06] px-3.5 py-3",
+        "animate-fade-in",
         className,
       )}
     >
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-bear-600 dark:text-bear-400" aria-hidden />
+      <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+        <AlertCircle className="h-4 w-4 text-destructive" aria-hidden />
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-bear-700 dark:text-bear-300">{title}</p>
-        <p className="mt-0.5 text-[11px] text-bear-700/80 dark:text-bear-300/80">{message}</p>
+        <p className="text-caption-1 font-semibold text-destructive uppercase tracking-wider">
+          {title}
+        </p>
+        <p className="mt-0.5 text-footnote text-destructive/90 leading-relaxed">
+          {message}
+        </p>
       </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-bear-600 px-3 text-[11px] font-semibold text-white hover:bg-bear-700"
+          className={cn(
+            "btn-base min-h-9 shrink-0 gap-1 rounded-full bg-destructive px-3.5",
+            "text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90",
+          )}
         >
+          <RefreshCw className="h-3 w-3" aria-hidden />
           Coba lagi
         </button>
       )}

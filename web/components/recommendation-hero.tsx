@@ -3,12 +3,11 @@
 import {
   ACTION_INDONESIAN,
   ACTION_EMOJI,
-  ACTION_COLOR,
   HORIZON_INDONESIAN,
   type Recommendation,
 } from "@/lib/recommender";
 import { formatIDR, formatPercent, cn } from "@/lib/utils";
-import { Target, MapPin, ShieldAlert } from "lucide-react";
+import { Target, MapPin, ShieldAlert, TrendingUp } from "lucide-react";
 
 const actionClass: Record<string, string> = {
   STRONG_BUY: "rec-strong-buy",
@@ -18,31 +17,58 @@ const actionClass: Record<string, string> = {
   STRONG_SELL: "rec-strong-sell",
 };
 
+const actionTint: Record<string, string> = {
+  STRONG_BUY: "rec-tint-buy",
+  BUY: "rec-tint-buy",
+  HOLD: "rec-tint-hold",
+  SELL: "rec-tint-sell",
+  STRONG_SELL: "rec-tint-sell",
+};
+
 export function RecommendationHero({ rec }: { rec: Recommendation }) {
+  const isBuy = rec.action === "STRONG_BUY" || rec.action === "BUY";
+  const isSell = rec.action === "STRONG_SELL" || rec.action === "SELL";
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 stagger-item">
       {/* Hero Card */}
-      <div className={cn("rounded-3xl p-5 sm:p-7 animate-fade-in", actionClass[rec.action])}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="text-xs sm:text-sm opacity-90 uppercase tracking-wider font-medium">
+      <div
+        className={cn(
+          "rounded-2xl p-5 sm:p-7 shadow-md relative overflow-hidden",
+          actionClass[rec.action],
+        )}
+      >
+        {/* Subtle radial highlight overlay */}
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 100% 0%, rgba(255,255,255,0.25) 0%, transparent 60%)",
+          }}
+          aria-hidden
+        />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-caption-1 opacity-90 uppercase tracking-wider font-semibold">
               📊 Rekomendasi
             </div>
-            <div className="text-3xl sm:text-5xl font-black mt-1 leading-none">
+            <div className="text-display mt-1.5 leading-none font-display font-bold">
               {ACTION_EMOJI[rec.action]} {ACTION_INDONESIAN[rec.action]}
             </div>
-            <div className="mt-3 text-sm sm:text-base opacity-95">
-              🕐 {HORIZON_INDONESIAN[rec.horizon]}
+            <div className="mt-3 text-subhead opacity-95 inline-flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+              {HORIZON_INDONESIAN[rec.horizon]}
             </div>
           </div>
-          <div className="sm:text-right">
-            <div className="text-xs sm:text-sm opacity-90 uppercase tracking-wider font-medium">
+          <div className="sm:text-right shrink-0">
+            <div className="text-caption-1 opacity-90 uppercase tracking-wider font-semibold">
               Confidence
             </div>
-            <div className="text-4xl sm:text-6xl font-black leading-none">
+            <div className="text-display mt-1 leading-none font-display font-bold font-num">
               {rec.confidence.toFixed(0)}%
             </div>
-            <div className="mt-2 text-sm opacity-95">
+            <div className="mt-2 text-subhead opacity-95 font-num">
               💰 {formatIDR(rec.currentPrice)}
             </div>
           </div>
@@ -54,33 +80,42 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Entry Zone */}
           {rec.entryZone && (
-            <div className="rounded-2xl border bg-card p-4">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                <MapPin className="h-3 w-3" />
+            <div className="card-elevated p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+                <MapPin className="h-3 w-3" aria-hidden />
                 Entry Zone
               </div>
-              <div className="mt-2 space-y-0.5">
-                <div className="text-base sm:text-lg font-bold tabular-nums">
+              <div className="mt-2.5 space-y-0.5 font-num">
+                <div className="text-callout font-bold">
                   {formatIDR(rec.entryZone[0])}
                 </div>
-                <div className="text-xs text-muted-foreground">— {formatIDR(rec.entryZone[1])}</div>
+                <div className="text-footnote text-muted-foreground">
+                  — {formatIDR(rec.entryZone[1])}
+                </div>
               </div>
             </div>
           )}
 
           {/* Target */}
           {rec.targetPrice && rec.currentPrice && (
-            <div className="rounded-2xl border bg-card p-4">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                <Target className="h-3 w-3" />
+            <div className="card-elevated p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+                <Target className="h-3 w-3" aria-hidden />
                 Target Price
               </div>
-              <div className="mt-2">
-                <div className="text-base sm:text-lg font-bold tabular-nums">
+              <div className="mt-2.5 font-num">
+                <div className="text-callout font-bold">
                   {formatIDR(rec.targetPrice)}
                 </div>
-                <div className="text-xs text-bull-600 font-semibold">
-                  {formatPercent(((rec.targetPrice - rec.currentPrice) / rec.currentPrice) * 100)}
+                <div
+                  className={cn(
+                    "text-footnote font-semibold inline-flex items-center gap-0.5",
+                    isBuy ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {formatPercent(
+                    ((rec.targetPrice - rec.currentPrice) / rec.currentPrice) * 100,
+                  )}
                 </div>
               </div>
             </div>
@@ -88,17 +123,24 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
 
           {/* Stop Loss */}
           {rec.stopLoss && rec.currentPrice && (
-            <div className="rounded-2xl border bg-card p-4">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                <ShieldAlert className="h-3 w-3" />
+            <div className="card-elevated p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+                <ShieldAlert className="h-3 w-3" aria-hidden />
                 Stop Loss
               </div>
-              <div className="mt-2">
-                <div className="text-base sm:text-lg font-bold tabular-nums">
+              <div className="mt-2.5 font-num">
+                <div className="text-callout font-bold">
                   {formatIDR(rec.stopLoss)}
                 </div>
-                <div className="text-xs text-bear-600 font-semibold">
-                  {formatPercent(((rec.stopLoss - rec.currentPrice) / rec.currentPrice) * 100)}
+                <div
+                  className={cn(
+                    "text-footnote font-semibold",
+                    isSell ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {formatPercent(
+                    ((rec.stopLoss - rec.currentPrice) / rec.currentPrice) * 100,
+                  )}
                 </div>
               </div>
             </div>
@@ -108,22 +150,28 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
 
       {/* Risk/Reward Ratio */}
       {rec.riskRewardRatio && (
-        <div className="rounded-2xl border bg-card p-4 flex items-center justify-between">
+        <div className="card-elevated p-4 flex items-center justify-between stagger-item">
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            <div className="text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
               Risk / Reward Ratio
             </div>
-            <div className="text-2xl font-bold mt-1 tabular-nums">
+            <div className="text-title-3 mt-1 font-num font-bold">
               {rec.riskRewardRatio.toFixed(2)}x
             </div>
           </div>
           <div className="text-right">
             {rec.riskRewardRatio >= 2 ? (
-              <span className="text-bull-600 font-semibold">✅ Bagus</span>
+              <span className={cn("px-2.5 py-1 rounded-full text-caption-1 font-bold", actionTint[isBuy ? "BUY" : "HOLD"])}>
+                ✅ Bagus
+              </span>
             ) : rec.riskRewardRatio >= 1 ? (
-              <span className="text-amber-600 font-semibold">⚠️ Cukup</span>
+              <span className="rec-tint-hold px-2.5 py-1 rounded-full text-caption-1 font-bold">
+                ⚠️ Cukup
+              </span>
             ) : (
-              <span className="text-bear-600 font-semibold">❌ Kurang</span>
+              <span className="rec-tint-sell px-2.5 py-1 rounded-full text-caption-1 font-bold">
+                ❌ Kurang
+              </span>
             )}
           </div>
         </div>

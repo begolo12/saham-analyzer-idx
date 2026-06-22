@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/empty-state";
 import { StockRowSkeleton } from "@/components/stock-row-skeleton";
 import { useWatchlist, addToWatchlist } from "@/lib/watchlist-storage";
 import { POPULAR_STOCKS } from "@/lib/popular-stocks";
-import { formatIDR, formatPercent } from "@/lib/utils";
+import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface SharedStock {

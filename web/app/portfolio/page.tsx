@@ -440,7 +440,7 @@ export default function PortfolioPage() {
                 </div>
                 <div className="text-right">
                   <div className="mobile-hero__label">Modal</div>
-                  <div className="mt-1 text-sm font-bold">{formatIDR(netInvested)}</div>
+                  <div className="mt-1 text-sm font-bold text-white">{formatIDR(netInvested)}</div>
                 </div>
               </div>
               <div className="mobile-hero__sub">

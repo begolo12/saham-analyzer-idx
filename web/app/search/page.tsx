@@ -621,28 +621,29 @@ function SearchPageContent() {
                   setSearchError(null);
                   inputRef.current?.focus();
                 }}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-accent"
               >
-                <span className="max-w-[140px] truncate">“{query}”</span>
-                <X className="h-3 w-3" />
+                <Search className="h-3 w-3 text-primary" />
+                <span className="max-w-[140px] truncate text-primary">“{query}”</span>
+                <X className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
             {selectedSector !== "All" && (
               <button
                 onClick={() => setSelectedSector("All")}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-accent"
               >
-                {selectedSector}
-                <X className="h-3 w-3" />
+                <span className="text-primary">{selectedSector}</span>
+                <X className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
             {sortBy !== "alpha" && (
               <button
                 onClick={() => setSortBy("alpha")}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-accent"
               >
-                Sort: {currentSortLabel}
-                <X className="h-3 w-3" />
+                <span className="text-primary">Sort: {currentSortLabel}</span>
+                <X className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
           </div>
@@ -681,21 +682,22 @@ function SearchPageContent() {
 
       {trending.length > 0 && searchMode === "local" && !query && (
         <div className="mb-3 px-1">
-          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
             <Flame className="h-3 w-3 text-orange-500" />
-            Trending
+            Trending hari ini
+            <span className="ml-auto text-[10px] text-muted-foreground/70 font-medium normal-case tracking-normal">naik &gt; 1%</span>
           </div>
-          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
             {trending.map((t) => (
               <button
                 key={t.code}
                 onClick={() => handleSelect(t.code)}
                 aria-label={`${t.code} naik ${t.changePct.toFixed(1)} persen`}
-                className="shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1 text-xs font-semibold tabular-nums hover:bg-orange-500/20"
+                className="shrink-0 inline-flex min-h-10 items-center gap-1.5 rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-orange-500/5 px-3 py-1 text-xs font-bold tabular-nums hover:from-orange-500/20 hover:to-orange-500/10 active:scale-95 transition-all"
               >
-                <Flame className="h-3 w-3 text-orange-500" aria-hidden />
-                <span>{t.code}</span>
-                <span className="text-bull-600 font-bold text-[11px]">
+                <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden />
+                <span className="text-foreground">{t.code}</span>
+                <span className="text-bull-600 font-black text-[11px]">
                   +{t.changePct.toFixed(1)}%
                 </span>
               </button>
@@ -802,10 +804,13 @@ function SearchRow({
       aria-pressed={isActive}
       aria-label={`Buka analisa ${code}, ${name}${showChange ? `, harga ${formatIDR(price)}, perubahan ${formatPercent(changePct)}` : ", harga tidak tersedia"}`}
       className={cn(
-        "group w-full min-h-12 flex items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-accent",
-        isActive ? "bg-primary/10 ring-1 ring-inset ring-primary/30" : "hover:bg-accent/50",
+        "group w-full min-h-14 flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-accent",
+        isActive ? "bg-primary/8 ring-1 ring-inset ring-primary/25" : "hover:bg-accent/40",
       )}
     >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-[10px] font-black text-primary/80">
+        {code.replace(".JK", "").slice(0, 4)}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-[13px] tabular-nums tracking-tight">{code}</span>
@@ -814,17 +819,17 @@ function SearchRow({
           )}
         </div>
         <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-          <span className="truncate font-medium text-foreground/70">{name}</span>
-          <span className="opacity-60 hidden sm:inline">· {sector}</span>
+          <span className="truncate font-medium text-foreground/75">{name}</span>
+          <span className="opacity-60 hidden sm:inline shrink-0">· {sector}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0 tabular-nums">
+      <div className="flex flex-col items-end gap-0.5 shrink-0 tabular-nums">
         {price !== null && price !== undefined ? (
-          <span className="text-[13px] font-semibold tabular-nums">{formatIDR(price)}</span>
+          <span className="text-[13px] font-bold tabular-nums">{formatIDR(price)}</span>
         ) : (
           <span
-            className="text-[11px] text-muted-foreground/80 px-1.5 py-0.5 rounded bg-muted"
+            className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted font-medium"
             title="Harga tidak tersedia dari Yahoo Finance"
           >
             N/A
@@ -833,7 +838,7 @@ function SearchRow({
         {showChange && (
           <span
             className={cn(
-              "text-[11px] font-bold tabular-nums min-w-14 text-right",
+              "text-[11px] font-bold tabular-nums leading-none",
               isUp ? "text-bull-600" : "text-bear-600",
             )}
           >
@@ -844,7 +849,7 @@ function SearchRow({
 
       <ChevronRight
         className={cn(
-          "h-4 w-4 shrink-0 text-muted-foreground/50 transition-all",
+          "h-4 w-4 shrink-0 text-muted-foreground/40 transition-all",
           isActive
             ? "text-primary translate-x-0.5"
             : "group-hover:text-muted-foreground group-hover:translate-x-0.5",

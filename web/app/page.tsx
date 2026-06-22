@@ -17,6 +17,11 @@ import {
   TrendingDown,
   Inbox,
   ChevronRight,
+  ArrowUpRight,
+  Clock,
+  Sun,
+  Moon,
+  Sunset,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
@@ -47,6 +52,14 @@ interface MarketStock {
 }
 
 const RETRY_LIMIT = 1;
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 11) return { text: "Selamat pagi", icon: Sun };
+  if (h < 15) return { text: "Selamat siang", icon: Sun };
+  if (h < 18) return { text: "Selamat sore", icon: Sunset };
+  return { text: "Selamat malam", icon: Moon };
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -92,6 +105,28 @@ export default function HomePage() {
   const totalMovers = topGainers.length + topLosers.length;
   const hasMarketData = totalMovers > 0;
 
+  // Market pulse from loaded data
+  const advanceCount = topGainers.length;
+  const declineCount = topLosers.length;
+  const avgChange = hasMarketData
+    ? [...topGainers, ...topLosers].reduce((sum, s) => sum + s.changePct, 0) /
+      totalMovers
+    : 0;
+  const marketTone =
+    !hasMarketData ? "neutral" : avgChange > 0.3 ? "bull" : avgChange < -0.3 ? "bear" : "neutral";
+  const marketOpen = (() => {
+    const now = new Date();
+    const day = now.getDay();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    if (day === 0 || day === 6) return false;
+    const time = hours * 60 + minutes;
+    return time >= 9 * 60 && time <= 16 * 60;
+  })();
+
+  const greeting = getGreeting();
+  const GreetingIcon = greeting.icon;
+
   return (
     <div className="app-shell min-h-screen bg-background">
       <TopHeader />
@@ -113,8 +148,70 @@ export default function HomePage() {
       <main className="page-main container space-y-3">
         <OnboardingTour />
 
-        {/* MOBILE: Hero search */}
+        {/* MOBILE: Hero search + greeting + market pulse */}
         <div className="md:hidden space-y-3">
+          {/* Greeting + market status */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              <GreetingIcon className="h-3.5 w-3.5 text-amber-500" aria-hidden />
+              <span className="text-sm font-semibold text-foreground/80">{greeting.text} 👋</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  marketOpen ? "bg-bull-500 animate-pulse" : "bg-muted-foreground/40",
+                )}
+              />
+              {marketOpen ? "Buka" : "Tutup"}
+            </div>
+          </div>
+
+          {/* Market pulse strip */}
+          {hasMarketData && (
+            <div
+              className={cn(
+                "rounded-2xl border p-3",
+                marketTone === "bull" && "border-bull-500/30 bg-gradient-to-br from-bull-50/80 to-bull-50/30",
+                marketTone === "bear" && "border-bear-500/30 bg-gradient-to-br from-bear-50/80 to-bear-50/30",
+                marketTone === "neutral" && "border-border bg-card",
+              )}
+            >
+              <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Activity className="h-3 w-3" /> Market pulse
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <div
+                  className={cn(
+                    "text-2xl font-black tabular-nums leading-none",
+                    marketTone === "bull" && "text-bull-700",
+                    marketTone === "bear" && "text-bear-700",
+                    marketTone === "neutral" && "text-foreground",
+                  )}
+                >
+                  {avgChange >= 0 ? "+" : ""}
+                  {avgChange.toFixed(2)}%
+                </div>
+                <div className="text-[11px] text-muted-foreground font-medium">rata-rata</div>
+              </div>
+              <div className="mt-2 flex items-center gap-3 text-[11px]">
+                <div className="flex items-center gap-1 font-semibold text-bull-700">
+                  <ArrowUpRight className="h-3 w-3" /> {advanceCount} naik
+                </div>
+                <div className="flex items-center gap-1 font-semibold text-bear-700">
+                  <TrendingDown className="h-3 w-3" /> {declineCount} turun
+                </div>
+                <Link
+                  href="/screener"
+                  className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-bold text-primary hover:underline"
+                >
+                  Lihat semua <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Search */}
           <section className="rounded-2xl border bg-card p-3">
             <div className="flex items-center gap-2">
               <Search className="h-5 w-5 text-muted-foreground shrink-0 ml-1" />
@@ -124,6 +221,7 @@ export default function HomePage() {
             </div>
           </section>
 
+          {/* Quick actions */}
           <div className="grid grid-cols-2 gap-2.5">
             <MobileQuickAction
               href="/search"
@@ -219,9 +317,13 @@ export default function HomePage() {
             </div>
           ) : !hasMarketData ? (
             <EmptyState
-              icon={<Inbox className="h-5 w-5" aria-hidden />}
-              title="Belum ada pergerakan"
-              description="Market mungkin sedang tutup. Coba lagi saat jam bursa (09:00–16:00 WIB)."
+              icon={<Clock className="h-5 w-5" aria-hidden />}
+              title={marketOpen ? "Belum ada pergerakan" : "Market sedang tutup"}
+              description={
+                marketOpen
+                  ? "Tunggu sebentar, data sedang dimuat."
+                  : "Buka lagi saat jam bursa (09:00–16:00 WIB)."
+              }
               actions={[
                 {
                   label: "Buka screener",

@@ -18,6 +18,8 @@ import {
   Plus,
   TrendingUp,
   TrendingDown,
+  Activity,
+  Search,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,39 @@ import { toast } from "sonner";
 type SortBy = "default" | "hot" | "change" | "name" | "viewed";
 type SectorFilter = "all" | string;
 type MobileSection = "watching" | "alerts" | "discovery";
+
+// Build a tiny inline sparkline from closes (no SVG lib needed)
+function Sparkline({ closes, up }: { closes: number[]; up: boolean }) {
+  if (!closes || closes.length < 2) return null;
+  const w = 56;
+  const h = 18;
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const range = max - min || 1;
+  const step = w / (closes.length - 1);
+  const points = closes
+    .map((c, i) => `${(i * step).toFixed(1)},${(h - ((c - min) / range) * h).toFixed(1)}`)
+    .join(" ");
+  const color = up ? "text-bull-600" : "text-bear-600";
+  return (
+    <svg
+      width={w}
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      className={cn("shrink-0", color)}
+      aria-hidden
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function WatchlistPage() {
   const router = useRouter();
@@ -325,7 +360,7 @@ export default function WatchlistPage() {
           <div className="md:hidden">
             <Card className="p-6 text-center">
               <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-                <Star className="h-6 w-6" />
+                <Star className="h-6 w-6 fill-amber-500" />
               </div>
               <h2 className="mt-3 text-lg font-bold">Mulai watchlist</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -336,7 +371,7 @@ export default function WatchlistPage() {
                   onClick={() => router.push("/search")}
                   className="min-h-11 w-full"
                 >
-                  <SearchPlusCari />
+                  <Search className="mr-2 h-4 w-4" />
                   Cari saham populer
                 </Button>
                 <Button
@@ -344,6 +379,7 @@ export default function WatchlistPage() {
                   onClick={() => router.push("/screener")}
                   className="min-h-11 w-full"
                 >
+                  <Filter className="mr-2 h-4 w-4" />
                   Buka screener
                 </Button>
               </div>
@@ -370,6 +406,53 @@ export default function WatchlistPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Watchlist performance summary */}
+              {sortedItems.length > 0 && (() => {
+                const validChanges = sortedItems
+                  .map((it) => data[it.ticker]?.changePct)
+                  .filter((c): c is number => typeof c === "number");
+                if (validChanges.length === 0) return null;
+                const avg = validChanges.reduce((a, b) => a + b, 0) / validChanges.length;
+                const advancers = validChanges.filter((c) => c > 0).length;
+                const decliners = validChanges.filter((c) => c < 0).length;
+                const tone = avg > 0.2 ? "bull" : avg < -0.2 ? "bear" : "neutral";
+                return (
+                  <div
+                    className={cn(
+                      "rounded-2xl border p-3 mb-2",
+                      tone === "bull" && "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-50/30",
+                      tone === "bear" && "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-50/30",
+                      tone === "neutral" && "border-border bg-card",
+                    )}
+                  >
+                    <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <Activity className="h-3 w-3" /> Performa watchlist
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-3">
+                      <div
+                        className={cn(
+                          "text-2xl font-black tabular-nums leading-none",
+                          tone === "bull" && "text-bull-700",
+                          tone === "bear" && "text-bear-700",
+                          tone === "neutral" && "text-foreground",
+                        )}
+                      >
+                        {avg >= 0 ? "+" : ""}
+                        {avg.toFixed(2)}%
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-medium">rata-rata hari ini</div>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-3 text-[11px]">
+                      <span className="font-semibold text-bull-700">{advancers} naik</span>
+                      <span className="font-semibold text-bear-700">{decliners} turun</span>
+                      {triggeredCount > 0 && (
+                        <span className="ml-auto font-semibold text-amber-600">🔔 {triggeredCount} alert</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <MobileSectionTabs<MobileSection>
                 value={mobileSection}
@@ -403,6 +486,7 @@ export default function WatchlistPage() {
                       if (!stock) return null;
                       const isUp = (stock.changePct ?? 0) >= 0;
                       const showChange = stock.changePct !== null && stock.changePct !== undefined;
+                      const recentCloses = (stock as { recentCloses?: number[] }).recentCloses;
                       return (
                         <MobileListItem
                           key={item.ticker}
@@ -413,7 +497,10 @@ export default function WatchlistPage() {
                           price={showChange && stock.price !== null ? formatIDR(stock.price) : undefined}
                           change={showChange ? { text: formatPercent(stock.changePct), positive: isUp } : undefined}
                           accessory={
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              {recentCloses && recentCloses.length > 1 && (
+                                <Sparkline closes={recentCloses} up={isUp} />
+                              )}
                               {triggeredAlertFor(item.ticker) && (
                                 <Bell className="h-3.5 w-3.5 text-amber-500" aria-label="Alert triggered" />
                               )}
@@ -774,10 +861,6 @@ export default function WatchlistPage() {
   function triggeredAlertFor(ticker: string) {
     return alerts.some((a) => a.ticker === ticker && a.status === "triggered");
   }
-}
-
-function SearchPlusCari() {
-  return <span className="font-semibold">Cari</span>;
 }
 
 function FilterBar({

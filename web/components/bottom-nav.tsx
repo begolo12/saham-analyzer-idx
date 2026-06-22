@@ -49,14 +49,14 @@ export function BottomNav() {
   return (
     <>
       {toolsOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-[60] md:hidden">
           <button
             type="button"
             aria-label="Tutup menu tools"
             className="absolute inset-0 bg-background/70 backdrop-blur-sm"
             onClick={closeTools}
           />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-[1.75rem] border border-border/70 bg-background px-4 pb-5 pt-4 shadow-2xl safe-area-bottom">
+          <div className="absolute inset-x-0 bottom-0 rounded-t-[1.75rem] border border-border/70 bg-background px-4 pb-5 pt-4 shadow-2xl safe-area-bottom animate-slide-up">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <div className="page-eyebrow">Tools</div>
@@ -66,7 +66,7 @@ export function BottomNav() {
                 type="button"
                 aria-label="Tutup"
                 onClick={closeTools}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -83,7 +83,7 @@ export function BottomNav() {
                     className={cn(
                       "rounded-2xl border p-3 transition-colors",
                       active
-                        ? "border-primary bg-primary/8"
+                        ? "border-primary bg-primary/10"
                         : "bg-card hover:bg-accent/50",
                     )}
                   >

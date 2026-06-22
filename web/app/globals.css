@@ -76,8 +76,10 @@
     --bottom-nav-height: 4.5rem;
     --bottom-nav-safe-offset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
     --page-bottom-gap: 1rem;
+    --mobile-action-bar-height: 4.125rem;
+    --mobile-action-bar-safe-offset: calc(var(--mobile-action-bar-height) + 0.5rem);
     --page-main-padding-bottom: calc(var(--bottom-nav-safe-offset) + var(--page-bottom-gap));
-    --page-main-padding-bottom-with-actions: calc(var(--bottom-nav-safe-offset) + 5.75rem);
+    --page-main-padding-bottom-with-actions: calc(var(--bottom-nav-safe-offset) + var(--mobile-action-bar-safe-offset) + var(--page-bottom-gap));
     --mobile-action-bar-bottom: calc(var(--bottom-nav-safe-offset) + 0.5rem);
   }
 
@@ -224,6 +226,469 @@
 
   html.compact .mobile-topbar__subtitle {
     font-size: 0.6875rem;
+  }
+
+  /* === MOBILE APP BAR — iOS-style sticky top bar === */
+  .mobile-app-bar {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: 0.75rem;
+    background: hsl(var(--background) / 0.96);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid hsl(var(--border) / 0.7);
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.4);
+  }
+
+  .mobile-app-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem calc(0.5rem + env(safe-area-inset-top, 0px));
+    min-height: 3.25rem;
+  }
+
+  .mobile-app-bar__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.08);
+    transition: background-color var(--duration-fast) var(--ease-smooth);
+  }
+
+  .mobile-app-bar__back:hover {
+    background: hsl(var(--primary) / 0.14);
+  }
+
+  .mobile-app-bar__title {
+    font-size: 1rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+
+  .mobile-app-bar__ticker {
+    font-size: 1.125rem;
+    line-height: 1.2;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mobile-app-bar__subtitle {
+    margin-top: 0.125rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
+    color: hsl(var(--muted-foreground));
+    letter-spacing: 0.01em;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-app-bar {
+      display: none;
+    }
+  }
+
+  /* === MOBILE QUICK ACTION — rounded action shortcut === */
+  .mobile-quick-action {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 1.25rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.7);
+    color: inherit;
+    transition: transform var(--duration-fast) var(--ease-spring), background-color var(--duration-fast) var(--ease-smooth);
+    min-height: 3.5rem;
+  }
+
+  .mobile-quick-action:active {
+    transform: scale(0.98);
+  }
+
+  .mobile-quick-action:hover {
+    background: hsl(var(--accent) / 0.5);
+  }
+
+  .mobile-quick-action--primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(217 91% 60%) 100%);
+    color: hsl(var(--primary-foreground));
+    border: none;
+  }
+
+  .mobile-quick-action--primary:hover {
+    background: linear-gradient(135deg, hsl(217 91% 45%) 0%, hsl(217 91% 55%) 100%);
+  }
+
+  .mobile-quick-action__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
+    flex-shrink: 0;
+  }
+
+  .mobile-quick-action--primary .mobile-quick-action__icon {
+    background: hsl(0 0% 100% / 0.18);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .mobile-quick-action__label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+
+  .mobile-quick-action__desc {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .mobile-quick-action--primary .mobile-quick-action__desc {
+    color: hsl(0 0% 100% / 0.8);
+  }
+
+  /* === MOBILE SECTION TABS — pill segmented === */
+  .mobile-section-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    overflow-x: auto;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: hsl(var(--muted) / 0.6);
+  }
+
+  .mobile-section-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    transition: background-color var(--duration-fast) var(--ease-smooth);
+  }
+
+  .mobile-section-tab--active {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.08);
+  }
+
+  .mobile-section-tab__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-section-tab__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    padding: 0 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .mobile-section-tab__count--active {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  /* === MOBILE ACTION BAR — sticky bottom primary action === */
+  .mobile-action-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bottom-nav-safe-offset);
+    z-index: 38;
+    padding: 0.625rem 0.75rem;
+    pointer-events: none;
+  }
+
+  .mobile-action-bar__panel {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.375rem;
+    border-radius: 1.25rem;
+    background: hsl(var(--background) / 0.96);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid hsl(var(--border) / 0.7);
+    box-shadow:
+      0 12px 36px hsl(222 25% 11% / 0.16),
+      0 2px 6px hsl(222 25% 11% / 0.06);
+    pointer-events: auto;
+  }
+
+  .dark .mobile-action-bar__panel {
+    box-shadow:
+      0 12px 36px hsl(0 0% 0% / 0.45),
+      0 2px 6px hsl(0 0% 0% / 0.25);
+  }
+
+  .mobile-action-bar__btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.875rem;
+    padding: 0 1rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: -0.01em;
+    min-height: 44px;
+    transition: background-color var(--duration-fast) var(--ease-smooth), transform var(--duration-instant) var(--ease-spring);
+  }
+
+  .mobile-action-bar__btn--primary {
+    flex: 2;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 6px 14px hsl(var(--primary) / 0.28);
+  }
+
+  .mobile-action-bar__btn--primary:active {
+    transform: scale(0.98);
+    background: hsl(217 91% 42%);
+  }
+
+  .mobile-action-bar__btn--secondary {
+    background: hsl(var(--muted) / 0.7);
+    color: hsl(var(--foreground));
+  }
+
+  .mobile-action-bar__btn--secondary:active {
+    transform: scale(0.98);
+    background: hsl(var(--muted));
+  }
+
+  .mobile-action-bar__icon {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .mobile-action-bar__label {
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-action-bar {
+      display: none !important;
+    }
+  }
+
+  /* === MOBILE STAT ROW — dense 3-up indicator strip === */
+  .mobile-stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: 1.25rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.7);
+    overflow: hidden;
+  }
+
+  .mobile-stat-row__cell {
+    padding: 0.75rem 0.625rem;
+    text-align: center;
+    border-right: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  .mobile-stat-row__cell:last-child {
+    border-right: 0;
+  }
+
+  .mobile-stat-row__label {
+    font-size: 0.625rem;
+    line-height: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .mobile-stat-row__value {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.1;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 380px) {
+    .mobile-stat-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mobile-stat-row__cell:nth-child(2) {
+      border-right: 0;
+    }
+    .mobile-stat-row__cell:nth-child(3) {
+      border-top: 1px solid hsl(var(--border) / 0.6);
+    }
+  }
+
+  /* === MOBILE LIST ITEM — dense list row === */
+  .mobile-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    min-height: 2.75rem;
+    transition: background-color var(--duration-fast) var(--ease-smooth);
+  }
+
+  .mobile-list-item--divided {
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  .mobile-list-item:last-child.mobile-list-item--divided {
+    border-bottom: 0;
+  }
+
+  .mobile-list-item:hover,
+  .mobile-list-item:active {
+    background: hsl(var(--accent) / 0.5);
+  }
+
+  /* === MOBILE SEGMENTED — inline filter switch === */
+  .mobile-segmented {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: hsl(var(--muted) / 0.7);
+    width: 100%;
+  }
+
+  .mobile-segmented__btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.25rem;
+    padding: 0 0.625rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    transition: background-color var(--duration-fast) var(--ease-smooth);
+  }
+
+  .mobile-segmented__btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.08);
+  }
+
+  /* === MOBILE HERO PANEL — primary identity card on first viewport === */
+  .mobile-hero {
+    margin: 0 -0.25rem 1rem;
+    padding: 1.125rem 1.25rem 1.25rem;
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(160deg, hsl(var(--primary) / 0.95) 0%, hsl(217 91% 60%) 100%),
+      hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 16px 40px hsl(217 91% 50% / 0.22);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(80% 60% at 100% 0%, hsl(0 0% 100% / 0.18) 0%, transparent 60%),
+      radial-gradient(60% 40% at 0% 100%, hsl(0 0% 100% / 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .mobile-hero__row {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .mobile-hero__value {
+    font-size: 1.875rem;
+    line-height: 1.1;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mobile-hero__delta {
+    margin-top: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: hsl(0 0% 100% / 0.18);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    width: fit-content;
+  }
+
+  .mobile-hero__label {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    color: hsl(0 0% 100% / 0.8);
+  }
+
+  .mobile-hero__sub {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: hsl(0 0% 100% / 0.85);
+  }
+
+  /* === MOBILE LIST BLOCK — wrapper card for dense list === */
+  .mobile-list-block {
+    border-radius: 1.5rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.7);
+    padding: 0.375rem 0.75rem;
+  }
+
+  .mobile-list-block--inset {
+    background: transparent;
+    border: 0;
+    padding: 0;
   }
 
   @media (min-width: 768px) {
@@ -583,7 +1048,8 @@
  * ============================================================ */
 html.compact {
   --page-bottom-gap: 0.75rem;
-  --page-main-padding-bottom-with-actions: calc(var(--bottom-nav-safe-offset) + 5.25rem);
+  --mobile-action-bar-height: 3.75rem;
+  --page-main-padding-bottom-with-actions: calc(var(--bottom-nav-safe-offset) + var(--mobile-action-bar-safe-offset) + 0.75rem);
   --mobile-action-bar-bottom: calc(var(--bottom-nav-safe-offset) + 0.375rem);
   font-size: 13px;
 }

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  ChevronRight,
   ArrowDownRight,
   Activity,
   Filter,
@@ -17,6 +16,7 @@ import {
   TrendingUp,
   TrendingDown,
   Inbox,
+  ChevronRight,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { StockSearch } from "@/components/stock-search";
@@ -33,6 +33,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Disclaimer } from "@/components/alert";
+import { MobileAppBar, MobileQuickAction, MobileListItem } from "@/components/mobile-app-bar";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 
 interface MarketStock {
@@ -88,36 +89,106 @@ export default function HomePage() {
     fetchOverview();
   };
 
+  const totalMovers = topGainers.length + topLosers.length;
+  const hasMarketData = totalMovers > 0;
+
   return (
     <div className="app-shell min-h-screen bg-background">
       <TopHeader />
 
+      <MobileAppBar
+        title="Beranda"
+        subtitle="Cari saham, pantau watchlist, cek portfolio"
+        trailing={
+          <Link
+            href="/search"
+            aria-label="Cari saham"
+            className="mobile-app-bar__back !w-10 !h-10"
+          >
+            <Search className="h-5 w-5" />
+          </Link>
+        }
+      />
+
       <main className="page-main container space-y-3">
         <OnboardingTour />
 
-        {/* Slim inline search */}
-        <Card className="p-2.5">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />
-            <div className="flex-1">
-              <StockSearch />
+        {/* MOBILE: Hero search */}
+        <div className="md:hidden space-y-3">
+          <section className="rounded-2xl border bg-card p-3">
+            <div className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-muted-foreground shrink-0 ml-1" />
+              <div className="flex-1">
+                <StockSearch />
+              </div>
             </div>
+          </section>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <MobileQuickAction
+              href="/search"
+              icon={<Search className="h-4 w-4" />}
+              label="Cari Saham"
+              description="900+ emiten IDX"
+            />
+            <MobileQuickAction
+              href="/watchlist"
+              icon={<Star className="h-4 w-4" />}
+              label="Watchlist"
+              description="Saham favorit kamu"
+            />
+            <MobileQuickAction
+              href="/portfolio"
+              icon={<Briefcase className="h-4 w-4" />}
+              label="Portfolio"
+              description="Lacak performa investasi"
+            />
+            <MobileQuickAction
+              href="/compare"
+              icon={<Scale className="h-4 w-4" />}
+              label="Bandingkan"
+              description="2-3 saham IDX"
+            />
+            <MobileQuickAction
+              href="/screener"
+              icon={<Filter className="h-4 w-4" />}
+              label="Screener"
+              description="Scan peluang teknikal"
+            />
+            <MobileQuickAction
+              href="/backtest"
+              icon={<FlaskConical className="h-4 w-4" />}
+              label="Backtest"
+              description="Uji strategi historis"
+            />
           </div>
-        </Card>
+        </div>
+
+        {/* DESKTOP: Slim inline search */}
+        <div className="hidden md:block">
+          <Card className="p-2.5">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />
+              <div className="flex-1">
+                <StockSearch />
+              </div>
+            </div>
+          </Card>
+        </div>
 
         <Disclaimer />
 
-        {/* Daily Briefing — most important, always shown */}
+        {/* Daily Briefing */}
         <DailyBriefing />
 
-        {/* Today's Movers — compact dense rows */}
+        {/* Today's Movers */}
         <CollapsibleSection
           title="Pergerakan Hari Ini"
           icon={<Activity className="h-4 w-4 text-primary" />}
           accessory={
             !loading && !error && (
               <span className="text-[10px] text-muted-foreground">
-                {topGainers.length + topLosers.length}
+                {totalMovers}
               </span>
             )
           }
@@ -130,7 +201,7 @@ export default function HomePage() {
               className="inline-flex min-h-9 items-center gap-0.5 rounded-full px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
               aria-label="Buka screener untuk lihat semua saham"
             >
-              Semua →
+              Semua <ChevronRight className="h-3 w-3" />
             </Link>
           }
           framed={false}
@@ -146,7 +217,7 @@ export default function HomePage() {
             <div className="px-1 py-1">
               <StockRowSkeleton count={6} />
             </div>
-          ) : topGainers.length === 0 && topLosers.length === 0 ? (
+          ) : !hasMarketData ? (
             <EmptyState
               icon={<Inbox className="h-5 w-5" aria-hidden />}
               title="Belum ada pergerakan"
@@ -199,56 +270,54 @@ export default function HomePage() {
           )}
         </CollapsibleSection>
 
-        {/* Quick Actions — horizontal scroll chips */}
-        <CollapsibleSection
-          title="Aksi Cepat"
-          icon={<BarChart3 className="h-4 w-4 text-primary" />}
-          storageKey="home.quick.open"
-          defaultOpen={true}
-          framed={false}
-        >
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-            <QuickChip href="/screener" icon={<Filter className="h-3.5 w-3.5" />} label="Screener" />
-            <QuickChip href="/portfolio" icon={<Briefcase className="h-3.5 w-3.5" />} label="Portfolio" />
-            <QuickChip href="/watchlist" icon={<Star className="h-3.5 w-3.5" />} label="Watchlist" />
-            <QuickChip href="/compare" icon={<Scale className="h-3.5 w-3.5" />} label="Compare" />
-            <QuickChip href="/backtest" icon={<FlaskConical className="h-3.5 w-3.5" />} label="Backtest" />
-            <QuickChip href="/settings" icon={<BarChart3 className="h-3.5 w-3.5" />} label="Settings" />
-          </div>
-        </CollapsibleSection>
+        {/* DESKTOP-only sections: deeper analytics */}
+        <div className="hidden md:block space-y-3">
+          <CollapsibleSection
+            title="Aksi Cepat"
+            icon={<BarChart3 className="h-4 w-4 text-primary" />}
+            storageKey="home.quick.open"
+            defaultOpen={true}
+            framed={false}
+          >
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+              <QuickChip href="/screener" icon={<Filter className="h-3.5 w-3.5" />} label="Screener" />
+              <QuickChip href="/portfolio" icon={<Briefcase className="h-3.5 w-3.5" />} label="Portfolio" />
+              <QuickChip href="/watchlist" icon={<Star className="h-3.5 w-3.5" />} label="Watchlist" />
+              <QuickChip href="/compare" icon={<Scale className="h-3.5 w-3.5" />} label="Compare" />
+              <QuickChip href="/backtest" icon={<FlaskConical className="h-3.5 w-3.5" />} label="Backtest" />
+              <QuickChip href="/settings" icon={<BarChart3 className="h-3.5 w-3.5" />} label="Settings" />
+            </div>
+          </CollapsibleSection>
 
-        {/* Fundamental Screener — secondary, collapsed by default */}
-        <CollapsibleSection
-          title="Saham Fundamental Bagus"
-          icon={<TrendingUp className="h-4 w-4 text-bull-600" />}
-          storageKey="home.screener.open"
-          defaultOpen={false}
-        >
-          <FundamentalScreener />
-        </CollapsibleSection>
+          <CollapsibleSection
+            title="Saham Fundamental Bagus"
+            icon={<TrendingUp className="h-4 w-4 text-bull-600" />}
+            storageKey="home.screener.open"
+            defaultOpen={false}
+          >
+            <FundamentalScreener />
+          </CollapsibleSection>
 
-        {/* Sector Heatmap — secondary, collapsed by default */}
-        <CollapsibleSection
-          title="Sector Heatmap"
-          icon={<Activity className="h-4 w-4 text-cyan-600" />}
-          storageKey="home.heatmap.open"
-          defaultOpen={false}
-        >
-          <SectorHeatmap />
-        </CollapsibleSection>
+          <CollapsibleSection
+            title="Sector Heatmap"
+            icon={<Activity className="h-4 w-4 text-cyan-600" />}
+            storageKey="home.heatmap.open"
+            defaultOpen={false}
+          >
+            <SectorHeatmap />
+          </CollapsibleSection>
 
-        {/* Foreign Flow — secondary, collapsed by default */}
-        <CollapsibleSection
-          title="Foreign Flow"
-          icon={<ArrowDownRight className="h-4 w-4 text-fuchsia-600" />}
-          subtitle="Estimasi aktivitas asing (proxy volume spike)"
-          storageKey="home.foreign.open"
-          defaultOpen={false}
-        >
-          <ForeignFlow />
-        </CollapsibleSection>
+          <CollapsibleSection
+            title="Foreign Flow"
+            icon={<ArrowDownRight className="h-4 w-4 text-fuchsia-600" />}
+            subtitle="Estimasi aktivitas asing (proxy volume spike)"
+            storageKey="home.foreign.open"
+            defaultOpen={false}
+          >
+            <ForeignFlow />
+          </CollapsibleSection>
+        </div>
 
-        {/* Footer — minimal */}
         <footer className="text-center text-[10px] text-muted-foreground py-3">
           📊 Yahoo Finance • Not financial advice
         </footer>

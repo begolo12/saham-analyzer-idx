@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Share2, ArrowLeft, Loader2, Check, Plus, Copy, Star } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
+import { MobileAppBar } from "@/components/mobile-app-bar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/alert";
@@ -147,6 +148,11 @@ function ShareWatchlistContent() {
   return (
     <div className="app-shell min-h-screen bg-background">
       <TopHeader />
+      <MobileAppBar
+        title="Watchlist Share"
+        subtitle={tickers.length > 0 ? `${tickers.length} saham dari ${owner}` : "Import watchlist dari link"}
+        backHref="/watchlist"
+      />
       <main className="page-main container space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/watchlist" aria-label="Kembali ke Watchlist">

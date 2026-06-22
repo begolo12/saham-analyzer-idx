@@ -8,13 +8,16 @@ import {
   Trash2,
   Loader2,
   ArrowLeft,
-  Inbox,
   ArrowUpDown,
   Filter,
   Sparkles,
   Flame,
   Bell,
   Share2,
+  ChevronRight,
+  Plus,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,11 +48,13 @@ import {
   showNotification,
   NotificationTemplates,
 } from "@/lib/notifications";
+import { MobileAppBar, MobileSectionTabs, MobileListItem } from "@/components/mobile-app-bar";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
 
 type SortBy = "default" | "hot" | "change" | "name" | "viewed";
 type SectorFilter = "all" | string;
+type MobileSection = "watching" | "alerts" | "discovery";
 
 export default function WatchlistPage() {
   const router = useRouter();
@@ -61,8 +66,8 @@ export default function WatchlistPage() {
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>("all");
   const [alertModalTicker, setAlertModalTicker] = useState<string | null>(null);
+  const [mobileSection, setMobileSection] = useState<MobileSection>("watching");
 
-  // Load watchlist + alerts + sync across tabs
   useEffect(() => {
     setMounted(true);
     setItems(getWatchlistItems());
@@ -76,13 +81,12 @@ export default function WatchlistPage() {
     window.addEventListener("storage", alertHandler);
     return () => {
       window.removeEventListener("watchlist-updated", handler);
-      window.removeEventListener("alerts-updated", alertHandler);
+      window.removeEventListener("alerts-updated", handler);
       window.removeEventListener("storage", handler);
       window.removeEventListener("storage", alertHandler);
     };
   }, []);
 
-  // Fetch live prices for all watchlist tickers
   useEffect(() => {
     if (!mounted) return;
     if (items.length === 0) {
@@ -114,7 +118,6 @@ export default function WatchlistPage() {
       setData(map);
       setLoading(false);
 
-      // Check alerts after prices load
       const priceMap: Record<string, number | null> = {};
       for (const [t, d] of entries) {
         if (d && typeof d.price === "number") priceMap[t] = d.price;
@@ -123,9 +126,7 @@ export default function WatchlistPage() {
       if (currentAlerts.some((a) => a.status === "armed")) {
         const { newlyTriggered } = checkAlerts(currentAlerts, priceMap);
         if (newlyTriggered.length > 0) {
-          // Update local state to reflect new statuses
           setAlerts(getAlerts());
-          // Show toast + browser notification per triggered alert
           for (const a of newlyTriggered) {
             const directionText =
               a.direction === "above" ? "naik di atas" : "turun ke bawah";
@@ -133,7 +134,6 @@ export default function WatchlistPage() {
               `🔔 ${a.ticker} ${directionText} ${formatIDR(a.threshold)} (saat ini ${formatIDR(a.triggeredPrice ?? 0)})`,
               { duration: 8000 },
             );
-            // Browser notification (if user granted permission + enabled)
             showNotification(
               NotificationTemplates.alertTriggered(
                 a.ticker,
@@ -166,7 +166,6 @@ export default function WatchlistPage() {
     toast.success(`⭐ ${ticker} added to watchlist`);
   };
 
-  // Sector list (only from watched stocks that have data)
   const availableSectors = useMemo(() => {
     const set = new Set<string>();
     for (const item of items) {
@@ -176,18 +175,15 @@ export default function WatchlistPage() {
     return Array.from(set).sort();
   }, [items, data]);
 
-  // Filter by sector
   const filteredItems = useMemo(() => {
     if (sectorFilter === "all") return items;
     return items.filter((i) => data[i.ticker]?.sector === sectorFilter);
   }, [items, data, sectorFilter]);
 
-  // Sort
   const sortedItems = useMemo(() => {
     const arr = [...filteredItems];
     switch (sortBy) {
       case "hot":
-        // By |changePct| desc
         arr.sort((a, b) => {
           const ca = Math.abs(data[a.ticker]?.changePct ?? 0);
           const cb = Math.abs(data[b.ticker]?.changePct ?? 0);
@@ -204,7 +200,6 @@ export default function WatchlistPage() {
         arr.sort((a, b) => b.viewCount - a.viewCount);
         break;
       default:
-        // Default: most recently added first, then by viewCount as tiebreaker
         arr.sort((a, b) => {
           if (b.viewCount !== a.viewCount) return b.viewCount - a.viewCount;
           return b.addedAt - a.addedAt;
@@ -213,30 +208,27 @@ export default function WatchlistPage() {
     return arr;
   }, [filteredItems, sortBy, data]);
 
-  // Smart Alerts — stocks with |Δ| > 3% today
   const smartAlerts = useMemo(() => {
-    const alerts: { stock: WatchlistStockData; type: "hot" | "drop"; text: string }[] = [];
+    const next: { stock: WatchlistStockData; type: "hot" | "drop"; text: string }[] = [];
     for (const item of items) {
       const s = data[item.ticker];
       if (!s) continue;
       const pct = s.changePct ?? 0;
       if (pct >= 3) {
-        alerts.push({ stock: s, type: "hot", text: `+${pct.toFixed(2)}% hari ini` });
+        next.push({ stock: s, type: "hot", text: `+${pct.toFixed(2)}% hari ini` });
       } else if (pct <= -3) {
-        alerts.push({ stock: s, type: "drop", text: `${pct.toFixed(2)}% hari ini` });
+        next.push({ stock: s, type: "drop", text: `${pct.toFixed(2)}% hari ini` });
       }
     }
-    return alerts;
+    return next;
   }, [items, data]);
 
-  // Discovery — same sector as watched stocks, not yet in watchlist
   const discovery = useMemo(() => {
     if (items.length === 0) return [];
     const watchedTickers = new Set(items.map((i) => i.ticker));
     const watchedSectors = new Set(
       items.map((i) => data[i.ticker]?.sector).filter(Boolean),
     );
-    // Limit to top 6 candidates by changePct (live data if we have it)
     return POPULAR_STOCKS.filter(
       (s) =>
         !watchedTickers.has(s.code) && watchedSectors.has(s.sector),
@@ -254,7 +246,6 @@ export default function WatchlistPage() {
       });
   }, [items, data]);
 
-  // Self-learning summary
   const totalViews = useMemo(
     () => items.reduce((sum, i) => sum + i.viewCount, 0),
     [items],
@@ -263,6 +254,8 @@ export default function WatchlistPage() {
     const arr = [...items].sort((a, b) => b.viewCount - a.viewCount);
     return arr.find((i) => i.viewCount > 0);
   }, [items]);
+
+  const triggeredCount = alerts.filter((a) => a.status === "triggered").length;
 
   if (!mounted) {
     return (
@@ -278,31 +271,22 @@ export default function WatchlistPage() {
 
   return (
     <div className="app-shell min-h-screen bg-background">
-      <main className="page-main container space-y-4">
-        <div className="mobile-topbar md:hidden">
-          <div className="mobile-topbar__inner">
-            <div className="min-w-0 flex-1">
-              <div className="mobile-topbar__title flex items-center gap-2">
-                <Star className="h-5 w-5 text-amber-500 fill-amber-500" aria-hidden />
-                Watchlist
-                {items.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {items.length}
-                  </Badge>
-                )}
-              </div>
-              <div className="mobile-topbar__subtitle">Pantau saham favorit, alert, dan discovery sektor</div>
-            </div>
-            {items.length > 0 && (
-              <div className="flex shrink-0 items-center gap-1">
-                <ShareWatchlistButton tickers={items.map((i) => i.ticker)} />
-              </div>
-            )}
-          </div>
-        </div>
+      <MobileAppBar
+        title="Watchlist"
+        subtitle={
+          items.length > 0
+            ? `${items.length} saham • ${triggeredCount} alert`
+            : "Tambah saham favorit dari halaman analisa"
+        }
+        backHref="/"
+        trailing={
+          items.length > 0 ? <ShareWatchlistButton tickers={items.map((i) => i.ticker)} /> : null
+        }
+      />
 
-        {/* Header */}
-        <div className="hidden items-center justify-between md:flex">
+      <main className="page-main container space-y-4">
+        {/* DESKTOP: keep legacy header */}
+        <div className="hidden md:flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" aria-label="Kembali ke Beranda">
               <Button variant="ghost" size="sm" className="min-h-9">
@@ -337,289 +321,445 @@ export default function WatchlistPage() {
           )}
         </div>
 
-        {items.length > 0 && (
-          <div className="page-hero-card p-4 md:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="page-eyebrow">Monitor cepat</div>
-                <div className="mt-1 text-sm font-bold">{alerts.filter((a) => a.status === "triggered").length} alert hit • {smartAlerts.length} smart alerts</div>
-                <div className="mt-1 text-xs text-muted-foreground">Tap saham untuk buka detail, alert selalu terlihat di touch.</div>
+        {items.length === 0 ? (
+          <div className="md:hidden">
+            <Card className="p-6 text-center">
+              <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                <Star className="h-6 w-6" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAll}
-                className="min-h-9 shrink-0 text-xs"
-                aria-label="Hapus semua saham dari watchlist"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-              </Button>
-            </div>
+              <h2 className="mt-3 text-lg font-bold">Mulai watchlist</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Tap ⭐ di halaman analisa saham untuk menambah ke watchlist
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-2">
+                <Button
+                  onClick={() => router.push("/search")}
+                  className="min-h-11 w-full"
+                >
+                  <SearchPlusCari />
+                  Cari saham populer
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/screener")}
+                  className="min-h-11 w-full"
+                >
+                  Buka screener
+                </Button>
+              </div>
+            </Card>
           </div>
-        )}
-
-        {/* Self-learning Insight Banner */}
-        {items.length > 0 && totalViews > 0 && mostViewed && (
-          <Alert variant="info" className="bg-primary/5 border-primary/20">
-            <div className="flex items-start gap-2">
-              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <div className="text-xs flex-1">
-                <strong className="font-bold">Self-Learning Aktif:</strong>{" "}
-                Anda telah melihat watchlist <strong>{totalViews}×</strong> total.
-                Favorit Anda:{" "}
-                <Link
-                  href={`/stock/${mostViewed.ticker}`}
-                  className="font-bold underline"
-                >
-                  {mostViewed.ticker}
-                </Link>{" "}
-                ({mostViewed.viewCount}× dilihat). Sorted by popularitas.
+        ) : (
+          <>
+            {/* MOBILE: Hero summary */}
+            <section className="md:hidden">
+              <div className="mobile-hero">
+                <div className="page-eyebrow text-white/80">Watchlist</div>
+                <div className="mobile-hero__row">
+                  <div>
+                    <div className="mobile-hero__value">{items.length}</div>
+                    <div className="mobile-hero__delta">
+                      {triggeredCount > 0 ? <Bell className="h-3 w-3" /> : <Star className="h-3 w-3" />}
+                      <span>{triggeredCount > 0 ? `${triggeredCount} alert triggered` : `${smartAlerts.length} smart alerts`}</span>
+                    </div>
+                    {totalViews > 0 && (
+                      <div className="mobile-hero__sub">
+                        {totalViews} kali dilihat • favorit: {mostViewed?.ticker}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </Alert>
-        )}
 
-        {/* Empty State */}
-        {items.length === 0 && (
-          <EmptyState
-            icon={<Star className="h-6 w-6 text-amber-500" aria-hidden />}
-            title="Watchlist kosong"
-            description="Tambahkan saham favorit dari halaman analisa untuk monitoring harga real-time + smart alerts."
-            actions={[
-              {
-                label: "Jelajahi saham",
-                icon: <Star className="h-3 w-3" aria-hidden />,
-                onClick: () => router.push("/"),
-              },
-              {
-                label: "Cari saham",
-                variant: "secondary",
-                icon: <Filter className="h-3 w-3" aria-hidden />,
-                onClick: () => router.push("/search"),
-              },
-            ]}
-          />
-        )}
+              <MobileSectionTabs<MobileSection>
+                value={mobileSection}
+                onChange={setMobileSection}
+                options={[
+                  { value: "watching", label: "Watching", count: items.length },
+                  { value: "alerts", label: "Alerts", count: triggeredCount + smartAlerts.length },
+                  { value: "discovery", label: "Discovery", count: discovery.length },
+                ]}
+              />
+            </section>
 
-        {/* Sort + Filter bar (only when has items) */}
-        {items.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
-                <ArrowUpDown className="h-3 w-3" />
-                Sort
-              </span>
-              {[
-                { key: "default", label: "Favorit" },
-                { key: "hot", label: "🔥 Hot" },
-                { key: "change", label: "% Change" },
-                { key: "name", label: "A-Z" },
-                { key: "viewed", label: "👁 Dilihat" },
-              ].map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setSortBy(opt.key as SortBy)}
-                  aria-pressed={sortBy === opt.key}
-                  className={cn(
-                    "shrink-0 inline-flex min-h-9 items-center rounded-full px-3 py-1 text-xs font-bold transition-colors",
-                    sortBy === opt.key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-accent",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {availableSectors.length > 0 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
-                  <Filter className="h-3 w-3" />
-                  Filter
-                </span>
-                <button
-                  onClick={() => setSectorFilter("all")}
-                  className={cn(
-                    "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
-                    sectorFilter === "all"
-                      ? "bg-foreground text-background"
-                      : "bg-muted hover:bg-accent",
-                  )}
-                >
-                  Semua ({items.length})
-                </button>
-                {availableSectors.map((sec) => {
-                  const count = items.filter(
-                    (i) => data[i.ticker]?.sector === sec,
-                  ).length;
-                  return (
-                    <button
-                      key={sec}
-                      onClick={() => setSectorFilter(sec)}
-                      className={cn(
-                        "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
-                        sectorFilter === sec
-                          ? "bg-foreground text-background"
-                          : "bg-muted hover:bg-accent",
-                      )}
-                    >
-                      {sec} ({count})
-                    </button>
-                  );
-                })}
+            {/* MOBILE: Watching section */}
+            {mobileSection === "watching" && (
+              <div className="md:hidden space-y-3">
+                <FilterBar
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  sectorFilter={sectorFilter}
+                  setSectorFilter={setSectorFilter}
+                  availableSectors={availableSectors}
+                />
+                {loading ? (
+                  <div className="space-y-1" aria-label="Memuat data watchlist">
+                    <StockRowSkeleton count={Math.max(items.length, 3)} />
+                  </div>
+                ) : sortedItems.length > 0 ? (
+                  <div className="rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden">
+                    {sortedItems.map((item) => {
+                      const stock = data[item.ticker];
+                      if (!stock) return null;
+                      const isUp = (stock.changePct ?? 0) >= 0;
+                      const showChange = stock.changePct !== null && stock.changePct !== undefined;
+                      return (
+                        <MobileListItem
+                          key={item.ticker}
+                          href={`/stock/${item.ticker}`}
+                          ticker={item.ticker}
+                          name={stock.name}
+                          sector={stock.sector}
+                          price={showChange && stock.price !== null ? formatIDR(stock.price) : undefined}
+                          change={showChange ? { text: formatPercent(stock.changePct), positive: isUp } : undefined}
+                          accessory={
+                            <div className="flex items-center gap-1">
+                              {triggeredAlertFor(item.ticker) && (
+                                <Bell className="h-3.5 w-3.5 text-amber-500" aria-label="Alert triggered" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  remove(item.ticker);
+                                }}
+                                aria-label={`Hapus ${item.ticker} dari watchlist`}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-bear-100 hover:text-bear-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={<Filter className="h-5 w-5" aria-hidden />}
+                    title="Tidak ada saham di filter ini"
+                    description="Coba reset filter untuk melihat semua saham."
+                    actions={[
+                      {
+                        label: "Reset filter",
+                        onClick: () => setSectorFilter("all"),
+                      },
+                    ]}
+                  />
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Triggered Price Alerts */}
-        {alerts.some((a) => a.status === "triggered") && (
-          <div>
-            <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
-              <Bell className="h-5 w-5 text-amber-500 animate-pulse" />
-              Price Alerts Triggered
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {alerts
-                .filter((a) => a.status === "triggered")
-                .map((a) => (
-                  <Card
-                    key={a.id}
-                    className="p-3 border-amber-500/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-700/10 dark:to-amber-700/5"
-                  >
-                    <div className="flex items-start gap-2">
-                      <Bell className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm">{a.ticker}</span>
-                          <Badge variant="bull" className="text-[10px]">
-                            ✓ Hit Target
-                          </Badge>
+            {/* MOBILE: Alerts section */}
+            {mobileSection === "alerts" && (
+              <div className="md:hidden space-y-2">
+                {alerts.filter((a) => a.status === "triggered").length === 0 && smartAlerts.length === 0 ? (
+                  <EmptyState
+                    icon={<Bell className="h-5 w-5" aria-hidden />}
+                    title="Belum ada alert"
+                    description="Tambahkan alert harga di tiap saham untuk dapat notifikasi."
+                    actions={[
+                      {
+                        label: "Lihat watchlist",
+                        onClick: () => setMobileSection("watching"),
+                      },
+                    ]}
+                  />
+                ) : (
+                  <>
+                    {alerts.filter((a) => a.status === "triggered").map((a) => (
+                      <Card key={a.id} className="p-3 border-amber-500/40">
+                        <div className="flex items-start gap-2">
+                          <Bell className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm">{a.ticker}</span>
+                              <Badge variant="bull" className="text-[10px]">Triggered</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {a.direction === "above" ? "Naik" : "Turun"} {formatIDR(a.threshold)}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setAlertModalTicker(a.ticker)}
+                              className="mt-2 -ml-1 text-[11px]"
+                            >
+                              Atur alert
+                            </Button>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {a.direction === "above" ? "Naik" : "Turun"}{" "}
-                          {formatIDR(a.threshold)} → saat ini{" "}
-                          <strong className="text-foreground">
-                            {formatIDR(a.triggeredPrice ?? 0)}
-                          </strong>
+                      </Card>
+                    ))}
+                    {smartAlerts.map(({ stock, type, text }) => (
+                      <Link key={stock.code} href={`/stock/${stock.code}`}>
+                        <Card className="p-3 hover:bg-accent/50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            {type === "hot" ? (
+                              <Flame className="h-4 w-4 text-bull-600 shrink-0" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 text-bear-600 shrink-0" />
+                            )}
+                            <span className="font-bold text-sm">{stock.code}</span>
+                            <span className={cn("text-xs font-bold tabular-nums ml-auto", type === "hot" ? "text-bull-600" : "text-bear-600")}>
+                              {text}
+                            </span>
+                          </div>
+                        </Card>
+                      </Link>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* MOBILE: Discovery section */}
+            {mobileSection === "discovery" && (
+              <div className="md:hidden space-y-2">
+                {discovery.length === 0 ? (
+                  <EmptyState
+                    icon={<Sparkles className="h-5 w-5" aria-hidden />}
+                    title="Belum ada discovery"
+                    description="Saham di sektor yang sama dengan watchlist kamu akan muncul di sini."
+                  />
+                ) : (
+                  discovery.map((d) => {
+                    const isUp = (d.changePct ?? 0) >= 0;
+                    return (
+                      <Card key={d.code} className="p-3">
+                        <div className="flex items-center gap-3">
+                          <Link href={`/stock/${d.code}`} className="flex-1 min-w-0">
+                            <div className="font-bold text-sm">{d.code}</div>
+                            <div className="text-xs text-muted-foreground truncate">{d.name} · {d.sector}</div>
+                            {d.price !== null && (
+                              <div className="mt-0.5 flex items-center gap-2 text-[11px] tabular-nums">
+                                <span className="font-semibold">{formatIDR(d.price)}</span>
+                                {d.changePct !== null && (
+                                  <span className={cn("font-bold", isUp ? "text-bull-600" : "text-bear-600")}>
+                                    {formatPercent(d.changePct)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </Link>
+                          <Button
+                            size="sm"
+                            onClick={() => addToWatchlist(d.code)}
+                            className="min-h-9"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Watch
+                          </Button>
                         </div>
-                      </div>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* DESKTOP: keep legacy layout */}
+            <div className="hidden md:block space-y-2">
+              {items.length > 0 && totalViews > 0 && mostViewed && (
+                <Alert variant="info" className="bg-primary/5 border-primary/20">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="text-xs flex-1">
+                      <strong className="font-bold">Self-Learning Aktif:</strong>{" "}
+                      Anda telah melihat watchlist <strong>{totalViews}×</strong> total.
+                      Favorit Anda:{" "}
+                      <Link
+                        href={`/stock/${mostViewed.ticker}`}
+                        className="font-bold underline"
+                      >
+                        {mostViewed.ticker}
+                      </Link>{" "}
+                      ({mostViewed.viewCount}× dilihat). Sorted by popularitas.
                     </div>
-                  </Card>
-                ))}
-            </div>
-          </div>
-        )}
+                  </div>
+                </Alert>
+              )}
 
-        {/* Smart Alerts Section */}
-        {smartAlerts.length > 0 && (
-          <div>
-            <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
-              <Flame className="h-5 w-5 text-orange-500" />
-              Smart Alerts ({smartAlerts.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {smartAlerts.map(({ stock, type, text }) => (
-                <AlertCard
-                  key={stock.code}
-                  stock={stock}
-                  alertType={type}
-                  text={text}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+              <FilterBar
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                sectorFilter={sectorFilter}
+                setSectorFilter={setSectorFilter}
+                availableSectors={availableSectors}
+              />
 
-        {/* Loading skeletons */}
-        {loading && items.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Memuat data watchlist">
-            {items.map((i) => (
-              <Card key={i.ticker} className="p-4 space-y-2 animate-pulse">
-                <div className="h-4 w-20 rounded bg-muted" />
-                <div className="h-3 w-32 rounded bg-muted" />
-                <div className="flex justify-between pt-1">
-                  <div className="h-4 w-20 rounded bg-muted" />
-                  <div className="h-4 w-14 rounded bg-muted" />
+              {alerts.some((a) => a.status === "triggered") && (
+                <div>
+                  <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-amber-500 animate-pulse" />
+                    Price Alerts Triggered
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {alerts
+                      .filter((a) => a.status === "triggered")
+                      .map((a) => (
+                        <Card
+                          key={a.id}
+                          className="p-3 border-amber-500/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-700/10 dark:to-amber-700/5"
+                        >
+                          <div className="flex items-start gap-2">
+                            <Bell className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm">{a.ticker}</span>
+                                <Badge variant="bull" className="text-[10px]">
+                                  ✓ Hit Target
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {a.direction === "above" ? "Naik" : "Turun"}{" "}
+                                {formatIDR(a.threshold)} → saat ini{" "}
+                                <strong className="text-foreground">
+                                  {formatIDR(a.triggeredPrice ?? 0)}
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                  </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
+              )}
 
-        {/* Watchlist Grid */}
-        {!loading && sortedItems.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {sortedItems.map((item) => {
-              const stock = data[item.ticker];
-              if (!stock) return null;
-              const itemAlerts = alerts.filter(
-                (a) => a.ticker === item.ticker,
-              );
-              const triggered = itemAlerts.some(
-                (a) => a.status === "triggered",
-              );
-              const armed = itemAlerts.some((a) => a.status === "armed");
-              return (
-                <WatchlistCard
-                  key={item.ticker}
-                  item={item}
-                  stock={stock}
-                  onRemove={remove}
-                  onSetAlert={(t) => setAlertModalTicker(t)}
-                  alertTriggered={triggered}
-                  alertArmed={armed}
-                />
-              );
-            })}
-          </div>
-        )}
+              {smartAlerts.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-orange-500" />
+                    Smart Alerts ({smartAlerts.length})
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {smartAlerts.map(({ stock, type, text }) => (
+                      <AlertCard
+                        key={stock.code}
+                        stock={stock}
+                        alertType={type}
+                        text={text}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-        {/* No results after filter */}
-        {!loading && items.length > 0 && sortedItems.length === 0 && (
-          <Card className="p-6 text-center text-sm text-muted-foreground">
-            Tidak ada saham di sektor &quot;{sectorFilter}&quot;.
-          </Card>
-        )}
+              {loading && items.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Memuat data watchlist">
+                  {items.map((i) => (
+                    <Card key={i.ticker} className="p-4 space-y-2 animate-pulse">
+                      <div className="h-4 w-20 rounded bg-muted" />
+                      <div className="h-3 w-32 rounded bg-muted" />
+                      <div className="flex justify-between pt-1">
+                        <div className="h-4 w-20 rounded bg-muted" />
+                        <div className="h-4 w-14 rounded bg-muted" />
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
-        {/* Discovery Section — similar stocks not yet watched */}
-        {!loading && discovery.length > 0 && (
-          <div>
-            <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Saham Serupa dari Watchlist Anda
-            </h2>
-            <p className="text-xs text-muted-foreground mb-3 px-1">
-              Saham di sektor yang Anda pantau, belum masuk watchlist.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {discovery.map((d) => (
-                <DiscoveryCard
-                  key={d.code}
-                  code={d.code}
-                  name={d.name}
-                  sector={d.sector}
-                  price={d.price}
-                  changePct={d.changePct}
-                  onAdd={() => addToWatchlist(d.code)}
-                />
-              ))}
+              {!loading && sortedItems.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {sortedItems.map((item) => {
+                    const stock = data[item.ticker];
+                    if (!stock) return null;
+                    const itemAlerts = alerts.filter((a) => a.ticker === item.ticker);
+                    const triggered = itemAlerts.some((a) => a.status === "triggered");
+                    const armed = itemAlerts.some((a) => a.status === "armed");
+                    return (
+                      <WatchlistCard
+                        key={item.ticker}
+                        item={item}
+                        stock={stock}
+                        onRemove={remove}
+                        onSetAlert={(t) => setAlertModalTicker(t)}
+                        alertTriggered={triggered}
+                        alertArmed={armed}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {!loading && items.length > 0 && sortedItems.length === 0 && (
+                <Card className="p-6 text-center text-sm text-muted-foreground">
+                  Tidak ada saham di sektor &quot;{sectorFilter}&quot;.
+                </Card>
+              )}
+
+              {!loading && discovery.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Saham Serupa dari Watchlist Anda
+                  </h2>
+                  <p className="text-xs text-muted-foreground mb-3 px-1">
+                    Saham di sektor yang Anda pantau, belum masuk watchlist.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {discovery.map((d) => (
+                      <DiscoveryCard
+                        key={d.code}
+                        code={d.code}
+                        name={d.name}
+                        sector={d.sector}
+                        price={d.price}
+                        changePct={d.changePct}
+                        onAdd={() => addToWatchlist(d.code)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center text-xs text-muted-foreground py-4">
+                <p>Watchlist tersimpan di browser Anda (localStorage)</p>
+                <p className="mt-1">
+                  Hapus/alert tersedia langsung di touch • Set Alert 🔔 untuk notifikasi harga
+                </p>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Footer info */}
-        <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Watchlist tersimpan di browser Anda (localStorage)</p>
-          <p className="mt-1">
-            Klik saham untuk lihat detail • Hapus/alert tersedia langsung di layar touch • Set Alert 🔔 untuk notifikasi harga
-          </p>
-        </div>
+        {items.length > 0 && (
+          <Button
+            onClick={clearAll}
+            variant="ghost"
+            className="min-h-10 w-full text-xs text-muted-foreground md:hidden"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Hapus semua watchlist
+          </Button>
+        )}
+
+        {items.length === 0 && (
+          <div className="hidden md:block">
+            <EmptyState
+              icon={<Star className="h-6 w-6 text-amber-500" aria-hidden />}
+              title="Watchlist kosong"
+              description="Tambahkan saham favorit dari halaman analisa untuk monitoring harga real-time + smart alerts."
+              actions={[
+                {
+                  label: "Jelajahi saham",
+                  icon: <Star className="h-3 w-3" aria-hidden />,
+                  onClick: () => router.push("/"),
+                },
+                {
+                  label: "Cari saham",
+                  variant: "secondary",
+                  icon: <Filter className="h-3 w-3" aria-hidden />,
+                  onClick: () => router.push("/search"),
+                },
+              ]}
+            />
+          </div>
+        )}
       </main>
 
-      {/* Price Alert Modal */}
       {alertModalTicker && (
         <PriceAlertModal
           ticker={alertModalTicker}
@@ -627,6 +767,95 @@ export default function WatchlistPage() {
           existingAlerts={alerts.filter((a) => a.ticker === alertModalTicker)}
           onClose={() => setAlertModalTicker(null)}
         />
+      )}
+    </div>
+  );
+
+  function triggeredAlertFor(ticker: string) {
+    return alerts.some((a) => a.ticker === ticker && a.status === "triggered");
+  }
+}
+
+function SearchPlusCari() {
+  return <span className="font-semibold">Cari</span>;
+}
+
+function FilterBar({
+  sortBy,
+  setSortBy,
+  sectorFilter,
+  setSectorFilter,
+  availableSectors,
+}: {
+  sortBy: SortBy;
+  setSortBy: (s: SortBy) => void;
+  sectorFilter: SectorFilter;
+  setSectorFilter: (s: SectorFilter) => void;
+  availableSectors: string[];
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
+          <ArrowUpDown className="h-3 w-3" />
+          Sort
+        </span>
+        {[
+          { key: "default", label: "Favorit" },
+          { key: "hot", label: "🔥 Hot" },
+          { key: "change", label: "% Change" },
+          { key: "name", label: "A-Z" },
+          { key: "viewed", label: "👁 Dilihat" },
+        ].map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setSortBy(opt.key as SortBy)}
+            aria-pressed={sortBy === opt.key}
+            className={cn(
+              "shrink-0 inline-flex min-h-9 items-center rounded-full px-3 py-1 text-xs font-bold transition-colors",
+              sortBy === opt.key
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-accent",
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {availableSectors.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
+            <Filter className="h-3 w-3" />
+            Sektor
+          </span>
+          <button
+            onClick={() => setSectorFilter("all")}
+            className={cn(
+              "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
+              sectorFilter === "all"
+                ? "bg-foreground text-background"
+                : "bg-muted hover:bg-accent",
+            )}
+          >
+            Semua ({availableSectors.length + 1})
+          </button>
+          {availableSectors.map((sec) => (
+            <button
+              key={sec}
+              onClick={() => setSectorFilter(sec)}
+              className={cn(
+                "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
+                sectorFilter === sec
+                  ? "bg-foreground text-background"
+                  : "bg-muted hover:bg-accent",
+              )}
+            >
+              {sec}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -646,13 +875,12 @@ function ShareWatchlistButton({ tickers }: { tickers: string[] }) {
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="icon"
       onClick={handleShare}
-      className="text-xs"
+      className="text-xs !text-white !hover:bg-white/20"
       aria-label="Bagikan watchlist"
     >
-      <Share2 className="h-4 w-4 mr-1" />
-      <span className="hidden sm:inline">Bagikan</span>
+      <Share2 className="h-4 w-4" />
     </Button>
   );
 }

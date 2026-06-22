@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { MobileAppBar } from "@/components/mobile-app-bar";
 import { POPULAR_STOCKS, SECTORS, type PopularStock } from "@/lib/popular-stocks";
 import { useWatchlist } from "@/lib/watchlist-storage";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
@@ -471,7 +472,12 @@ function SearchPageContent() {
 
   return (
     <div className="container page-main">
-      <div className="sticky top-0 z-20 -mx-4 mb-3 bg-background/95 px-4 pt-3 pb-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-3 sm:pb-0 sm:backdrop-blur-0">
+      <MobileAppBar
+        title="Cari Saham"
+        subtitle={query ? `${displayRows.length} hasil untuk ${query}` : "900+ emiten IDX siap dicari"}
+        backHref="/"
+      />
+      <div className="sticky top-[3.25rem] z-20 -mx-4 mb-3 bg-background/95 px-4 pt-3 pb-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-3 sm:pb-0 sm:backdrop-blur-0">
         {/* Compact title row */}
         <div className="mb-2.5 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">

@@ -158,6 +158,7 @@ export function WatchlistButton({
       variant={isWatched ? "default" : "outline"}
       size="icon"
       onClick={toggle}
+      data-watchlist-toggle
       className={cn(
         compact ? "min-h-11 min-w-11" : "min-h-9",
         isWatched && "bg-amber-500 hover:bg-amber-600 border-amber-500",

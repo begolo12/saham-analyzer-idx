@@ -21,6 +21,13 @@ import {
   BarChart3,
   Heart,
   Star,
+  Database,
+  ShieldAlert,
+  Languages,
+  Minimize2,
+  Maximize2,
+  Download,
+  Upload,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +57,8 @@ import {
   showNotification,
   NotificationTemplates,
 } from "@/lib/notifications";
-import { formatIDR, formatPercent, cn } from "@/lib/utils";
+import { MobileAppBar, MobileQuickAction, MobileSectionTabs } from "@/components/mobile-app-bar";
+import { formatIDR, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const ACTION_LABEL: Record<TrackedAction, string> = {
@@ -68,12 +76,14 @@ const DEFAULT_WEIGHTS = {
   sentiment: 0.15,
 };
 
+type MobileSection = "preferences" | "data" | "learning" | "danger";
+
 export default function SettingsPage() {
   const { records, mounted } = useSelfAnalysis();
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [mobileSection, setMobileSection] = useState<MobileSection>("preferences");
 
-  // Get tickers yang perlu dicek (sudah lewat checkAt dan belum ada outcome)
   const tickersToCheck = useMemo(() => {
     const now = Date.now();
     const set = new Set<string>();
@@ -81,13 +91,11 @@ export default function SettingsPage() {
       if (!r.outcome && new Date(r.checkAt).getTime() <= now) {
         set.add(r.ticker);
       }
-      // Also fetch for already-tracked records to display
       set.add(r.ticker);
     }
     return Array.from(set);
   }, [records]);
 
-  // Fetch current prices
   useEffect(() => {
     if (!mounted || tickersToCheck.length === 0) {
       setLoading(false);
@@ -114,7 +122,6 @@ export default function SettingsPage() {
       setCurrentPrices(map);
       setLoading(false);
 
-      // Auto-update outcomes
       import("@/lib/self-analysis").then(({ updateOutcomes }) => {
         const updated = updateOutcomes(records, map);
         const changed = updated.filter(
@@ -123,19 +130,15 @@ export default function SettingsPage() {
         if (changed.length > 0) {
           import("@/lib/self-analysis-storage").then(({ saveRecords }) => {
             saveRecords(updated);
-            toast.success(
-              `${changed.length} rekomendasi baru di-check!`,
-              {
-                description: `Cek halaman Self-Analysis untuk lihat hasilnya`,
-              },
-            );
+            toast.success(`${changed.length} rekomendasi baru di-check!`, {
+              description: "Cek halaman Self-Analysis untuk lihat hasilnya",
+            });
           });
         }
       });
     });
   }, [tickersToCheck, mounted, records]);
 
-  // Compute system health
   const health: SystemHealth | null = useMemo(() => {
     if (!mounted) return null;
     return calculateSystemHealth(records, DEFAULT_WEIGHTS);
@@ -159,426 +162,468 @@ export default function SettingsPage() {
     );
   }
 
+  const totalTracked = records.length;
+
   return (
-    <div className="app-shell page-main container space-y-4">
-      {/* Header */}
-      <section className="page-hero-card p-5 sm:p-6">
-        <div className="page-eyebrow">Preferences & insights</div>
-        <div className="mt-2">
-          <h1 className="flex items-center gap-2 text-2xl font-black sm:text-3xl">
-            <SettingsIcon className="h-6 w-6 text-primary sm:h-7 sm:w-7" />
-            Settings & Self-Analysis
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Atur preferensi app, backup data, notifikasi, dan lihat kesehatan model rekomendasi.
-          </p>
-        </div>
-      </section>
+    <div className="app-shell min-h-screen bg-background">
+      <MobileAppBar
+        title="Settings"
+        subtitle={
+          totalTracked > 0
+            ? `${totalTracked} recommendation tracked • ${stats.pending} pending`
+            : "Atur preferensi, backup, notifikasi, dan data belajar"
+        }
+        backHref="/"
+      />
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
-        <Card className="p-4">
-          <div className="page-section-title">Data & kontrol</div>
-          <div className="page-section-subtitle">Browser-local storage, backup, reset, notifikasi</div>
-          <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-            <p>• Export backup sebelum reset atau ganti browser.</p>
-            <p>• Notifikasi hanya aktif penuh saat tab / PWA tersedia.</p>
-            <p>• Self-analysis membantu kalibrasi rekomendasi dari histori penggunaan.</p>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="page-section-title">Quick links</div>
-          <div className="page-section-subtitle">Akses cepat ke area utama app</div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Link href="/">
-              <Button variant="outline" className="w-full">
-                <ChevronRight className="mr-1 h-4 w-4" />
-                Beranda
-              </Button>
-            </Link>
-            <Link href="/watchlist">
-              <Button variant="outline" className="w-full">
-                <Star className="mr-1 h-4 w-4" />
-                Watchlist
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </div>
-
-      <div className="page-section-heading">
-        <div>
-          <div className="page-section-title">System health</div>
-          <div className="page-section-subtitle">Pantau akurasi, bias, dan kalibrasi confidence engine</div>
-        </div>
-      </div>
-
-
-      {/* System Health Overview */}
-      <Card className="p-5 bg-gradient-to-br from-primary/5 to-purple-500/5">
-        <div className="flex items-center gap-2 mb-3">
-          <Brain className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-lg">System Health</h2>
-        </div>
-
-        {records.length === 0 ? (
-          <Alert variant="info">
-            <strong>Belum ada data.</strong> Buka halaman analisa saham (misal
-            BBCA) untuk mulai track rekomendasi. Sistem akan otomatis evaluasi
-            performa setelah 1 hari.
-          </Alert>
-        ) : (
-          <>
-            {/* Big Numbers */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              <MetricCard
-                label="Tracked"
-                value={records.length.toString()}
-                subtitle="rekomendasi"
-              />
-              <MetricCard
-                label="Wins"
-                value={stats.wins.toString()}
-                subtitle="correct calls"
-                color="bull"
-              />
-              <MetricCard
-                label="Losses"
-                value={stats.losses.toString()}
-                subtitle="wrong calls"
-                color="bear"
-              />
-              <MetricCard
-                label="Pending"
-                value={stats.pending.toString()}
-                subtitle="checking soon"
-              />
-            </div>
-
-            {/* Overall Accuracy */}
-            {health && health.trackedOutcomes > 0 && (
-              <div
-                className={cn(
-                  "rounded-xl border-2 p-4 mt-3",
-                  health.overallAccuracy >= 60
-                    ? "border-bull-500/30 bg-bull-50/50 dark:bg-bull-700/10"
-                    : health.overallAccuracy >= 40
-                      ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-700/10"
-                      : "border-bear-500/30 bg-bear-50/50 dark:bg-bear-700/10",
-                )}
-              >
-                <div className="text-xs uppercase tracking-wider font-medium opacity-80">
-                  Overall Accuracy
-                </div>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span
-                    className={cn(
-                      "text-4xl sm:text-5xl font-black tabular-nums",
-                      health.overallAccuracy >= 60
-                        ? "text-bull-600"
-                        : health.overallAccuracy >= 40
-                          ? "text-amber-600"
-                          : "text-bear-600",
-                    )}
-                  >
-                    {health.overallAccuracy.toFixed(1)}%
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    ({health.trackedOutcomes} outcomes)
-                  </span>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-
-      {/* Signal Accuracy */}
-      {health && health.trackedOutcomes >= 5 && (
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="h-5 w-5 text-primary" />
-            <h2 className="font-bold text-lg">Akurasi per Sinyal</h2>
-          </div>
-          <div className="space-y-3">
-            {(["technical", "fundamental", "behavioral", "sentiment"] as const).map(
-              (signal) => {
-                const acc = health.signalAccuracy[signal];
-                const labels = {
-                  technical: "📊 Teknikal",
-                  fundamental: "💼 Fundamental",
-                  behavioral: "🔍 Behavioral",
-                  sentiment: "📰 Sentimen",
-                };
-                const weight = DEFAULT_WEIGHTS[signal] * 100;
-                const isGood = acc.winRate >= 60 && acc.count >= 3;
-
-                return (
-                  <div key={signal}>
-                    <div className="flex items-center justify-between mb-1 text-sm">
-                      <span className="font-medium">{labels[signal]}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          weight {weight.toFixed(0)}%
-                        </span>
-                        <span
-                          className={cn(
-                            "font-bold tabular-nums",
-                            acc.count === 0
-                              ? "text-muted-foreground"
-                              : isGood
-                                ? "text-bull-600"
-                                : "text-bear-600",
-                          )}
-                        >
-                          {acc.count > 0 ? `${acc.winRate.toFixed(0)}%` : "—"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          ({acc.count})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full transition-all",
-                          acc.count === 0
-                            ? "bg-muted-foreground/30"
-                            : isGood
-                              ? "bg-bull-500"
-                              : "bg-bear-500",
-                        )}
-                        style={{
-                          width:
-                            acc.count === 0
-                              ? "0%"
-                              : `${Math.min(100, acc.winRate)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              },
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Bias Detection & Auto-Adjustment */}
-      {health && health.trackedOutcomes >= 10 && health.bias.description && (
-        <Card
-          className={cn(
-            "p-5 border-2",
-            health.bias.overweighted
-              ? "border-amber-500/30 bg-amber-50/30 dark:bg-amber-700/10"
-              : "border-bull-500/20 bg-bull-50/30 dark:bg-bull-700/5",
-          )}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="h-5 w-5 text-primary" />
-            <h2 className="font-bold text-lg">Weight Optimization</h2>
-            <Badge variant="info" className="text-[10px]">
-              Auto-tune
-            </Badge>
-          </div>
-          <p className="text-sm mb-3">{health.bias.description}</p>
-
-          {health.suggestedWeights && (
-            <div className="space-y-2 mb-3">
-              <div className="text-xs font-medium text-muted-foreground">
-                Suggested Weights:
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {(["technical", "fundamental", "behavioral", "sentiment"] as const).map(
-                  (s) => {
-                    const suggested = health.suggestedWeights[s];
-                    const current = DEFAULT_WEIGHTS[s];
-                    const diff = ((suggested - current) * 100).toFixed(1);
-                    return (
-                      <div
-                        key={s}
-                        className="rounded-lg border bg-card p-2 flex justify-between items-center"
-                      >
-                        <span className="capitalize">{s}</span>
-                        <div className="text-right">
-                          <div className="font-bold tabular-nums">
-                            {(suggested * 100).toFixed(0)}%
-                          </div>
-                          {diff !== "0.0" && (
-                            <div
-                              className={cn(
-                                "text-[10px] tabular-nums",
-                                parseFloat(diff) > 0 ? "text-bull-600" : "text-bear-600",
-                              )}
-                            >
-                              {parseFloat(diff) > 0 ? "+" : ""}
-                              {diff}%
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground italic mt-2">
-                💡 {health.suggestedWeights.reason}
-              </p>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Calibration */}
-      {health && health.trackedOutcomes >= 5 && (
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Award className="h-5 w-5 text-primary" />
-            <h2 className="font-bold text-lg">Confidence Calibration</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Seberapa well-calibrated confidence score kita?
-          </p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="rounded-xl border bg-bull-50/30 dark:bg-bull-700/10 p-3 text-center">
-              <div className="text-xs text-muted-foreground">
-                High Confidence (≥70%)
-              </div>
-              <div className="text-2xl font-black text-bull-600 tabular-nums mt-1">
-                {health.calibration.highConfidenceAccuracy}%
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                win rate
-              </div>
-            </div>
-            <div className="rounded-xl border bg-amber-50/30 dark:bg-amber-700/10 p-3 text-center">
-              <div className="text-xs text-muted-foreground">
-                Low Confidence (&lt;40%)
-              </div>
-              <div className="text-2xl font-black text-amber-600 tabular-nums mt-1">
-                {health.calibration.lowConfidenceAccuracy}%
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                win rate
-              </div>
-            </div>
-          </div>
-          <div className="text-center">
-            <Badge
-              variant={
-                health.calibration.calibrationScore >= 70
-                  ? "bull"
-                  : health.calibration.calibrationScore >= 40
-                    ? "neutral"
-                    : "bear"
-              }
-              className="text-xs"
-            >
-              Calibration Score: {health.calibration.calibrationScore}/100
-            </Badge>
-            <p className="text-[11px] text-muted-foreground mt-2 italic">
-              {health.calibration.calibrationScore >= 70
-                ? "Sistem well-calibrated. High confidence = high win rate."
-                : health.calibration.calibrationScore >= 40
-                  ? "Cukup calibrated. Masih perlu lebih banyak data."
-                  : "Belum well-calibrated. Confidence belum bisa dipercaya."}
+      <main className="page-main container space-y-4">
+        {/* DESKTOP header */}
+        <section className="page-hero-card p-5 sm:p-6 hidden md:block">
+          <div className="page-eyebrow">Preferences & insights</div>
+          <div className="mt-2">
+            <h1 className="flex items-center gap-2 text-2xl font-black sm:text-3xl">
+              <SettingsIcon className="h-6 w-6 text-primary sm:h-7 sm:w-7" />
+              Settings & Self-Analysis
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Atur preferensi app, backup data, notifikasi, dan lihat kesehatan model rekomendasi.
             </p>
           </div>
-        </Card>
-      )}
+        </section>
 
-      {/* Recommendation History */}
-      {records.length > 0 && (
-        <Card className="p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <h2 className="font-bold text-lg">Recommendation History</h2>
+        {/* MOBILE hero */}
+        <section className="md:hidden">
+          <div className="mobile-hero">
+            <div className="page-eyebrow text-white/80">Preferences</div>
+            <div className="mobile-hero__row">
+              <div>
+                <div className="mobile-hero__value">{totalTracked}</div>
+                <div className="mobile-hero__delta">
+                  <Brain className="h-3 w-3" />
+                  <span>{stats.wins} win • {stats.losses} loss • {stats.pending} pending</span>
+                </div>
+                {health && health.trackedOutcomes > 0 && (
+                  <div className="mobile-hero__sub">Akurasi {health.overallAccuracy.toFixed(1)}%</div>
+                )}
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (confirm("Hapus semua tracking history?")) {
-                  clearAllRecords();
-                  toast.success("History dihapus");
-                }
-              }}
-              className="text-xs"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Clear
-            </Button>
           </div>
 
-          <div className="space-y-2">
-            {records
-              .slice()
-              .reverse()
-              .slice(0, 30)
-              .map((r) => (
-                <RecordCard
-                  key={r.id}
-                  record={r}
-                  currentPrice={currentPrices[r.ticker]}
-                  onFeedback={(feedback) => {
-                    updateRecord(r.id, { userFeedback: feedback });
-                    toast.success(
-                      feedback === "correct" ? "✓ Marked as correct" : "✗ Marked as wrong",
-                    );
+          <MobileSectionTabs<MobileSection>
+            value={mobileSection}
+            onChange={setMobileSection}
+            options={[
+              { value: "preferences", label: "Prefs" },
+              { value: "data", label: "Data" },
+              { value: "learning", label: "Learning" },
+              { value: "danger", label: "Danger" },
+            ]}
+          />
+        </section>
+
+        {/* MOBILE: Prefs */}
+        {mobileSection === "preferences" && (
+          <div className="md:hidden space-y-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              <MobileQuickAction
+                href="#compact-toggle"
+                icon={<Minimize2 className="h-4 w-4" />}
+                label="Compact Mode"
+                description="Tampilan rapat / lega"
+              />
+              <MobileQuickAction
+                href="#language-toggle"
+                icon={<Languages className="h-4 w-4" />}
+                label="Bahasa"
+                description="Pilih bahasa UI"
+              />
+              <MobileQuickAction
+                href="#notifications"
+                icon={<Bell className="h-4 w-4" />}
+                label="Notifikasi"
+                description="Alert real-time di browser"
+              />
+              <MobileQuickAction
+                href="#learning"
+                icon={<Brain className="h-4 w-4" />}
+                label="Self Analysis"
+                description="Belajar dari histori rekomendasi"
+              />
+            </div>
+            <div id="compact-toggle">
+              <CompactModeToggle />
+            </div>
+            <div id="language-toggle">
+              <LanguageSwitcher />
+            </div>
+            <div id="notifications">
+              <NotificationSettingsCard />
+            </div>
+          </div>
+        )}
+
+        {/* MOBILE: Data */}
+        {mobileSection === "data" && (
+          <div className="md:hidden space-y-3">
+            <Card className="p-4">
+              <div className="page-section-title flex items-center gap-2">
+                <Database className="h-4 w-4 text-primary" /> Data & Backup
+              </div>
+              <div className="page-section-subtitle">Semua data tersimpan lokal di browser</div>
+            </Card>
+            <BackupRestoreCard />
+          </div>
+        )}
+
+        {/* MOBILE: Learning */}
+        {mobileSection === "learning" && (
+          <div className="md:hidden space-y-3">
+            <Card className="p-4 bg-gradient-to-br from-primary/5 to-purple-500/5">
+              <div className="page-section-title flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" /> System Health
+              </div>
+              {records.length === 0 ? (
+                <Alert variant="info" className="mt-3">
+                  <strong>Belum ada data.</strong> Buka halaman analisa saham untuk mulai tracking rekomendasi.
+                </Alert>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <MetricCard label="Tracked" value={records.length.toString()} subtitle="rekomendasi" />
+                    <MetricCard label="Wins" value={stats.wins.toString()} subtitle="correct calls" color="bull" />
+                    <MetricCard label="Losses" value={stats.losses.toString()} subtitle="wrong calls" color="bear" />
+                    <MetricCard label="Pending" value={stats.pending.toString()} subtitle="checking soon" />
+                  </div>
+                  {health && health.trackedOutcomes > 0 && (
+                    <div className={cn(
+                      "rounded-xl border-2 p-4",
+                      health.overallAccuracy >= 60
+                        ? "border-bull-500/30 bg-bull-50/50 dark:bg-bull-700/10"
+                        : health.overallAccuracy >= 40
+                          ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-700/10"
+                          : "border-bear-500/30 bg-bear-50/50 dark:bg-bear-700/10",
+                    )}>
+                      <div className="text-xs uppercase tracking-wider font-medium opacity-80">Overall Accuracy</div>
+                      <div className="mt-1 text-4xl font-black tabular-nums">{health.overallAccuracy.toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">{health.trackedOutcomes} outcomes</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+            {records.length > 0 && <RecommendationHistoryMobile records={records} currentPrices={currentPrices} onFeedback={(id, feedback) => { updateRecord(id, { userFeedback: feedback }); toast.success(feedback === "correct" ? "✓ Marked as correct" : "✗ Marked as wrong"); }} />}
+          </div>
+        )}
+
+        {/* MOBILE: Danger */}
+        {mobileSection === "danger" && (
+          <div className="md:hidden space-y-3">
+            <Card className="p-4 border-amber-500/30 bg-amber-50/40 dark:bg-amber-700/10">
+              <div className="page-section-title flex items-center gap-2 text-amber-700 dark:text-amber-500">
+                <ShieldAlert className="h-4 w-4" /> Danger Zone
+              </div>
+              <div className="page-section-subtitle">Reset data hanya jika kamu sudah export backup</div>
+            </Card>
+            <ResetAllDataCard />
+          </div>
+        )}
+
+        {/* DESKTOP: legacy stacked view */}
+        <div className="hidden md:block space-y-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+            <Card className="p-4">
+              <div className="page-section-title">Data & kontrol</div>
+              <div className="page-section-subtitle">Browser-local storage, backup, reset, notifikasi</div>
+              <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                <p>• Export backup sebelum reset atau ganti browser.</p>
+                <p>• Notifikasi hanya aktif penuh saat tab / PWA tersedia.</p>
+                <p>• Self-analysis membantu kalibrasi rekomendasi dari histori penggunaan.</p>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="page-section-title">Quick links</div>
+              <div className="page-section-subtitle">Akses cepat ke area utama app</div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link href="/">
+                  <Button variant="outline" className="w-full">
+                    <ChevronRight className="mr-1 h-4 w-4" /> Beranda
+                  </Button>
+                </Link>
+                <Link href="/watchlist">
+                  <Button variant="outline" className="w-full">
+                    <Star className="mr-1 h-4 w-4" /> Watchlist
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+
+          <div className="page-section-heading">
+            <div>
+              <div className="page-section-title">System health</div>
+              <div className="page-section-subtitle">Pantau akurasi, bias, dan kalibrasi confidence engine</div>
+            </div>
+          </div>
+
+          <SystemHealthCardDesktop health={health} stats={stats} records={records} />
+          <SignalAccuracyDesktop health={health} />
+          <WeightOptimizationDesktop health={health} />
+          <CalibrationDesktop health={health} />
+          {records.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <h2 className="font-bold text-lg">Recommendation History</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm("Hapus semua tracking history?")) {
+                      clearAllRecords();
+                      toast.success("History dihapus");
+                    }
                   }}
-                />
-              ))}
-          </div>
-        </Card>
-      )}
-
-      {/* About / Info */}
-      <Card className="p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Info className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-lg">Tentang Self-Analysis</h2>
+                  className="text-xs"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Clear
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {records.slice().reverse().slice(0, 30).map((r) => (
+                  <RecordCard
+                    key={r.id}
+                    record={r}
+                    currentPrice={currentPrices[r.ticker]}
+                    onFeedback={(feedback) => {
+                      updateRecord(r.id, { userFeedback: feedback });
+                      toast.success(feedback === "correct" ? "✓ Marked as correct" : "✗ Marked as wrong");
+                    }}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
+          <AboutCard />
+          <BackupRestoreCard />
+          <CompactModeToggle />
+          <LanguageSwitcher />
+          <ResetAllDataCard />
+          <NotificationSettingsCard />
         </div>
-        <div className="text-sm text-muted-foreground space-y-2">
-          <p>
-            🧠 Setiap kali Anda membuka halaman analisa saham, sistem
-            otomatis merekam rekomendasi yang dihasilkan.
-          </p>
-          <p>
-            ⏰ Setelah 1 hari, sistem akan cek harga saat ini dan evaluasi
-            apakah rekomendasi terbukti benar (WIN) atau salah (LOSS).
-          </p>
-          <p>
-            📊 Dari data historis, sistem menghitung akurasi per sinyal
-            (teknikal/fundamental/behavioral/sentimen) dan secara otomatis
-            menyesuaikan bobot masing-masing sinyal.
-          </p>
-          <p>
-            🎯 Tujuannya: semakin banyak Anda pakai, semakin akurat
-            rekomendasinya untuk Anda.
-          </p>
-          <p className="text-[11px] italic pt-2 border-t">
-            ⚠️ Self-analysis tidak menjamin profit. Tetap DYOR dan kelola
-            risiko Anda.
-          </p>
-        </div>
-      </Card>
-
-      {/* Backup & Restore */}
-      <BackupRestoreCard />
-
-      {/* Mode Tampilan (Compact / Normal) */}
-      <CompactModeToggle />
-
-      {/* Language */}
-      <LanguageSwitcher />
-
-      {/* Reset All Data */}
-      <ResetAllDataCard />
-
-      {/* Notifications */}
-      <NotificationSettingsCard />
-
+      </main>
     </div>
+  );
+}
+
+function RecommendationHistoryMobile({
+  records,
+  currentPrices,
+  onFeedback,
+}: {
+  records: import("@/lib/self-analysis").RecommendationRecord[];
+  currentPrices: Record<string, number>;
+  onFeedback: (id: string, feedback: "correct" | "wrong") => void;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="page-section-title flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-primary" /> Recommendation History
+      </div>
+      <div className="mt-3 space-y-2">
+        {records.slice().reverse().slice(0, 12).map((r) => (
+          <RecordCard key={r.id} record={r} currentPrice={currentPrices[r.ticker]} onFeedback={(feedback) => onFeedback(r.id, feedback)} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function SystemHealthCardDesktop({
+  health,
+  stats,
+  records,
+}: {
+  health: SystemHealth | null;
+  stats: { wins: number; losses: number; neutral: number; pending: number };
+  records: ReturnType<typeof useSelfAnalysis>["records"];
+}) {
+  return (
+    <Card className="p-5 bg-gradient-to-br from-primary/5 to-purple-500/5">
+      <div className="flex items-center gap-2 mb-3">
+        <Brain className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">System Health</h2>
+      </div>
+      {records.length === 0 ? (
+        <Alert variant="info">
+          <strong>Belum ada data.</strong> Buka halaman analisa saham (misal BBCA) untuk mulai track rekomendasi. Sistem akan otomatis evaluasi performa setelah 1 hari.
+        </Alert>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <MetricCard label="Tracked" value={records.length.toString()} subtitle="rekomendasi" />
+            <MetricCard label="Wins" value={stats.wins.toString()} subtitle="correct calls" color="bull" />
+            <MetricCard label="Losses" value={stats.losses.toString()} subtitle="wrong calls" color="bear" />
+            <MetricCard label="Pending" value={stats.pending.toString()} subtitle="checking soon" />
+          </div>
+          {health && health.trackedOutcomes > 0 && (
+            <div className={cn(
+              "rounded-xl border-2 p-4 mt-3",
+              health.overallAccuracy >= 60
+                ? "border-bull-500/30 bg-bull-50/50 dark:bg-bull-700/10"
+                : health.overallAccuracy >= 40
+                  ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-700/10"
+                  : "border-bear-500/30 bg-bear-50/50 dark:bg-bear-700/10",
+            )}>
+              <div className="text-xs uppercase tracking-wider font-medium opacity-80">Overall Accuracy</div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className={cn(
+                  "text-4xl sm:text-5xl font-black tabular-nums",
+                  health.overallAccuracy >= 60 ? "text-bull-600" : health.overallAccuracy >= 40 ? "text-amber-600" : "text-bear-600",
+                )}>
+                  {health.overallAccuracy.toFixed(1)}%
+                </span>
+                <span className="text-sm text-muted-foreground">({health.trackedOutcomes} outcomes)</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function SignalAccuracyDesktop({ health }: { health: SystemHealth | null }) {
+  if (!health || health.trackedOutcomes < 5) return null;
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Akurasi per Sinyal</h2>
+      </div>
+      <div className="space-y-3">
+        {(["technical", "fundamental", "behavioral", "sentiment"] as const).map((signal) => {
+          const acc = health.signalAccuracy[signal];
+          const labels = {
+            technical: "📊 Teknikal",
+            fundamental: "💼 Fundamental",
+            behavioral: "🔍 Behavioral",
+            sentiment: "📰 Sentimen",
+          };
+          const weight = DEFAULT_WEIGHTS[signal] * 100;
+          const isGood = acc.winRate >= 60 && acc.count >= 3;
+          return (
+            <div key={signal}>
+              <div className="flex items-center justify-between mb-1 text-sm">
+                <span className="font-medium">{labels[signal]}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">weight {weight.toFixed(0)}%</span>
+                  <span className={cn("font-bold tabular-nums", acc.count === 0 ? "text-muted-foreground" : isGood ? "text-bull-600" : "text-bear-600")}>
+                    {acc.count > 0 ? `${acc.winRate.toFixed(0)}%` : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({acc.count})</span>
+                </div>
+              </div>
+              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                <div className={cn("h-full transition-all", acc.count === 0 ? "bg-muted-foreground/30" : isGood ? "bg-bull-500" : "bg-bear-500")} style={{ width: acc.count === 0 ? "0%" : `${Math.min(100, acc.winRate)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function WeightOptimizationDesktop({ health }: { health: SystemHealth | null }) {
+  if (!health || health.trackedOutcomes < 10 || !health.bias.description) return null;
+  return (
+    <Card className={cn("p-5 border-2", health.bias.overweighted ? "border-amber-500/30 bg-amber-50/30 dark:bg-amber-700/10" : "border-bull-500/20 bg-bull-50/30 dark:bg-bull-700/5")}>
+      <div className="flex items-center gap-2 mb-2">
+        <Target className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Weight Optimization</h2>
+        <Badge variant="info" className="text-[10px]">Auto-tune</Badge>
+      </div>
+      <p className="text-sm mb-3">{health.bias.description}</p>
+      {health.suggestedWeights && (
+        <div className="space-y-2 mb-3">
+          <div className="text-xs font-medium text-muted-foreground">Suggested Weights:</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {(["technical", "fundamental", "behavioral", "sentiment"] as const).map((s) => {
+              const suggested = health.suggestedWeights[s];
+              const current = DEFAULT_WEIGHTS[s];
+              const diff = ((suggested - current) * 100).toFixed(1);
+              return (
+                <div key={s} className="rounded-lg border bg-card p-2 flex justify-between items-center">
+                  <span className="capitalize">{s}</span>
+                  <div className="text-right">
+                    <div className="font-bold tabular-nums">{(suggested * 100).toFixed(0)}%</div>
+                    {diff !== "0.0" && (
+                      <div className={cn("text-[10px] tabular-nums", parseFloat(diff) > 0 ? "text-bull-600" : "text-bear-600")}>
+                        {parseFloat(diff) > 0 ? "+" : ""}{diff}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground italic mt-2">💡 {health.suggestedWeights.reason}</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CalibrationDesktop({ health }: { health: SystemHealth | null }) {
+  if (!health || health.trackedOutcomes < 5) return null;
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Award className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Confidence Calibration</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">Seberapa well-calibrated confidence score kita?</p>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="rounded-xl border bg-bull-50/30 dark:bg-bull-700/10 p-3 text-center">
+          <div className="text-xs text-muted-foreground">High Confidence (≥70%)</div>
+          <div className="text-2xl font-black text-bull-600 tabular-nums mt-1">{health.calibration.highConfidenceAccuracy}%</div>
+          <div className="text-[10px] text-muted-foreground">win rate</div>
+        </div>
+        <div className="rounded-xl border bg-amber-50/30 dark:bg-amber-700/10 p-3 text-center">
+          <div className="text-xs text-muted-foreground">Low Confidence (&lt;40%)</div>
+          <div className="text-2xl font-black text-amber-600 tabular-nums mt-1">{health.calibration.lowConfidenceAccuracy}%</div>
+          <div className="text-[10px] text-muted-foreground">win rate</div>
+        </div>
+      </div>
+      <div className="text-center">
+        <Badge variant={health.calibration.calibrationScore >= 70 ? "bull" : health.calibration.calibrationScore >= 40 ? "neutral" : "bear"} className="text-xs">
+          Calibration Score: {health.calibration.calibrationScore}/100
+        </Badge>
+        <p className="text-[11px] text-muted-foreground mt-2 italic">
+          {health.calibration.calibrationScore >= 70 ? "Sistem well-calibrated. High confidence = high win rate." : health.calibration.calibrationScore >= 40 ? "Cukup calibrated. Masih perlu lebih banyak data." : "Belum well-calibrated. Confidence belum bisa dipercaya."}
+        </p>
+      </div>
+    </Card>
+  );
+}
+
+function AboutCard() {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Info className="h-5 w-5 text-primary" />
+        <h2 className="font-bold text-lg">Tentang Self-Analysis</h2>
+      </div>
+      <div className="text-sm text-muted-foreground space-y-2">
+        <p>🧠 Setiap kali Anda membuka halaman analisa saham, sistem otomatis merekam rekomendasi yang dihasilkan.</p>
+        <p>⏰ Setelah 1 hari, sistem akan cek harga saat ini dan evaluasi apakah rekomendasi terbukti benar (WIN) atau salah (LOSS).</p>
+        <p>📊 Dari data historis, sistem menghitung akurasi per sinyal (teknikal/fundamental/behavioral/sentimen) dan secara otomatis menyesuaikan bobot masing-masing sinyal.</p>
+        <p>🎯 Tujuannya: semakin banyak Anda pakai, semakin akurat rekomendasinya untuk Anda.</p>
+        <p className="text-[11px] italic pt-2 border-t">⚠️ Self-analysis tidak menjamin profit. Tetap DYOR dan kelola risiko Anda.</p>
+      </div>
+    </Card>
   );
 }
 
@@ -608,39 +653,27 @@ function BackupRestoreCard() {
 
   const handleImport = async (file: File) => {
     if (!confirm(
-      "Import akan MENGGANTI data saat ini (watchlist, portfolio, cash ledger, snapshots, alerts) dengan data dari file. Lanjutkan?"
+      "Import akan MENGGANTI data saat ini (watchlist, portfolio, cash ledger, snapshots, alerts) dengan data dari file. Lanjutkan?",
     )) {
       return;
     }
     setImporting(true);
     try {
       const result = await importFromFile(file);
-      toast.success(
-        `✅ Restore berhasil! ${result.imported.length} kategori diimport`,
-        {
-          description: result.skipped.length > 0
-            ? `${result.skipped.length} dilewati (kosong)`
-            : undefined,
-          duration: 5000,
-        },
-      );
+      toast.success(`✅ Restore berhasil! ${result.imported.length} kategori diimport`, {
+        description: result.skipped.length > 0 ? `${result.skipped.length} dilewati (kosong)` : undefined,
+        duration: 5000,
+      });
       refreshStats();
     } catch (err) {
-      toast.error(
-        `Gagal import: ${err instanceof Error ? err.message : "unknown error"}`,
-      );
+      toast.error(`Gagal import: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
       setImporting(false);
     }
   };
 
   const sizeKB = stats ? (stats.sizeBytes / 1024).toFixed(1) : "0";
-  const totalItems =
-    (stats?.watchlistCount ?? 0) +
-    (stats?.portfolioCount ?? 0) +
-    (stats?.cashCount ?? 0) +
-    (stats?.snapshotCount ?? 0) +
-    (stats?.alertCount ?? 0);
+  const totalItems = (stats?.watchlistCount ?? 0) + (stats?.portfolioCount ?? 0) + (stats?.cashCount ?? 0) + (stats?.snapshotCount ?? 0) + (stats?.alertCount ?? 0);
 
   return (
     <Card className="p-5">
@@ -648,76 +681,39 @@ function BackupRestoreCard() {
         <Heart className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Backup & Restore</h2>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Data Anda tersimpan di browser (localStorage). Export untuk backup ke file JSON, atau
-        import untuk restore dari backup sebelumnya.
-      </p>
-
+      <p className="text-sm text-muted-foreground mb-4">Data Anda tersimpan di browser (localStorage). Export untuk backup ke file JSON, atau import untuk restore dari backup sebelumnya.</p>
       {stats && (
         <div className="grid grid-cols-3 gap-2 mb-4 text-center">
           <div className="rounded-lg border bg-card p-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Items
-            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Items</div>
             <div className="text-lg font-black tabular-nums">{totalItems}</div>
           </div>
           <div className="rounded-lg border bg-card p-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Storage
-            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Storage</div>
             <div className="text-lg font-black tabular-nums">{sizeKB} KB</div>
           </div>
           <div className="rounded-lg border bg-card p-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Alerts
-            </div>
-            <div className="text-lg font-black tabular-nums">
-              {stats.alertCount}
-            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Alerts</div>
+            <div className="text-lg font-black tabular-nums">{stats.alertCount}</div>
           </div>
         </div>
       )}
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Button
-          onClick={handleExport}
-          variant="outline"
-          className="h-11"
-        >
+        <Button onClick={handleExport} variant="outline" className="h-11">
           📦 Export Backup (JSON)
         </Button>
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          variant="outline"
-          disabled={importing}
-          className="h-11"
-        >
+        <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={importing} className="h-11">
           {importing ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Importing...
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...
             </>
           ) : (
             <>📥 Import Backup</>
           )}
         </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImport(file);
-            e.target.value = "";
-          }}
-        />
+        <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImport(file); e.target.value = ""; }} />
       </div>
-
-      <p className="text-[10px] text-muted-foreground mt-3 italic">
-        💡 Tips: Export backup setiap minggu. Simpan di cloud (Google Drive / Dropbox) supaya
-        tidak hilang kalau ganti browser atau clear cache.
-      </p>
+      <p className="text-[10px] text-muted-foreground mt-3 italic">💡 Tips: Export backup setiap minggu. Simpan di cloud supaya tidak hilang kalau ganti browser atau clear cache.</p>
     </Card>
   );
 }
@@ -744,13 +740,9 @@ function ResetAllDataCard() {
       setBusy(true);
       try {
         const { removed } = resetAllData();
-        toast.success(
-          `🧹 ${removed.length} kategori data dihapus. Mulai dari awal!`,
-          { description: "Refresh halaman untuk melihat empty state.", duration: 5000 },
-        );
+        toast.success(`🧹 ${removed.length} kategori data dihapus. Mulai dari awal!`, { description: "Refresh halaman untuk melihat empty state.", duration: 5000 });
         setConfirmStep(0);
         setItemCount(0);
-        // Trigger reload supaya UI fresh ke empty state
         setTimeout(() => window.location.reload(), 1500);
       } catch (err) {
         toast.error("Gagal reset data");
@@ -767,87 +759,38 @@ function ResetAllDataCard() {
     <Card className="p-5 border-2 border-bear-500/30 bg-bear-50/30 dark:bg-bear-700/10">
       <div className="flex items-center gap-2 mb-2">
         <Trash2 className="h-5 w-5 text-bear-600" />
-        <h2 className="font-bold text-lg text-bear-700 dark:text-bear-500">
-          Reset Semua Data
-        </h2>
-        <Badge variant="bear" className="text-[10px]">
-          Berbahaya
-        </Badge>
+        <h2 className="font-bold text-lg text-bear-700 dark:text-bear-500">Reset Semua Data</h2>
+        <Badge variant="bear" className="text-[10px]">Berbahaya</Badge>
       </div>
-      <p className="text-sm text-muted-foreground mb-3">
-        Hapus <strong>semua</strong> data app: portfolio, cash ledger, watchlist,
-        price alerts, snapshots, dan history self-analysis ({itemCount} item).
-        Tidak bisa di-undo.
-      </p>
-      <p className="text-[11px] text-amber-700 dark:text-amber-500 mb-3 italic">
-        ⚠️ Saran: Export backup dulu di atas sebelum reset, supaya bisa restore kalau berubah pikiran.
-      </p>
-
+      <p className="text-sm text-muted-foreground mb-3">Hapus <strong>semua</strong> data app: portfolio, cash ledger, watchlist, price alerts, snapshots, dan history self-analysis ({itemCount} item). Tidak bisa di-undo.</p>
+      <p className="text-[11px] text-amber-700 dark:text-amber-500 mb-3 italic">⚠️ Saran: Export backup dulu sebelum reset.</p>
       {confirmStep === 0 && (
-        <Button
-          onClick={handleResetClick}
-          variant="outline"
-          disabled={itemCount === 0 || busy}
-          className="w-full h-11 border-bear-500/50 text-bear-700 dark:text-bear-500 hover:bg-bear-100 dark:hover:bg-bear-700/20"
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Reset Semua Data
+        <Button onClick={handleResetClick} variant="outline" disabled={itemCount === 0 || busy} className="w-full h-11 border-bear-500/50 text-bear-700 dark:text-bear-500 hover:bg-bear-100 dark:hover:bg-bear-700/20">
+          <Trash2 className="h-4 w-4 mr-2" /> Reset Semua Data
         </Button>
       )}
-
       {confirmStep === 1 && (
         <div className="space-y-2">
           <div className="rounded-lg border-2 border-bear-500/50 bg-bear-100/50 dark:bg-bear-700/20 p-3">
-            <p className="text-sm font-bold text-bear-700 dark:text-bear-500 mb-1">
-              ⚠️ Yakin reset {itemCount} item?
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Watchlist, portfolio, cash ledger, alerts — semuanya akan hilang.
-            </p>
+            <p className="text-sm font-bold text-bear-700 dark:text-bear-500 mb-1">⚠️ Yakin reset {itemCount} item?</p>
+            <p className="text-[11px] text-muted-foreground">Watchlist, portfolio, cash ledger, alerts — semuanya akan hilang.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleCancel} variant="outline" className="h-11">
-              Batal
-            </Button>
-            <Button
-              onClick={handleResetClick}
-              variant="default"
-              className="h-11 bg-bear-600 hover:bg-bear-700"
-            >
-              Ya, Lanjut →
-            </Button>
+            <Button onClick={handleCancel} variant="outline" className="h-11">Batal</Button>
+            <Button onClick={handleResetClick} variant="default" className="h-11 bg-bear-600 hover:bg-bear-700">Ya, Lanjut →</Button>
           </div>
         </div>
       )}
-
       {confirmStep === 2 && (
         <div className="space-y-2">
           <div className="rounded-lg border-2 border-bear-600 bg-bear-200/60 dark:bg-bear-700/40 p-3">
-            <p className="text-sm font-black text-bear-800 dark:text-bear-300 mb-1">
-              🔴 KONFIRMASI TERAKHIR
-            </p>
-            <p className="text-[11px] text-bear-700 dark:text-bear-400">
-              Klik tombol merah di bawah untuk <strong>MENGHAPUS PERMANEN</strong>{" "}
-              semua data. Tidak ada undo.
-            </p>
+            <p className="text-sm font-black text-bear-800 dark:text-bear-300 mb-1">🔴 KONFIRMASI TERAKHIR</p>
+            <p className="text-[11px] text-bear-700 dark:text-bear-400">Klik tombol merah di bawah untuk <strong>MENGHAPUS PERMANEN</strong> semua data. Tidak ada undo.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleCancel} variant="outline" className="h-11">
-              Batal
-            </Button>
-            <Button
-              onClick={handleResetClick}
-              disabled={busy}
-              className="h-11 bg-bear-700 hover:bg-bear-800 text-white font-black"
-            >
-              {busy ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                "🗑️ Hapus Permanen"
-              )}
+            <Button onClick={handleCancel} variant="outline" className="h-11">Batal</Button>
+            <Button onClick={handleResetClick} disabled={busy} className="h-11 bg-bear-700 hover:bg-bear-800 text-white font-black">
+              {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Menghapus...</> : "🗑️ Hapus Permanen"}
             </Button>
           </div>
         </div>
@@ -855,38 +798,12 @@ function ResetAllDataCard() {
     </Card>
   );
 }
-function MetricCard({
-  label,
-  value,
-  subtitle,
-  color,
-}: {
-  label: string;
-  value: string;
-  subtitle: string;
-  color?: "bull" | "bear";
-}) {
+
+function MetricCard({ label, value, subtitle, color }: { label: string; value: string; subtitle: string; color?: "bull" | "bear" }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border p-3",
-        color === "bull" && "bg-bull-50/50 dark:bg-bull-700/10 border-bull-500/30",
-        color === "bear" && "bg-bear-50/50 dark:bg-bear-700/10 border-bear-500/30",
-        !color && "bg-card",
-      )}
-    >
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "text-2xl font-black tabular-nums mt-0.5",
-          color === "bull" && "text-bull-600",
-          color === "bear" && "text-bear-600",
-        )}
-      >
-        {value}
-      </div>
+    <div className={cn("rounded-xl border p-3", color === "bull" && "bg-bull-50/50 dark:bg-bull-700/10 border-bull-500/30", color === "bear" && "bg-bear-50/50 dark:bg-bear-700/10 border-bear-500/30", !color && "bg-card")}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</div>
+      <div className={cn("text-2xl font-black tabular-nums mt-0.5", color === "bull" && "text-bull-600", color === "bear" && "text-bear-600")}>{value}</div>
       <div className="text-[10px] text-muted-foreground">{subtitle}</div>
     </div>
   );
@@ -901,14 +818,10 @@ function RecordCard({
   currentPrice?: number;
   onFeedback: (feedback: "correct" | "wrong") => void;
 }) {
-  const isBuy =
-    record.action === "BUY" || record.action === "STRONG_BUY";
-  const isSell =
-    record.action === "SELL" || record.action === "STRONG_SELL";
-
+  const isBuy = record.action === "BUY" || record.action === "STRONG_BUY";
+  const isSell = record.action === "SELL" || record.action === "STRONG_SELL";
   const outcome = record.outcome;
   const userFeedback = record.userFeedback;
-
   let statusIcon: React.ReactNode = null;
   let statusText = "";
   let statusColor = "";
@@ -939,12 +852,7 @@ function RecordCard({
     const change = ((currentPrice - record.entryPrice) / record.entryPrice) * 100;
     statusText = `${change >= 0 ? "+" : ""}${change.toFixed(2)}% (current)`;
     statusColor = change >= 0 ? "text-bull-600" : "text-bear-600";
-    statusIcon =
-      change >= 0 ? (
-        <TrendingUp className="h-3 w-3" />
-      ) : (
-        <TrendingDown className="h-3 w-3" />
-      );
+    statusIcon = change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />;
   } else {
     statusText = "Pending...";
     statusColor = "text-muted-foreground";
@@ -957,62 +865,36 @@ function RecordCard({
         <Link href={`/stock/${record.ticker}`} className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sm">{record.ticker}</span>
-            <Badge
-              variant={
-                isBuy ? "bull" : isSell ? "bear" : "neutral"
-              }
-              className="text-[10px]"
-            >
+            <Badge variant={isBuy ? "bull" : isSell ? "bear" : "neutral"} className="text-[10px]">
               {record.action.replace("_", " ")}
             </Badge>
-            <span className="text-[10px] text-muted-foreground">
-              conf {record.confidence.toFixed(0)}%
-            </span>
+            <span className="text-[10px] text-muted-foreground">conf {record.confidence.toFixed(0)}%</span>
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">
-            Entry: {formatIDR(record.entryPrice)} • {new Date(record.recordedAt).toLocaleDateString("id-ID")}
-          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Entry: {formatIDR(record.entryPrice)} • {new Date(record.recordedAt).toLocaleDateString("id-ID")}</div>
         </Link>
         <div className={cn("flex items-center gap-1 text-xs font-bold shrink-0", statusColor)}>
           {statusIcon}
           <span className="tabular-nums">{statusText}</span>
         </div>
       </div>
-
-      {/* Component scores */}
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-2 overflow-x-auto no-scrollbar">
         {(["technical", "fundamental", "behavioral", "sentiment"] as const).map((s) => {
           const score = record.componentScores[s];
           const weight = record.weights[s] * 100;
           return (
             <span key={s} className="shrink-0">
-              {s.slice(0, 3)}: {score >= 0 ? "+" : ""}
-              {score.toFixed(0)} ({weight.toFixed(0)}%)
+              {s.slice(0, 3)}: {score >= 0 ? "+" : ""}{score.toFixed(0)} ({weight.toFixed(0)}%)
             </span>
           );
         })}
       </div>
-
-      {/* User Feedback Buttons */}
       {!outcome && !userFeedback && (
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onFeedback("correct")}
-            className="flex-1 h-8 text-xs"
-          >
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Tepat
+          <Button variant="outline" size="sm" onClick={() => onFeedback("correct")} className="flex-1 h-8 text-xs">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Tepat
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onFeedback("wrong")}
-            className="flex-1 h-8 text-xs"
-          >
-            <XCircle className="h-3 w-3 mr-1" />
-            Salah
+          <Button variant="outline" size="sm" onClick={() => onFeedback("wrong")} className="flex-1 h-8 text-xs">
+            <XCircle className="h-3 w-3 mr-1" /> Salah
           </Button>
         </div>
       )}
@@ -1039,16 +921,13 @@ function NotificationSettingsCard() {
     setPermission(result);
     if (result === "granted") {
       toast.success("🔔 Notifikasi diizinkan! Kamu akan dapat alert real-time.");
-      // Test notification
       showNotification({
         title: "🔔 Notifikasi Aktif!",
         body: "Kamu akan dapat alert saat saham menyentuh target.",
         tag: "test-notification",
       });
     } else if (result === "denied") {
-      toast.error(
-        "Notifikasi diblokir. Buka Settings browser untuk mengizinkan.",
-      );
+      toast.error("Notifikasi diblokir. Buka Settings browser untuk mengizinkan.");
     }
   };
 
@@ -1070,86 +949,41 @@ function NotificationSettingsCard() {
         <Bell className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Push Notifications</h2>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Dapatkan alert real-time di browser saat harga menyentuh target.
-        Hanya bekerja saat tab ini terbuka.
-      </p>
+      <p className="text-sm text-muted-foreground mb-4">Dapatkan alert real-time di browser saat harga menyentuh target. Hanya bekerja saat tab ini terbuka.</p>
 
       {!supported && (
-        <Alert variant="warning">
-          Browser kamu tidak support Push Notifications. Coba Chrome, Firefox,
-          atau Edge versi terbaru.
-        </Alert>
+        <Alert variant="warning">Browser kamu tidak support Push Notifications. Coba Chrome, Firefox, atau Edge versi terbaru.</Alert>
       )}
 
       {supported && (
         <div className="space-y-3">
-          {/* Permission status */}
           <div className="rounded-lg border p-3 flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">Status Izin Browser</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                {permission === "default" &&
-                  "Belum diminta. Klik untuk izinkan."}
+                {permission === "default" && "Belum diminta. Klik untuk izinkan."}
                 {permission === "granted" && "✅ Diizinkan — alert akan muncul"}
-                {permission === "denied" &&
-                  "❌ Diblokir. Ubah di Settings browser."}
+                {permission === "denied" && "❌ Diblokir. Ubah di Settings browser."}
                 {permission === "unsupported" && "Browser tidak support"}
               </div>
             </div>
-            {permission === "default" && (
-              <Button onClick={handleRequestPermission} size="sm">
-                Izinkan
-              </Button>
-            )}
+            {permission === "default" && <Button onClick={handleRequestPermission} size="sm">Izinkan</Button>}
             {permission === "granted" && (
-              <Button
-                onClick={() => {
-                  showNotification({
-                    title: "Test Notifikasi",
-                    body: "Kalau kamu lihat ini, notifikasi berfungsi!",
-                  });
-                }}
-                variant="outline"
-                size="sm"
-              >
-                Test
-              </Button>
+              <Button onClick={() => { showNotification({ title: "Test Notifikasi", body: "Kalau kamu lihat ini, notifikasi berfungsi!" }); }} variant="outline" size="sm">Test</Button>
             )}
           </div>
 
-          {/* Toggle */}
           <div className="rounded-lg border p-3 flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">Aktifkan Notifikasi</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                {enabled
-                  ? "Aktif — alert akan muncul saat trigger"
-                  : "Nonaktif — tidak ada notifikasi"}
-              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{enabled ? "Aktif — alert akan muncul saat trigger" : "Nonaktif — tidak ada notifikasi"}</div>
             </div>
-            <button
-              onClick={() => handleToggle(!enabled)}
-              className={cn(
-                "relative w-12 h-6 rounded-full transition-colors",
-                enabled ? "bg-bull-500" : "bg-muted",
-              )}
-              aria-label="Toggle notifications"
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
-                  enabled ? "left-6" : "left-0.5",
-                )}
-              />
+            <button onClick={() => handleToggle(!enabled)} className={cn("relative w-12 h-6 rounded-full transition-colors", enabled ? "bg-bull-500" : "bg-muted")} aria-label="Toggle notifications">
+              <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform", enabled ? "left-6" : "left-0.5")} />
             </button>
           </div>
 
-          <p className="text-[10px] text-muted-foreground italic mt-2">
-            💡 Notifikasi fired saat: alert harga triggered, watchlist drop
-            besar. Aktif hanya saat tab ini terbuka (untuk background push perlu
-            PWA install).
-          </p>
+          <p className="text-[10px] text-muted-foreground italic mt-2">💡 Notifikasi fired saat: alert harga triggered, watchlist drop besar. Aktif hanya saat tab ini terbuka (untuk background push perlu PWA install).</p>
         </div>
       )}
     </Card>

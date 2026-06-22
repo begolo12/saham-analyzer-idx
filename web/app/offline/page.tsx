@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Wifi, WifiOff, RefreshCw, Home, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { MobileAppBar } from "@/components/mobile-app-bar";
 
 export default function OfflinePage() {
   const [autoRetried, setAutoRetried] = useState(false);
@@ -26,7 +27,9 @@ export default function OfflinePage() {
     typeof navigator !== "undefined" ? navigator.onLine : true;
 
   return (
-    <div className="page-main container max-w-lg py-12 md:py-8">
+    <>
+      <MobileAppBar title="Offline" subtitle={isOnline ? "Menyambungkan ulang" : "Menunggu koneksi internet"} backHref="/" />
+      <div className="page-main container max-w-lg py-12 md:py-8">
       <Card className="p-8 text-center bg-gradient-to-br from-amber-50 to-background dark:from-amber-700/10">
         <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-700/20 mb-4">
           <WifiOff className="h-10 w-10 text-amber-600" aria-hidden />
@@ -81,5 +84,6 @@ export default function OfflinePage() {
         </p>
       </Card>
     </div>
+    </>
   );
 }

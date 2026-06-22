@@ -170,7 +170,36 @@ function StockDetailContent() {
       <TopHeader />
 
       <main className="page-main container" data-sticky-actions="true">
-        <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="mobile-topbar md:hidden">
+          <div className="mobile-topbar__inner">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Link href="/" aria-label="Kembali ke Beranda">
+                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="mobile-topbar__title truncate">{ticker}</div>
+                  <div className="mobile-topbar__subtitle truncate">
+                    {summary?.name || "Analisa saham IDX"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-sm font-black tabular-nums">{formatIDR(lastPrice)}</div>
+              <div className={cn(
+                "text-[11px] font-bold tabular-nums",
+                isUp ? "text-bull-600" : "text-bear-600",
+              )}>
+                {formatPercent(priceChangePct)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4 hidden items-center justify-between gap-2 md:flex">
           <Link href="/" aria-label="Kembali ke Beranda">
             <Button variant="ghost" size="sm" className="min-h-9 rounded-full px-3">
               <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
@@ -237,6 +266,15 @@ function StockDetailContent() {
                     <WatchlistButton ticker={ticker} />
                     <Badge variant="secondary" className="text-[10px] font-medium">
                       {lastPrice ? formatIDR(lastPrice) : "Harga belum tersedia"}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] font-bold",
+                        isUp ? "text-bull-600 border-bull-500/30" : "text-bear-600 border-bear-500/30",
+                      )}
+                    >
+                      {formatPercent(priceChangePct)}
                     </Badge>
                   </div>
                 </div>

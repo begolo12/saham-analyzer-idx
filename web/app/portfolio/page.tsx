@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -110,6 +110,7 @@ export default function PortfolioPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [cashModalType, setCashModalType] = useState<CashEntryType | null>(null);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [mobileSection, setMobileSection] = useState<"holdings" | "activity" | "insights">("holdings");
   const [quickAction, setQuickAction] = useState<{
     ticker: string;
     price: number;
@@ -339,6 +340,27 @@ export default function PortfolioPage() {
     }
   };
 
+  const openBuyModal = useCallback(() => {
+    setShowAddModal(true);
+  }, []);
+
+  const openTopupModal = useCallback(() => {
+    setCashModalType("TOPUP");
+  }, []);
+
+  const hasPortfolioData = transactions.length > 0 || cashEntries.length > 0;
+  const showInsights = hasPortfolioData && mobileSection === "insights";
+  const showActivity = hasPortfolioData && mobileSection === "activity";
+  const showHoldings = hasPortfolioData && mobileSection === "holdings";
+
+  const sectionButtons = [
+    { key: "holdings", label: `Holdings (${activeHoldings.length})` },
+    { key: "activity", label: `Aktivitas (${transactions.length})` },
+    { key: "insights", label: "Insight" },
+  ] as const;
+
+  const portfolioDeltaPositive = totalPortfolioValue - netInvested >= 0;
+
   if (!mounted) {
     return (
       <div className="page-main container space-y-4" aria-busy="true">
@@ -358,6 +380,28 @@ export default function PortfolioPage() {
   return (
     <div className="page-main container space-y-4" data-sticky-actions="true">
       {/* Header */}
+      <div className="mobile-topbar md:hidden">
+        <div className="mobile-topbar__inner">
+          <div className="min-w-0 flex-1">
+            <div className="mobile-topbar__title flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" aria-hidden />
+              Portfolio
+            </div>
+            <div className="mobile-topbar__subtitle">
+              {hasPortfolioData ? `Kas ${formatIDR(cashSummary.cashBalance)} • ${activeHoldings.length} holdings` : "Mulai dengan top up lalu beli saham pertama"}
+            </div>
+          </div>
+          {hasPortfolioData && (
+            <div className="shrink-0 text-right">
+              <div className="text-sm font-black tabular-nums">{formatIDR(totalPortfolioValue)}</div>
+              <div className={cn("text-[11px] font-bold tabular-nums", portfolioDeltaPositive ? "text-bull-600" : "text-bear-600")}>
+                {formatPercent(totalReturnPercent)}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <section className="page-hero-card p-5 sm:p-6">
         <div className="page-eyebrow">Portfolio workspace</div>
         <div className="mt-2 flex items-start justify-between gap-3">
@@ -454,12 +498,29 @@ export default function PortfolioPage() {
       )}
 
       {/* Sticky mobile action bar */}
-      {(transactions.length > 0 || cashEntries.length > 0) && (
+      {hasPortfolioData && (
         <div className="app-sticky-action-bar sm:hidden">
           <div className="app-sticky-action-bar__panel p-2.5">
+            <div className="mb-2 flex gap-1 overflow-x-auto no-scrollbar">
+              {sectionButtons.map((section) => (
+                <button
+                  key={section.key}
+                  type="button"
+                  onClick={() => setMobileSection(section.key)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors",
+                    mobileSection === section.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => setCashModalType("TOPUP")}
+                onClick={openTopupModal}
                 variant="outline"
                 className="min-h-11 flex-1 border-bull-500/40 text-bull-700 dark:text-bull-500"
                 aria-label="Top up modal kas"
@@ -468,12 +529,12 @@ export default function PortfolioPage() {
                 Top Up
               </Button>
               <Button
-                onClick={() => setShowAddModal(true)}
+                onClick={openBuyModal}
                 className="min-h-11 flex-[2] rounded-xl"
                 aria-label="Catat transaksi beli atau jual"
               >
                 <Plus className="mr-1.5 h-5 w-5" aria-hidden />
-                Beli/Jual
+                Trade
               </Button>
             </div>
           </div>
@@ -577,7 +638,7 @@ export default function PortfolioPage() {
 
           {/* Performance + Allocation Charts */}
           {(snapshots.length > 0 || activeHoldings.length > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className={cn("grid grid-cols-1 gap-3 lg:grid-cols-2", !showInsights && "hidden sm:grid")}>
               <PortfolioChart snapshots={snapshots} />
               <SectorDonut
                 data={processSectors(
@@ -595,10 +656,12 @@ export default function PortfolioPage() {
 
           {/* IHSG Benchmark — how does portfolio compare to market? */}
           {netInvested > 0 && (
-            <IHSGBenchmark
-              portfolioValue={totalPortfolioValue}
-              initialDeposit={netInvested}
-            />
+            <div className={cn(!showInsights && "hidden sm:block")}>
+              <IHSGBenchmark
+                portfolioValue={totalPortfolioValue}
+                initialDeposit={netInvested}
+              />
+            </div>
           )}
 
           {/* Sell Signals - Critical Alerts */}
@@ -606,6 +669,7 @@ export default function PortfolioPage() {
             <Card
               className={cn(
                 "p-4 border-2",
+                !showInsights && "hidden sm:block",
                 sellSignals.some((s) => s.severity === "danger")
                   ? "border-bear-500/50 bg-gradient-to-br from-bear-50 to-orange-50 dark:from-bear-700/10 dark:to-orange-900/10"
                   : "border-amber-500/50 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-700/10 dark:to-yellow-900/10",
@@ -704,7 +768,7 @@ export default function PortfolioPage() {
 
           {/* Holdings */}
           {holdings.filter((h) => h.totalShares > 0).length > 0 && (
-            <div>
+            <div className={cn(!showHoldings && "hidden sm:block")}>
               <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary" />
                 Holdings ({holdings.filter((h) => h.totalShares > 0).length})
@@ -732,7 +796,7 @@ export default function PortfolioPage() {
           {/* Closed positions */}
           {holdings.filter((h) => h.totalShares === 0 && h.realizedPL !== 0)
             .length > 0 && (
-            <div>
+            <div className={cn(!showActivity && "hidden sm:block")}>
               <h2 className="text-lg font-bold mb-2 px-1 flex items-center gap-2">
                 <Award className="h-5 w-5 text-amber-500" />
                 Closed Positions
@@ -749,7 +813,7 @@ export default function PortfolioPage() {
 
           {/* Best & Worst Trades */}
           {(summary.bestTrade || summary.worstTrade) && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className={cn("grid grid-cols-2 gap-2", !showInsights && "hidden sm:grid")}>
               {summary.bestTrade && (
                 <Card className="p-3 border-bull-500/30 bg-bull-50/30 dark:bg-bull-700/10">
                   <div className="text-xs text-bull-700 dark:text-bull-500 font-medium">
@@ -787,7 +851,7 @@ export default function PortfolioPage() {
 
           {/* Cash Ledger History */}
           {cashEntries.length > 0 && (
-            <div>
+            <div className={cn(!showActivity && "hidden sm:block")}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <Banknote className="h-5 w-5 text-primary" />
@@ -826,7 +890,7 @@ export default function PortfolioPage() {
           )}
 
           {/* Transaction History */}
-          <div>
+          <div className={cn(!showActivity && "hidden sm:block")}>
             <div className="flex items-center justify-between mb-2 px-1">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />

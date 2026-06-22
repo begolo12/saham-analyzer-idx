@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Scale,
@@ -10,6 +10,7 @@ import {
   TrendingUp,
   TrendingDown,
   Check,
+  ChevronRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,20 +98,6 @@ const METRICS: MetricRow[] = [
     hasData: (s) => s.volume !== null && s.volume > 0,
   },
   {
-    label: "52w High",
-    category: "price",
-    format: (v) => formatIDR(v),
-    better: () => "neutral",
-    hasData: (s) => s.fiftyTwoWeekHigh !== null,
-  },
-  {
-    label: "52w Low",
-    category: "price",
-    format: (v) => formatIDR(v),
-    better: () => "neutral",
-    hasData: (s) => s.fiftyTwoWeekLow !== null,
-  },
-  {
     label: "P/E (trailing)",
     category: "valuation",
     format: (v) => v.toFixed(2),
@@ -118,14 +105,7 @@ const METRICS: MetricRow[] = [
     hasData: (s) => s.trailingPE !== null && s.trailingPE > 0,
   },
   {
-    label: "P/E (forward)",
-    category: "valuation",
-    format: (v) => v.toFixed(2),
-    better: (v) => (v > 0 && v < 15 ? "good" : v > 25 ? "bad" : "neutral"),
-    hasData: (s) => s.forwardPE !== null && s.forwardPE > 0,
-  },
-  {
-    label: "P/B (Price to Book)",
+    label: "P/B",
     category: "valuation",
     format: (v) => v.toFixed(2),
     better: (v) => (v > 0 && v < 1.5 ? "good" : v > 3 ? "bad" : "neutral"),
@@ -246,15 +226,9 @@ function getMetricValue(stock: CompareStock, metric: MetricRow): number | null {
       return stock.marketCap;
     case "Volume":
       return stock.volume;
-    case "52w High":
-      return stock.fiftyTwoWeekHigh;
-    case "52w Low":
-      return stock.fiftyTwoWeekLow;
     case "P/E (trailing)":
       return stock.trailingPE;
-    case "P/E (forward)":
-      return stock.forwardPE;
-    case "P/B (Price to Book)":
+    case "P/B":
       return stock.priceToBook;
     case "ROE":
       return stock.returnOnEquity;
@@ -287,6 +261,43 @@ function getMetricValue(stock: CompareStock, metric: MetricRow): number | null {
     default:
       return null;
   }
+}
+
+function getWinnerCode(results: CompareStock[], metric: MetricRow): string | null {
+  const values = results
+    .map((s) => ({ code: s.code, value: getMetricValue(s, metric) }))
+    .filter((v) => v.value !== null) as { code: string; value: number }[];
+  if (values.length < 2) return null;
+  if (metric.better(values[0].value) === "neutral") return null;
+  const isHigherBetter = metric.better(1) === "good";
+  const best = isHigherBetter
+    ? values.reduce((a, b) => (a.value > b.value ? a : b))
+    : values.reduce((a, b) => (a.value < b.value ? a : b));
+  return best.code;
+}
+
+function categorySummary(results: CompareStock[], category: MetricCategory) {
+  const metrics = METRICS.filter((metric) => metric.category === category);
+  const scores = new Map<string, number>();
+
+  results.forEach((result) => scores.set(result.code, 0));
+
+  metrics.forEach((metric) => {
+    const winner = getWinnerCode(results, metric);
+    if (winner) {
+      scores.set(winner, (scores.get(winner) || 0) + 1);
+    }
+  });
+
+  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length || ranked[0][1] === 0) return null;
+  const winnerStock = results.find((stock) => stock.code === ranked[0][0]);
+  if (!winnerStock) return null;
+  return {
+    code: winnerStock.code,
+    score: ranked[0][1],
+    total: metrics.length,
+  };
 }
 
 export function StockComparison({
@@ -354,88 +365,89 @@ export function StockComparison({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getBest = (metric: MetricRow): string | null => {
-    if (!results) return null;
-    const values = results
-      .map((s) => ({ code: s.code, value: getMetricValue(s, metric) }))
-      .filter((v) => v.value !== null) as { code: string; value: number }[];
-    if (values.length < 2) return null;
-    if (metric.better(values[0].value) === "neutral") return null;
-    const isHigherBetter = metric.better(1) === "good";
-    const best = isHigherBetter
-      ? values.reduce((a, b) => (a.value > b.value ? a : b))
-      : values.reduce((a, b) => (a.value < b.value ? a : b));
-    return best.code;
-  };
+  const summaryCards = useMemo(() => {
+    if (!results || results.length < 2) return [];
+    return CATEGORIES.map((category) => {
+      const summary = categorySummary(results, category.id);
+      if (!summary) return null;
+      return {
+        ...category,
+        ...summary,
+      };
+    }).filter(Boolean) as Array<{ id: MetricCategory; label: string; icon: string; code: string; score: number; total: number }>;
+  }, [results]);
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3">
+      <Card className="page-hero-card p-4 sm:p-5">
+        <div className="page-eyebrow">Compare builder</div>
+        <div className="mt-2 flex items-center gap-2">
           <Scale className="h-5 w-5 text-primary" />
-          <h2 className="text-base font-bold">Bandingkan Saham</h2>
+          <h2 className="text-base font-bold">Bandingkan saham di mobile</h2>
         </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Pilih 2-3 saham untuk lihat side-by-side comparison lengkap
-          (fundamental, teknikal, performa).
+        <p className="mt-1 text-xs text-muted-foreground">
+          Fokuskan 2 saham utama dulu, lalu baca kategori demi kategori tanpa layout tabel yang sempit.
         </p>
 
-        <div className="flex flex-wrap gap-2 mb-3 min-h-[36px]">
+        <div className="mt-4 flex flex-wrap gap-2 min-h-[36px]">
           {tickers.map((t) => (
             <Badge
               key={t}
               variant="default"
-              className="px-2.5 py-1.5 text-sm flex items-center gap-1.5"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
             >
               {t}
               <button
                 onClick={() => removeTicker(t)}
-                className="hover:text-bear-300"
+                className="rounded-full hover:text-bear-300"
                 aria-label={`Remove ${t}`}
               >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
           ))}
-          {tickers.length < 3 && (
-            <div className="flex items-center gap-1.5">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && input) {
-                    e.preventDefault();
-                    addTicker(input);
-                  }
-                }}
-                placeholder="Ketik kode (BBCA)..."
-                className="h-8 w-40 text-sm"
-                maxLength={6}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => input && addTicker(input)}
-                disabled={!input}
-                className="h-8"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          <span className="text-[10px] text-muted-foreground self-center mr-1">
-            Populer:
-          </span>
-          {["BBCA", "BMRI", "BBRI", "TLKM", "ASII", "ICBP"].map((c) => (
+        <div className="mt-3 flex items-center gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && input) {
+                e.preventDefault();
+                addTicker(input);
+              }
+            }}
+            placeholder="Tambah kode (BBCA)..."
+            className="h-11 text-sm"
+            maxLength={6}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => input && addTicker(input)}
+            disabled={!input}
+            className="h-11 w-11 rounded-xl"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {[
+            "BBCA",
+            "BMRI",
+            "BBRI",
+            "TLKM",
+            "ASII",
+            "ICBP",
+          ].map((c) => (
             <button
               key={c}
               onClick={() => addTicker(c)}
               disabled={tickers.includes(c) || tickers.length >= 3}
-              className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
             >
               + {c}
             </button>
@@ -445,60 +457,92 @@ export function StockComparison({
         <Button
           onClick={fetchCompare}
           disabled={tickers.length < 2 || loading}
-          className="w-full sm:w-auto"
+          className="mt-4 min-h-11 w-full rounded-xl"
         >
           {loading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Comparing...
             </>
           ) : (
             <>
-              <Scale className="h-4 w-4 mr-2" />
-              Bandingkan ({tickers.length})
+              <Scale className="mr-2 h-4 w-4" />
+              Bandingkan {tickers.length} saham
             </>
           )}
         </Button>
       </Card>
 
       {results && results.length >= 2 && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="space-y-4">
+          <div className="mobile-topbar md:hidden">
+            <div className="mobile-topbar__inner">
+              <div className="min-w-0 flex-1">
+                <div className="mobile-topbar__title">Winner snapshot</div>
+                <div className="mobile-topbar__subtitle">Lihat unggulan per kategori sebelum masuk detail</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             {results.map((s) => {
               const isUp = s.changePct >= 0;
               return (
-                <Card key={s.code} className="p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <Link
-                      href={`/stock/${s.code}`}
-                      className="font-black text-lg hover:underline"
-                    >
-                      {s.code}
-                    </Link>
+                <Card key={s.code} className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <Link
+                        href={`/stock/${s.code}`}
+                        className="text-lg font-black hover:underline"
+                      >
+                        {s.code}
+                      </Link>
+                      <div className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{s.name}</div>
+                    </div>
                     <Badge variant="outline" className="text-[10px]">
                       {s.sector}
                     </Badge>
                   </div>
-                  <div className="text-xl font-black tabular-nums">
+                  <div className="mt-3 text-2xl font-black tabular-nums">
                     {formatIDR(s.price)}
                   </div>
                   <div
                     className={cn(
-                      "text-xs font-bold tabular-nums flex items-center gap-1",
+                      "mt-1 flex items-center gap-1 text-xs font-bold tabular-nums",
                       isUp ? "text-bull-600" : "text-bear-600",
                     )}
                   >
-                    {isUp ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
+                    {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {formatPercent(s.changePct)}
                   </div>
                 </Card>
               );
             })}
           </div>
+
+          {summaryCards.length > 0 && (
+            <Card className="p-4">
+              <div className="page-section-heading">
+                <div>
+                  <div className="page-section-title">Ringkasan pemenang</div>
+                  <div className="page-section-subtitle">Siapa unggul di tiap tema keputusan utama</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {summaryCards.map((card) => (
+                  <div key={card.id} className="rounded-2xl border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">{card.icon} {card.label}</div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <div className="text-base font-black">{card.code}</div>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {card.score}/{card.total} metric unggul
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {CATEGORIES.map((cat) => {
             const catMetrics = METRICS.filter(
@@ -507,62 +551,58 @@ export function StockComparison({
             if (catMetrics.length === 0) return null;
             return (
               <Card key={cat.id} className="p-4">
-                <h3 className="text-sm font-bold mb-3">
-                  {cat.icon} {cat.label}
-                </h3>
-                <div className="space-y-1.5">
+                <div className="page-section-heading mb-3">
+                  <div>
+                    <div className="page-section-title">{cat.icon} {cat.label}</div>
+                    <div className="page-section-subtitle">Bandingkan metric paling relevan tanpa tabel sempit</div>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
                   {catMetrics.map((metric) => {
-                    const best = getBest(metric);
+                    const best = getWinnerCode(results, metric);
                     return (
-                      <div
-                        key={metric.label}
-                        className="grid grid-cols-[1fr_repeat(3,minmax(0,1fr))] gap-2 items-center py-1.5 border-b last:border-b-0"
-                      >
-                        <div className="text-xs font-medium text-muted-foreground">
-                          {metric.label}
+                      <div key={metric.label} className="rounded-2xl border bg-card p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="text-sm font-bold">{metric.label}</div>
+                          {best && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Winner: {best}
+                            </Badge>
+                          )}
                         </div>
-                        {results.map((s) => {
-                          const v = getMetricValue(s, metric);
-                          if (v === null) {
+                        <div className="space-y-1.5">
+                          {results.map((s) => {
+                            const v = getMetricValue(s, metric);
+                            if (v === null) {
+                              return (
+                                <div key={s.code} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                                  <span className="font-semibold">{s.code}</span>
+                                  <span>—</span>
+                                </div>
+                              );
+                            }
+                            const isBest = best === s.code;
+                            const verdict = metric.better(v);
                             return (
                               <div
                                 key={s.code}
-                                className="text-xs text-muted-foreground italic text-right"
+                                className={cn(
+                                  "flex items-center justify-between rounded-xl px-3 py-2 text-sm",
+                                  isBest && verdict === "good" && "bg-bull-50 text-bull-700 dark:bg-bull-700/15 dark:text-bull-500",
+                                  isBest && verdict === "bad" && "bg-bear-50 text-bear-700 dark:bg-bear-700/15 dark:text-bear-500",
+                                  isBest && verdict === "neutral" && "bg-primary/10 text-primary",
+                                  !isBest && "bg-muted/40",
+                                )}
                               >
-                                —
+                                <span className="font-semibold">{s.code}</span>
+                                <span className="flex items-center gap-1 font-bold tabular-nums">
+                                  {metric.format(v)}
+                                  {isBest && <Check className="h-3.5 w-3.5" />}
+                                </span>
                               </div>
                             );
-                          }
-                          const isBest = best === s.code;
-                          const verdict = metric.better(v);
-                          return (
-                            <div
-                              key={s.code}
-                              className={cn(
-                                "text-xs font-bold tabular-nums text-right px-2 py-0.5 rounded",
-                                isBest &&
-                                  verdict !== "neutral" &&
-                                  "ring-2 ring-primary/50",
-                                verdict === "good" && !isBest && "text-bull-600",
-                                verdict === "bad" && !isBest && "text-bear-600",
-                                isBest &&
-                                  verdict === "good" &&
-                                  "bg-bull-100 text-bull-700 dark:bg-bull-700/30 dark:text-bull-500",
-                                isBest &&
-                                  verdict === "bad" &&
-                                  "bg-bear-100 text-bear-700 dark:bg-bear-700/30 dark:text-bear-500",
-                                isBest &&
-                                  verdict === "neutral" &&
-                                  "bg-primary/10 text-primary",
-                              )}
-                            >
-                              {metric.format(v)}
-                              {isBest && verdict !== "neutral" && (
-                                <Check className="h-2.5 w-2.5 inline ml-1" />
-                              )}
-                            </div>
-                          );
-                        })}
+                          })}
+                        </div>
                       </div>
                     );
                   })}
@@ -571,10 +611,8 @@ export function StockComparison({
             );
           })}
 
-          <p className="text-[10px] text-muted-foreground text-center italic px-2">
-            ✓ = nilai terbaik di kategori ini. Hijau = favorable, merah =
-            unfavorable. Data dari Yahoo Finance (mungkin terbatas untuk beberapa
-            saham IDX).
+          <p className="px-2 text-center text-[10px] italic text-muted-foreground">
+            Winner badge = saham paling unggul di metric/category itu. Detail lengkap tetap bisa dibuka ke halaman analisa masing-masing.
           </p>
         </div>
       )}

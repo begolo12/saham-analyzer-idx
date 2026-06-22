@@ -279,17 +279,39 @@ export default function WatchlistPage() {
   return (
     <div className="app-shell min-h-screen bg-background">
       <main className="page-main container space-y-4">
+        <div className="mobile-topbar md:hidden">
+          <div className="mobile-topbar__inner">
+            <div className="min-w-0 flex-1">
+              <div className="mobile-topbar__title flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-500 fill-amber-500" aria-hidden />
+                Watchlist
+                {items.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {items.length}
+                  </Badge>
+                )}
+              </div>
+              <div className="mobile-topbar__subtitle">Pantau saham favorit, alert, dan discovery sektor</div>
+            </div>
+            {items.length > 0 && (
+              <div className="flex shrink-0 items-center gap-1">
+                <ShareWatchlistButton tickers={items.map((i) => i.ticker)} />
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="hidden items-center justify-between md:flex">
           <div className="flex items-center gap-2">
             <Link href="/" aria-label="Kembali ke Beranda">
               <Button variant="ghost" size="sm" className="min-h-9">
-                <ArrowLeft className="h-4 w-4 mr-1" aria-hidden />
+                <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
                 <span className="hidden sm:inline">Beranda</span>
               </Button>
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-              <Star className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500 fill-amber-500" aria-hidden />
+            <h1 className="flex items-center gap-2 text-2xl font-black sm:text-3xl">
+              <Star className="h-6 w-6 fill-amber-500 text-amber-500 sm:h-7 sm:w-7" aria-hidden />
               Watchlist
             </h1>
             {items.length > 0 && (
@@ -308,12 +330,33 @@ export default function WatchlistPage() {
                 className="min-h-9 text-xs"
                 aria-label="Hapus semua saham dari watchlist"
               >
-                <Trash2 className="h-4 w-4 mr-1" aria-hidden />
+                <Trash2 className="mr-1 h-4 w-4" aria-hidden />
                 <span className="hidden sm:inline">Hapus Semua</span>
               </Button>
             </div>
           )}
         </div>
+
+        {items.length > 0 && (
+          <div className="page-hero-card p-4 md:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="page-eyebrow">Monitor cepat</div>
+                <div className="mt-1 text-sm font-bold">{alerts.filter((a) => a.status === "triggered").length} alert hit • {smartAlerts.length} smart alerts</div>
+                <div className="mt-1 text-xs text-muted-foreground">Tap saham untuk buka detail, alert selalu terlihat di touch.</div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAll}
+                className="min-h-9 shrink-0 text-xs"
+                aria-label="Hapus semua saham dari watchlist"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Self-learning Insight Banner */}
         {items.length > 0 && totalViews > 0 && mostViewed && (
@@ -571,7 +614,7 @@ export default function WatchlistPage() {
         <div className="text-center text-xs text-muted-foreground py-4">
           <p>Watchlist tersimpan di browser Anda (localStorage)</p>
           <p className="mt-1">
-            Klik saham untuk lihat detail • Hover untuk hapus • Set Alert 🔔 untuk notifikasi harga
+            Klik saham untuk lihat detail • Hapus/alert tersedia langsung di layar touch • Set Alert 🔔 untuk notifikasi harga
           </p>
         </div>
       </main>

@@ -179,7 +179,7 @@ export function WatchlistCard({
       {/* Remove button */}
       <button
         onClick={() => onRemove(stock.code)}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-bear-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all z-10"
+        className="absolute right-2 top-2 z-10 rounded-full bg-background/90 p-1.5 opacity-100 transition-all hover:bg-bear-500 hover:text-white md:opacity-0 md:group-hover:opacity-100"
         aria-label="Remove from watchlist"
       >
         <Trash2 className="h-3 w-3" />

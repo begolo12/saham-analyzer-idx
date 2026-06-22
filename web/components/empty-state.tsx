@@ -58,7 +58,7 @@ export function EmptyState({
       >
         {renderIcon()}
       </div>
-      <h3 className="text-title-3 text-foreground">{title}</h3>
+      <h3 className="page-section-title text-foreground">{title}</h3>
       {description && (
         <p className="mt-1.5 max-w-xs text-footnote text-muted-foreground leading-relaxed">
           {description}

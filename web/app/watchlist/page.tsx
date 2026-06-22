@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Star,
   Trash2,
@@ -51,6 +52,7 @@ type SortBy = "default" | "hot" | "change" | "name" | "viewed";
 type SectorFilter = "all" | string;
 
 export default function WatchlistPage() {
+  const router = useRouter();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [data, setData] = useState<Record<string, WatchlistStockData>>({});
@@ -265,7 +267,7 @@ export default function WatchlistPage() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-background">
-        <main className="container py-6 pb-24">
+        <main className="page-main container">
           <div className="flex items-center justify-center min-h-[50vh]">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
@@ -275,8 +277,8 @@ export default function WatchlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+    <div className="app-shell min-h-screen bg-background">
+      <main className="page-main container space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -344,13 +346,13 @@ export default function WatchlistPage() {
               {
                 label: "Jelajahi saham",
                 icon: <Star className="h-3 w-3" aria-hidden />,
-                onClick: () => (window.location.href = "/"),
+                onClick: () => router.push("/"),
               },
               {
                 label: "Cari saham",
                 variant: "secondary",
                 icon: <Filter className="h-3 w-3" aria-hidden />,
-                onClick: () => (window.location.href = "/search"),
+                onClick: () => router.push("/search"),
               },
             ]}
           />
@@ -535,7 +537,7 @@ export default function WatchlistPage() {
         {/* No results after filter */}
         {!loading && items.length > 0 && sortedItems.length === 0 && (
           <Card className="p-6 text-center text-sm text-muted-foreground">
-            Tidak ada saham di sektor "{sectorFilter}".
+            Tidak ada saham di sektor &quot;{sectorFilter}&quot;.
           </Card>
         )}
 

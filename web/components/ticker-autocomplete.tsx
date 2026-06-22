@@ -257,7 +257,7 @@ export function TickerAutocomplete({
                   className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:bg-accent text-left border-b last:border-0"
                 >
                   <Search className="h-3.5 w-3.5" />
-                  Tidak ada hasil untuk <strong className="text-foreground ml-1">"{value}"</strong>.
+                  Tidak ada hasil untuk <strong className="text-foreground ml-1">&quot;{value}&quot;</strong>.
                   <span className="ml-auto text-xs">Tekan Enter untuk pakai kode ini</span>
                 </button>
               </li>

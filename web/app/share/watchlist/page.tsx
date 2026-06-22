@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Share2, ArrowLeft, Loader2, Check, Plus, Copy, Star } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/empty-state";
 import { StockRowSkeleton } from "@/components/stock-row-skeleton";
 import { useWatchlist, addToWatchlist } from "@/lib/watchlist-storage";
 import { POPULAR_STOCKS } from "@/lib/popular-stocks";
-import { cn, formatIDR, formatPercent } from "@/lib/utils";
+import { formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface SharedStock {
@@ -42,6 +42,7 @@ export default function ShareWatchlistPage() {
 }
 
 function ShareWatchlistContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const listParam = params.get("list") || "";
   const title = params.get("title") || "Watchlist";
@@ -144,9 +145,9 @@ function ShareWatchlistContent() {
   const allExisting = newTickers.length === 0 && tickers.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+      <main className="page-main container space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/watchlist" aria-label="Kembali ke Watchlist">
             <Button variant="ghost" size="sm" className="min-h-9">
@@ -169,7 +170,7 @@ function ShareWatchlistContent() {
               {
                 label: "Buka watchlist",
                 icon: <Star className="h-3 w-3" aria-hidden />,
-                onClick: () => (window.location.href = "/watchlist"),
+                onClick: () => router.push("/watchlist"),
               },
             ]}
           />
@@ -295,7 +296,7 @@ function ShareWatchlistSkeleton() {
   return (
     <div className="min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4" aria-busy="true">
+      <main className="page-main container space-y-4" aria-busy="true">
         <div className="h-9 w-32 bg-secondary rounded shimmer" />
         <div className="space-y-2 animate-pulse">
           <div className="h-6 w-48 bg-muted rounded" />

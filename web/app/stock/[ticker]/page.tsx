@@ -11,11 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Alert, Disclaimer } from "@/components/alert";
+import { Alert } from "@/components/alert";
 import {
   RecommendationSkeleton,
   ChartSkeleton,
-  IndicatorSkeleton,
 } from "@/components/skeleton";
 import { MetricCard } from "@/components/mini-chart";
 import { RecommendationHero } from "@/components/recommendation-hero";
@@ -43,7 +42,7 @@ interface AnalysisData {
 }
 
 type Period = "1mo" | "3mo" | "6mo" | "1y" | "2y";
-type Tab = "technical" | "fundamental" | "behavioral" | "news";
+type Tab = "technical" | "fundamental" | "behavioral" | "sentiment";
 
 const PERIODS: Period[] = ["1mo", "3mo", "6mo", "1y", "2y"];
 const PERIOD_LABELS: Record<Period, string> = {
@@ -53,13 +52,7 @@ const PERIOD_LABELS: Record<Period, string> = {
   "1y": "1T",
   "2y": "2T",
 };
-const VALID_TABS: Tab[] = ["technical", "fundamental", "behavioral", "news"];
-const TAB_LABELS: Record<Tab, string> = {
-  technical: "Teknikal",
-  fundamental: "Fundamental",
-  behavioral: "Behavioral",
-  news: "Berita",
-};
+const VALID_TABS: Tab[] = ["technical", "fundamental", "behavioral", "sentiment"];
 
 export default function StockDetailPage() {
   return (
@@ -82,6 +75,7 @@ function StockDetailContent() {
 
   const initialTab = (() => {
     const t = searchParams.get("tab");
+    if (t === "news") return "sentiment";
     return t && VALID_TABS.includes(t as Tab) ? (t as Tab) : "technical";
   })();
   const initialPeriod = (() => {
@@ -161,10 +155,8 @@ function StockDetailContent() {
   const behavioral = data?.behavioral;
   const sentiment = data?.sentiment;
 
-  // Auto-track this recommendation untuk self-analysis
   useTrackRecommendation(ticker, recommendation);
 
-  // Calculate price change for metrics
   const lastPrice = summary?.currentPrice;
   const prevClose = summary?.previousClose;
   const priceChange = lastPrice && prevClose ? lastPrice - prevClose : 0;
@@ -174,15 +166,14 @@ function StockDetailContent() {
   const isUp = priceChange >= 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
 
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6">
-        {/* Back button + actions */}
-        <div className="flex items-center justify-between gap-2 mb-4">
+      <main className="page-main container" data-sticky-actions="true">
+        <div className="mb-4 flex items-center justify-between gap-2">
           <Link href="/" aria-label="Kembali ke Beranda">
-            <Button variant="ghost" size="sm" className="min-h-9">
-              <ArrowLeft className="h-4 w-4 mr-1" aria-hidden />
+            <Button variant="ghost" size="sm" className="min-h-9 rounded-full px-3">
+              <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">Beranda</span>
             </Button>
           </Link>
@@ -192,35 +183,16 @@ function StockDetailContent() {
               onClick={() => setShowBuyModal(true)}
               size="sm"
               aria-label={`Catat transaksi beli ${ticker}`}
-              className="min-h-9 bg-bull-600 hover:bg-bull-700"
+              className="min-h-9 rounded-full bg-bull-600 px-4 hover:bg-bull-700"
             >
-              <Briefcase className="h-4 w-4 mr-1" aria-hidden />
+              <Briefcase className="mr-1 h-4 w-4" aria-hidden />
               <span>Beli</span>
             </Button>
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="h-8 w-32 bg-secondary rounded-lg shimmer" />
-              <div className="h-4 w-48 bg-secondary rounded shimmer" />
-            </div>
-            <RecommendationSkeleton />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="rounded-2xl border bg-card p-4">
-                  <div className="h-3 w-16 bg-secondary rounded shimmer mb-2" />
-                  <div className="h-6 w-24 bg-secondary rounded shimmer" />
-                </div>
-              ))}
-            </div>
-            <ChartSkeleton />
-          </div>
-        )}
+        {loading && <LoadingState />}
 
-        {/* Error State */}
         {error && !loading && (
           <div className="space-y-3">
             <ErrorBanner
@@ -242,30 +214,58 @@ function StockDetailContent() {
           </div>
         )}
 
-        {/* Success State */}
         {data && !loading && (
           <div className="space-y-5 animate-fade-in">
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
-                  {ticker}
-                </h1>
-                <Badge variant="outline" className="text-[10px]">
-                  {summary?.sector || "N/A"}
-                </Badge>
+            <section className="page-hero-card p-4 sm:p-5">
+              <div className="page-eyebrow">Stock workspace</div>
+              <div className="mt-2 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+                      {ticker}
+                    </h1>
+                    <Badge variant="outline" className="text-[10px]">
+                      {summary?.sector || "N/A"}
+                    </Badge>
+                  </div>
+                  {summary?.name && (
+                    <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+                      {summary.name}
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center gap-2 flex-wrap sm:hidden">
+                    <WatchlistButton ticker={ticker} />
+                    <Badge variant="secondary" className="text-[10px] font-medium">
+                      {lastPrice ? formatIDR(lastPrice) : "Harga belum tersedia"}
+                    </Badge>
+                  </div>
+                </div>
+                {lastPrice ? (
+                  <div className="hidden sm:block shrink-0 text-right">
+                    <div className="page-eyebrow">Harga saat ini</div>
+                    <div className="mt-1 text-2xl font-black tabular-nums">
+                      {formatIDR(lastPrice)}
+                    </div>
+                    <div
+                      className={cn(
+                        "mt-1 inline-flex items-center gap-1 text-xs font-bold tabular-nums",
+                        isUp ? "text-bull-600" : "text-bear-600",
+                      )}
+                    >
+                      {isUp ? (
+                        <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <TrendingDown className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      <span>{formatPercent(priceChangePct)}</span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-              {summary?.name && (
-                <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-                  {summary.name}
-                </p>
-              )}
-            </div>
+            </section>
 
-            {/* Recommendation Hero */}
             <RecommendationHero rec={recommendation} />
 
-            {/* Warnings */}
             {recommendation?.warnings?.length > 0 && (
               <div className="space-y-2">
                 {recommendation.warnings.map((w: string, i: number) => (
@@ -276,75 +276,88 @@ function StockDetailContent() {
               </div>
             )}
 
-            {/* Key Metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <MetricCard
-                label="Harga"
-                value={formatIDR(lastPrice)}
-                delta={isUp ? "+" : ""}
-              />
-              <MetricCard
-                label="Perubahan"
-                value={formatPercent(priceChangePct)}
-                delta={`${isUp ? "+" : ""}${Math.round(priceChange).toLocaleString("id-ID")}`}
-                deltaPositive={isUp}
-                icon={isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              />
-              <MetricCard
-                label="Volume"
-                value={formatNumber(summary?.volume)}
-                delta={`Avg: ${formatNumber(summary?.averageVolume)}`}
-              />
-              <MetricCard
-                label="52w Range"
-                value={`${formatIDR(summary?.fiftyTwoWeekLow)}`}
-                delta={`— ${formatIDR(summary?.fiftyTwoWeekHigh)}`}
-              />
-            </div>
-
-            {/* Period selector */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-bold">📈 Chart &amp; Analysis</h2>
-              <div
-                role="radiogroup"
-                aria-label="Periode chart"
-                className="inline-flex items-center gap-0.5 rounded-full bg-muted p-0.5"
-              >
-                {PERIODS.map((p) => {
-                  const active = period === p;
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      onClick={() => handlePeriodChange(p)}
-                      className={cn(
-                        "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
-                        active
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {PERIOD_LABELS[p]}
-                    </button>
-                  );
-                })}
+            <section>
+              <div className="page-section-heading">
+                <div>
+                  <div className="page-section-title">Snapshot utama</div>
+                  <div className="page-section-subtitle">Harga, perubahan, likuiditas, rentang 52 minggu</div>
+                </div>
               </div>
-            </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricCard
+                  label="Harga"
+                  value={formatIDR(lastPrice)}
+                  delta={isUp ? "+" : ""}
+                />
+                <MetricCard
+                  label="Perubahan"
+                  value={formatPercent(priceChangePct)}
+                  delta={`${isUp ? "+" : ""}${Math.round(priceChange).toLocaleString("id-ID")}`}
+                  deltaPositive={isUp}
+                  icon={isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                />
+                <MetricCard
+                  label="Volume"
+                  value={formatNumber(summary?.volume)}
+                  delta={`Avg: ${formatNumber(summary?.averageVolume)}`}
+                />
+                <MetricCard
+                  label="52w Range"
+                  value={formatIDR(summary?.fiftyTwoWeekLow)}
+                  delta={`— ${formatIDR(summary?.fiftyTwoWeekHigh)}`}
+                />
+              </div>
+            </section>
 
-            {/* Price Chart */}
-            <Card className="p-2 sm:p-4 overflow-hidden">
-              <PriceChart
-                prices={data.historical || []}
-                technical={technical}
-                height={typeof window !== "undefined" && window.innerWidth < 640 ? 300 : 400}
-              />
-            </Card>
+            <section>
+              <div className="page-section-heading">
+                <div>
+                  <div className="page-section-title">Chart & analisa</div>
+                  <div className="page-section-subtitle">Pilih horizon lalu baca sinyal utamanya</div>
+                </div>
+                <div
+                  role="radiogroup"
+                  aria-label="Periode chart"
+                  className="inline-flex items-center gap-0.5 rounded-full bg-muted p-0.5"
+                >
+                  {PERIODS.map((p) => {
+                    const active = period === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => handlePeriodChange(p)}
+                        className={cn(
+                          "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
+                          active
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {PERIOD_LABELS[p]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Card className="overflow-hidden p-2 sm:p-4">
+                <PriceChart
+                  prices={data.historical || []}
+                  technical={technical}
+                  height={typeof window !== "undefined" && window.innerWidth < 640 ? 300 : 400}
+                />
+              </Card>
+            </section>
 
-            {/* Score Breakdown */}
             <Card className="p-4 sm:p-5">
-              <h3 className="font-bold text-base mb-3">📊 Signal Breakdown</h3>
+              <div className="page-section-heading mb-3">
+                <div>
+                  <div className="page-section-title">Signal breakdown</div>
+                  <div className="page-section-subtitle">Lihat kontribusi tiap mesin analisa</div>
+                </div>
+              </div>
               <div className="space-y-3">
                 <ScoreBar
                   label="📊 Teknikal"
@@ -368,8 +381,8 @@ function StockDetailContent() {
                 />
               </div>
               {recommendation?.reasoning && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="text-xs sm:text-sm text-foreground/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2 [&_li]:my-0.5">
+                <div className="mt-4 border-t pt-4">
+                  <div className="prose prose-sm max-w-none text-xs leading-relaxed text-foreground/90 dark:prose-invert sm:text-sm [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {recommendation.reasoning}
                     </ReactMarkdown>
@@ -378,150 +391,157 @@ function StockDetailContent() {
               )}
             </Card>
 
-            {/* Detailed Tabs */}
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="w-full grid grid-cols-4" aria-label="Detail analisa">
-                <TabsTrigger value="technical">📊 Tech</TabsTrigger>
-                <TabsTrigger value="fundamental">💼 Fund</TabsTrigger>
-                <TabsTrigger value="behavioral">🔍 Pattern</TabsTrigger>
-                <TabsTrigger value="sentiment">📰 News</TabsTrigger>
-              </TabsList>
+            <section>
+              <div className="page-section-heading">
+                <div>
+                  <div className="page-section-title">Detail analisa</div>
+                  <div className="page-section-subtitle">Buka tab sesuai sudut pandang yang ingin kamu cek</div>
+                </div>
+              </div>
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <TabsList className="grid w-full grid-cols-4" aria-label="Detail analisa">
+                  <TabsTrigger value="technical">📊 Tech</TabsTrigger>
+                  <TabsTrigger value="fundamental">💼 Fund</TabsTrigger>
+                  <TabsTrigger value="behavioral">🔍 Pattern</TabsTrigger>
+                  <TabsTrigger value="sentiment">📰 News</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="technical">
-                <Card className="p-4 sm:p-5">
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Score</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {technical?.overallScore?.toFixed(0) ?? 0}
+                <TabsContent value="technical">
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-4 grid grid-cols-3 gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Score</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {technical?.overallScore?.toFixed(0) ?? 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Trend</div>
+                        <div className="text-lg font-semibold">{technical?.trend}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Signal</div>
+                        <div className="text-lg font-semibold">
+                          {technical?.overallSignal?.replace("_", " ")}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Trend</div>
-                      <div className="text-lg font-semibold">{technical?.trend}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Signal</div>
-                      <div className="text-lg font-semibold">
-                        {technical?.overallSignal?.replace("_", " ")}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4 italic">
-                    {technical?.summary}
-                  </p>
-                  <TechnicalIndicators indicators={technical?.indicators || []} />
-                </Card>
-              </TabsContent>
+                    <p className="mb-4 text-xs italic text-muted-foreground">
+                      {technical?.summary}
+                    </p>
+                    <TechnicalIndicators indicators={technical?.indicators || []} />
+                  </Card>
+                </TabsContent>
 
-              <TabsContent value="fundamental">
-                <Card className="p-4 sm:p-5">
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Score</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {fundamental?.overallScore?.toFixed(0) ?? 0}
+                <TabsContent value="fundamental">
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Score</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {fundamental?.overallScore?.toFixed(0) ?? 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Data Available</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {((fundamental?.dataAvailability || 0) * 100).toFixed(0)}%
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Data Available</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {((fundamental?.dataAvailability || 0) * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4 italic">
-                    {fundamental?.summary}
-                  </p>
-                  <FundamentalMetrics metrics={fundamental?.metrics || []} />
-                </Card>
-              </TabsContent>
+                    <p className="mb-4 text-xs italic text-muted-foreground">
+                      {fundamental?.summary}
+                    </p>
+                    <FundamentalMetrics metrics={fundamental?.metrics || []} />
+                  </Card>
+                </TabsContent>
 
-              <TabsContent value="behavioral">
-                <Card className="p-4 sm:p-5">
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Score</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {behavioral?.overallScore?.toFixed(0) ?? 0}
+                <TabsContent value="behavioral">
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Score</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {behavioral?.overallScore?.toFixed(0) ?? 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Signal</div>
+                        <div className="text-lg font-semibold">
+                          {behavioral?.overallSignal?.replace("_", " ")}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Signal</div>
-                      <div className="text-lg font-semibold">
-                        {behavioral?.overallSignal?.replace("_", " ")}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4 italic">
-                    {behavioral?.summary}
-                  </p>
-                  <BehavioralPatterns
-                    patterns={behavioral?.patterns || []}
-                    supportLevels={behavioral?.supportLevels || []}
-                    resistanceLevels={behavioral?.resistanceLevels || []}
-                  />
-                </Card>
-              </TabsContent>
+                    <p className="mb-4 text-xs italic text-muted-foreground">
+                      {behavioral?.summary}
+                    </p>
+                    <BehavioralPatterns
+                      patterns={behavioral?.patterns || []}
+                      supportLevels={behavioral?.supportLevels || []}
+                      resistanceLevels={behavioral?.resistanceLevels || []}
+                    />
+                  </Card>
+                </TabsContent>
 
-              <TabsContent value="sentiment">
-                <Card className="p-4 sm:p-5">
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Score</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {sentiment?.overallScore?.toFixed(0) ?? 0}
+                <TabsContent value="sentiment">
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-4 grid grid-cols-3 gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Score</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {sentiment?.overallScore?.toFixed(0) ?? 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Articles</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {sentiment?.articles?.length || 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Confidence</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {((sentiment?.confidence || 0) * 100).toFixed(0)}%
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Articles</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {sentiment?.articles?.length || 0}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Confidence</div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {((sentiment?.confidence || 0) * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-4 italic">
-                    {sentiment?.summary}
-                  </p>
-                  <NewsList
-                    articles={sentiment?.articles || []}
-                    positiveCount={sentiment?.positiveCount || 0}
-                    negativeCount={sentiment?.negativeCount || 0}
-                    neutralCount={sentiment?.neutralCount || 0}
-                  />
-                </Card>
-              </TabsContent>
-            </Tabs>
+                    <p className="mb-4 text-xs italic text-muted-foreground">
+                      {sentiment?.summary}
+                    </p>
+                    <NewsList
+                      articles={sentiment?.articles || []}
+                      positiveCount={sentiment?.positiveCount || 0}
+                      negativeCount={sentiment?.negativeCount || 0}
+                      neutralCount={sentiment?.neutralCount || 0}
+                    />
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </section>
           </div>
         )}
 
         <Footer />
       </main>
 
-      {/* Sticky mobile action bar */}
       {data && !loading && lastPrice && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-background/95 px-3 py-2 backdrop-blur md:hidden">
-          <div className="flex items-center gap-2">
-            <WatchlistButton ticker={ticker} compact />
-            <Button
-              onClick={() => setShowBuyModal(true)}
-              className="min-h-11 flex-1 bg-bull-600 hover:bg-bull-700"
-              aria-label={`Catat transaksi beli ${ticker}`}
-            >
-              <Briefcase className="h-4 w-4 mr-1.5" aria-hidden />
-              <span className="font-semibold">Beli {ticker}</span>
-            </Button>
+        <div className="app-sticky-action-bar md:hidden">
+          <div className="app-sticky-action-bar__panel p-2.5">
+            <div className="flex items-center gap-2">
+              <WatchlistButton ticker={ticker} compact />
+              <Button
+                onClick={() => setShowBuyModal(true)}
+                className="min-h-11 flex-1 rounded-xl bg-bull-600 hover:bg-bull-700"
+                aria-label={`Catat transaksi beli ${ticker}`}
+              >
+                <Briefcase className="mr-1.5 h-4 w-4" aria-hidden />
+                <span className="font-semibold">Beli {ticker}</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Buy to Portfolio Modal */}
       {showBuyModal && lastPrice && (
         <AddTransactionModal
           defaultTicker={ticker}
@@ -533,9 +553,33 @@ function StockDetailContent() {
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="space-y-4">
+      <div className="page-hero-card p-4 sm:p-5">
+        <div className="h-3 w-24 rounded bg-secondary shimmer" />
+        <div className="mt-3 space-y-2">
+          <div className="h-8 w-32 rounded-lg bg-secondary shimmer" />
+          <div className="h-4 w-48 rounded bg-secondary shimmer" />
+        </div>
+      </div>
+      <RecommendationSkeleton />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-2xl border bg-card p-4">
+            <div className="mb-2 h-3 w-16 rounded bg-secondary shimmer" />
+            <div className="h-6 w-24 rounded bg-secondary shimmer" />
+          </div>
+        ))}
+      </div>
+      <ChartSkeleton />
+    </div>
+  );
+}
+
 function Footer() {
   return (
-    <footer className="border-t pt-6 pb-4 mt-8 text-center text-xs text-muted-foreground">
+    <footer className="mt-8 border-t pb-4 pt-6 text-center text-xs text-muted-foreground">
       <p>📊 Data: Yahoo Finance • Sentimen: Google News</p>
       <p className="mt-1">© 2026 Saham Analyzer IDX • Not financial advice</p>
     </footer>
@@ -544,13 +588,16 @@ function Footer() {
 
 function StockDetailSkeleton() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 space-y-4">
-        <div className="h-9 w-32 bg-secondary rounded shimmer" />
-        <div className="space-y-2">
-          <div className="h-10 w-40 bg-secondary rounded shimmer" />
-          <div className="h-4 w-56 bg-secondary rounded shimmer" />
+      <main className="page-main container space-y-4">
+        <div className="h-9 w-32 rounded shimmer bg-secondary" />
+        <div className="page-hero-card p-4 sm:p-5">
+          <div className="h-3 w-24 rounded bg-secondary shimmer" />
+          <div className="mt-3 space-y-2">
+            <div className="h-10 w-40 rounded bg-secondary shimmer" />
+            <div className="h-4 w-56 rounded bg-secondary shimmer" />
+          </div>
         </div>
         <RecommendationSkeleton />
         <ChartSkeleton />

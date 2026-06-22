@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search, Star, BarChart3, Settings, Briefcase, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
  */
 export function TopHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
   const navItems = [
@@ -27,7 +28,8 @@ export function TopHeader() {
     e.preventDefault();
     const ticker = searchQuery.trim().toUpperCase().replace(".JK", "");
     if (ticker) {
-      window.location.href = `/stock/${ticker}`;
+      router.push(`/stock/${ticker}`);
+      setSearchQuery("");
     }
   };
 

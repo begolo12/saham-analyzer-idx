@@ -9,9 +9,9 @@ import { Disclaimer } from "@/components/alert";
 
 export default function ComparePage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+      <main className="page-main container space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/" aria-label="Kembali ke Beranda">
             <Button variant="ghost" size="sm" className="min-h-9">

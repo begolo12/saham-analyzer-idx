@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   ChevronRight,
@@ -47,6 +48,7 @@ interface MarketStock {
 const RETRY_LIMIT = 1;
 
 export default function HomePage() {
+  const router = useRouter();
   const [topGainers, setTopGainers] = useState<MarketStock[]>([]);
   const [topLosers, setTopLosers] = useState<MarketStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,10 +89,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
 
-      <main className="container py-3 sm:py-4 pb-24 md:pb-6 space-y-3">
+      <main className="page-main container space-y-3">
         <OnboardingTour />
 
         {/* Slim inline search */}
@@ -153,7 +155,7 @@ export default function HomePage() {
                 {
                   label: "Buka screener",
                   icon: <Filter className="h-3 w-3" aria-hidden />,
-                  onClick: () => (window.location.href = "/screener"),
+                  onClick: () => router.push("/screener"),
                 },
               ]}
             />

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 const TabsContext = React.createContext<{
   value: string;
   onValueChange: (value: string) => void;
+  baseId: string;
 } | null>(null);
 
 const Tabs = React.forwardRef<
@@ -16,8 +17,10 @@ const Tabs = React.forwardRef<
     defaultValue?: string;
   }
 >(({ className, value, onValueChange, children, ...props }, ref) => {
+  const baseId = React.useId();
+
   return (
-    <TabsContext.Provider value={{ value, onValueChange }}>
+    <TabsContext.Provider value={{ value, onValueChange, baseId }}>
       <div ref={ref} className={cn("", className)} {...props}>
         {children}
       </div>
@@ -44,18 +47,39 @@ TabsList.displayName = "TabsList";
 const TabsTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }
->(({ className, value, ...props }, ref) => {
+>(({ className, value, onClick, ...props }, ref) => {
   const ctx = React.useContext(TabsContext);
   if (!ctx) throw new Error("TabsTrigger must be used within Tabs");
 
   const isActive = ctx.value === value;
+  const tabId = `${ctx.baseId}-tab-${value}`;
+  const panelId = `${ctx.baseId}-panel-${value}`;
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    if (!event.defaultPrevented) {
+      ctx.onValueChange(value);
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      ctx.onValueChange(value);
+    }
+  };
+
   return (
     <button
       ref={ref}
+      id={tabId}
       type="button"
       role="tab"
       aria-selected={isActive}
-      onClick={() => ctx.onValueChange(value)}
+      aria-controls={panelId}
+      tabIndex={isActive ? 0 : -1}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       className={cn(
         "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
         isActive
@@ -77,10 +101,16 @@ const TabsContent = React.forwardRef<
   if (!ctx) throw new Error("TabsContent must be used within Tabs");
 
   if (ctx.value !== value) return null;
+
+  const tabId = `${ctx.baseId}-tab-${value}`;
+  const panelId = `${ctx.baseId}-panel-${value}`;
+
   return (
     <div
       ref={ref}
+      id={panelId}
       role="tabpanel"
+      aria-labelledby={tabId}
       className={cn("mt-4 ring-offset-background focus-visible:outline-none animate-fade-in", className)}
       {...props}
     />

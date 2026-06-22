@@ -470,7 +470,7 @@ function SearchPageContent() {
   const currentSortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label || "A-Z";
 
   return (
-    <div className="container pb-24 md:pb-6">
+    <div className="container page-main">
       <div className="sticky top-0 z-20 -mx-4 mb-3 bg-background/95 px-4 pt-3 pb-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-3 sm:pb-0 sm:backdrop-blur-0">
         {/* Compact title row */}
         <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -793,7 +793,7 @@ function SearchRow({
       data-index={index}
       onMouseEnter={onMouseEnter}
       onClick={onClick}
-      aria-selected={isActive}
+      aria-pressed={isActive}
       aria-label={`Buka analisa ${code}, ${name}${showChange ? `, harga ${formatIDR(price)}, perubahan ${formatPercent(changePct)}` : ", harga tidak tersedia"}`}
       className={cn(
         "group w-full min-h-12 flex items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-accent",
@@ -952,7 +952,7 @@ function EmptyState({
 
 function SearchPageSkeleton() {
   return (
-    <div className="container pb-24 pt-3 md:pb-6">
+    <div className="page-main container pt-3">
       <div className="mb-3 h-7 w-36 rounded bg-muted animate-pulse" />
       <div className="mb-2 h-12 rounded-2xl bg-muted animate-pulse" />
       <div className="mb-3 flex gap-2">

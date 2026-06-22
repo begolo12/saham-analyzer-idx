@@ -117,10 +117,10 @@ export default function ScreenerPage() {
   }, [lastUpdated]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
 
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+      <main className="page-main container space-y-4">
         {/* Header */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">

@@ -341,7 +341,7 @@ export default function PortfolioPage() {
 
   if (!mounted) {
     return (
-      <div className="container py-6 pb-24 space-y-4" aria-busy="true">
+      <div className="page-main container space-y-4" aria-busy="true">
         <div className="space-y-2 animate-pulse">
           <div className="h-8 w-40 bg-muted rounded" />
           <div className="h-4 w-56 bg-muted rounded" />
@@ -356,57 +356,80 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+    <div className="page-main container space-y-4" data-sticky-actions="true">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-            <Briefcase className="h-6 w-6 sm:h-7 sm:w-7 text-primary shrink-0" aria-hidden />
-            Portfolio
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Virtual trading untuk simulasi investasi
-          </p>
+      <section className="page-hero-card p-5 sm:p-6">
+        <div className="page-eyebrow">Portfolio workspace</div>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="flex items-center gap-2 text-2xl font-black sm:text-3xl">
+              <Briefcase className="h-6 w-6 shrink-0 text-primary sm:h-7 sm:w-7" aria-hidden />
+              Portfolio
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Virtual trading untuk simulasi investasi
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Semua data portfolio, kas, dan histori transaksi tersimpan lokal di browser Anda.
+            </p>
+          </div>
+          <div className="hidden shrink-0 gap-1.5 sm:flex">
+            <Button
+              onClick={() => setCashModalType("TOPUP")}
+              size="lg"
+              variant="outline"
+              className="min-h-10 rounded-full border-bull-500/40 px-3 text-bull-700 shadow-sm hover:bg-bull-50 dark:text-bull-500 dark:hover:bg-bull-700/20 sm:px-4"
+              aria-label="Top up modal kas"
+            >
+              <ArrowDownToLine className="h-4 w-4 sm:mr-1" aria-hidden />
+              <span className="hidden sm:inline">Top Up</span>
+            </Button>
+            <Button
+              onClick={() => setCashModalType("WITHDRAW")}
+              size="lg"
+              variant="outline"
+              className="min-h-10 rounded-full border-bear-500/40 px-3 text-bear-700 shadow-sm hover:bg-bear-50 dark:text-bear-500 dark:hover:bg-bear-700/20 sm:px-4"
+              aria-label="Tarik modal kas"
+            >
+              <ArrowUpFromLine className="h-4 w-4 sm:mr-1" aria-hidden />
+              <span className="hidden sm:inline">Withdraw</span>
+            </Button>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              size="lg"
+              className="min-h-10 rounded-full px-3 shadow-lg sm:px-4"
+              aria-label="Catat transaksi beli atau jual"
+            >
+              <Plus className="h-5 w-5 sm:mr-1" aria-hidden />
+              <span className="hidden sm:inline">Beli/Jual</span>
+            </Button>
+          </div>
         </div>
-        <div className="hidden sm:flex gap-1.5 shrink-0">
-          <Button
-            onClick={() => setCashModalType("TOPUP")}
-            size="lg"
-            variant="outline"
-            className="min-h-10 px-3 sm:px-4 rounded-full border-bull-500/40 text-bull-700 dark:text-bull-500 hover:bg-bull-50 dark:hover:bg-bull-700/20 shadow-sm"
-            aria-label="Top up modal kas"
-          >
-            <ArrowDownToLine className="h-4 w-4 sm:mr-1" aria-hidden />
-            <span className="hidden sm:inline">Top Up</span>
-          </Button>
-          <Button
-            onClick={() => setCashModalType("WITHDRAW")}
-            size="lg"
-            variant="outline"
-            className="min-h-10 px-3 sm:px-4 rounded-full border-bear-500/40 text-bear-700 dark:text-bear-500 hover:bg-bear-50 dark:hover:bg-bear-700/20 shadow-sm"
-            aria-label="Tarik modal kas"
-          >
-            <ArrowUpFromLine className="h-4 w-4 sm:mr-1" aria-hidden />
-            <span className="hidden sm:inline">Withdraw</span>
-          </Button>
-          <Button
-            onClick={() => setShowAddModal(true)}
-            size="lg"
-            className="min-h-10 px-3 sm:px-4 rounded-full shadow-lg"
-            aria-label="Catat transaksi beli atau jual"
-          >
-            <Plus className="h-5 w-5 sm:mr-1" aria-hidden />
-            <span className="hidden sm:inline">Beli/Jual</span>
-          </Button>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <Alert variant="info" className="h-full">
+          <strong>📌 Virtual Portfolio:</strong> Track transaksi beli/jual Anda untuk
+          hitung profit/loss real-time. Top Up &amp; Withdraw untuk atur modal kas.
+          Data tersimpan lokal (localStorage).
+        </Alert>
+        <Card className="p-3 sm:min-w-[220px]">
+          <div className="page-eyebrow">Action cepat</div>
+          <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+            <p>• Top Up untuk tambah modal kas.</p>
+            <p>• Beli/Jual untuk catat transaksi.</p>
+            <p>• Refresh harga terjadi saat halaman dibuka.</p>
+          </div>
+        </Card>
+      </div>
+
+      <div className="page-section-heading">
+        <div>
+          <div className="page-section-title">Ringkasan portfolio</div>
+          <div className="page-section-subtitle">Hero utama, posisi kas, nilai saham, dan performa</div>
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <Alert variant="info">
-        <strong>📌 Virtual Portfolio:</strong> Track transaksi beli/jual Anda untuk
-        hitung profit/loss real-time. Top Up &amp; Withdraw untuk atur modal kas.
-        Data tersimpan lokal (localStorage).
-      </Alert>
 
       {/* Empty State */}
       {transactions.length === 0 && cashEntries.length === 0 && (
@@ -432,25 +455,27 @@ export default function PortfolioPage() {
 
       {/* Sticky mobile action bar */}
       {(transactions.length > 0 || cashEntries.length > 0) && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-background/95 px-3 py-2 backdrop-blur sm:hidden">
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setCashModalType("TOPUP")}
-              variant="outline"
-              className="min-h-11 flex-1 border-bull-500/40 text-bull-700 dark:text-bull-500"
-              aria-label="Top up modal kas"
-            >
-              <ArrowDownToLine className="h-4 w-4 mr-1.5" aria-hidden />
-              Top Up
-            </Button>
-            <Button
-              onClick={() => setShowAddModal(true)}
-              className="min-h-11 flex-[2]"
-              aria-label="Catat transaksi beli atau jual"
-            >
-              <Plus className="h-5 w-5 mr-1.5" aria-hidden />
-              Beli/Jual
-            </Button>
+        <div className="app-sticky-action-bar sm:hidden">
+          <div className="app-sticky-action-bar__panel p-2.5">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setCashModalType("TOPUP")}
+                variant="outline"
+                className="min-h-11 flex-1 border-bull-500/40 text-bull-700 dark:text-bull-500"
+                aria-label="Top up modal kas"
+              >
+                <ArrowDownToLine className="mr-1.5 h-4 w-4" aria-hidden />
+                Top Up
+              </Button>
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="min-h-11 flex-[2] rounded-xl"
+                aria-label="Catat transaksi beli atau jual"
+              >
+                <Plus className="mr-1.5 h-5 w-5" aria-hidden />
+                Beli/Jual
+              </Button>
+            </div>
           </div>
         </div>
       )}

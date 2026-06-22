@@ -40,7 +40,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" suppressHydrationWarning>
-      <body className="min-h-screen bg-background">
+      <body className="app-shell min-h-screen bg-background">
         {children}
         <Toaster position="top-center" richColors />
         <BottomNav />

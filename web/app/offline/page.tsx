@@ -26,7 +26,7 @@ export default function OfflinePage() {
     typeof navigator !== "undefined" ? navigator.onLine : true;
 
   return (
-    <div className="container py-12 max-w-lg pb-24 md:pb-12">
+    <div className="page-main container max-w-lg py-12 md:py-8">
       <Card className="p-8 text-center bg-gradient-to-br from-amber-50 to-background dark:from-amber-700/10">
         <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-700/20 mb-4">
           <WifiOff className="h-10 w-10 text-amber-600" aria-hidden />

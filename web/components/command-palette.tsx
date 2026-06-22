@@ -171,7 +171,7 @@ export function CommandPalette() {
     }));
 
     return [...baseActions, ...stockActions];
-  }, [router, watchlistTickers]);
+  }, [router]);
 
   // Filter by query
   const results = useMemo(() => {
@@ -345,7 +345,7 @@ export function CommandPalette() {
         >
           {results.length === 0 ? (
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-              <p>Tidak ada hasil untuk "{query}"</p>
+              <p>Tidak ada hasil untuk &quot;{query}&quot;</p>
               <p className="text-[10px] mt-1">Coba kata kunci lain</p>
             </div>
           ) : (

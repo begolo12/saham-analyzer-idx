@@ -19,8 +19,8 @@ export function BottomNav() {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-xl border-t safe-area-bottom">
-        <div className="grid grid-cols-5 h-16">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-xl safe-area-bottom md:hidden">
+        <div className="grid h-16 grid-cols-5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active =

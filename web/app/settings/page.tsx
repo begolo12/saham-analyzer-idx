@@ -151,7 +151,7 @@ export default function SettingsPage() {
 
   if (!mounted || loading) {
     return (
-      <div className="container py-6 pb-24">
+      <div className="page-main container">
         <div className="flex items-center justify-center min-h-[40vh]">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -160,17 +160,58 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+    <div className="app-shell page-main container space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-          Settings & Self-Analysis
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Sistem yang belajar dari kesalahannya sendiri
-        </p>
+      <section className="page-hero-card p-5 sm:p-6">
+        <div className="page-eyebrow">Preferences & insights</div>
+        <div className="mt-2">
+          <h1 className="flex items-center gap-2 text-2xl font-black sm:text-3xl">
+            <SettingsIcon className="h-6 w-6 text-primary sm:h-7 sm:w-7" />
+            Settings & Self-Analysis
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Atur preferensi app, backup data, notifikasi, dan lihat kesehatan model rekomendasi.
+          </p>
+        </div>
+      </section>
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+        <Card className="p-4">
+          <div className="page-section-title">Data & kontrol</div>
+          <div className="page-section-subtitle">Browser-local storage, backup, reset, notifikasi</div>
+          <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+            <p>• Export backup sebelum reset atau ganti browser.</p>
+            <p>• Notifikasi hanya aktif penuh saat tab / PWA tersedia.</p>
+            <p>• Self-analysis membantu kalibrasi rekomendasi dari histori penggunaan.</p>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="page-section-title">Quick links</div>
+          <div className="page-section-subtitle">Akses cepat ke area utama app</div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link href="/">
+              <Button variant="outline" className="w-full">
+                <ChevronRight className="mr-1 h-4 w-4" />
+                Beranda
+              </Button>
+            </Link>
+            <Link href="/watchlist">
+              <Button variant="outline" className="w-full">
+                <Star className="mr-1 h-4 w-4" />
+                Watchlist
+              </Button>
+            </Link>
+          </div>
+        </Card>
       </div>
+
+      <div className="page-section-heading">
+        <div>
+          <div className="page-section-title">System health</div>
+          <div className="page-section-subtitle">Pantau akurasi, bias, dan kalibrasi confidence engine</div>
+        </div>
+      </div>
+
 
       {/* System Health Overview */}
       <Card className="p-5 bg-gradient-to-br from-primary/5 to-purple-500/5">
@@ -537,21 +578,6 @@ export default function SettingsPage() {
       {/* Notifications */}
       <NotificationSettingsCard />
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 gap-2 pt-2">
-        <Link href="/">
-          <Button variant="outline" className="w-full">
-            <ChevronRight className="h-4 w-4 mr-1" />
-            Beranda
-          </Button>
-        </Link>
-        <Link href="/watchlist">
-          <Button variant="outline" className="w-full">
-            <Star className="h-4 w-4 mr-1" />
-            Watchlist
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }

@@ -109,7 +109,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur-xl safe-area-bottom md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 overflow-x-hidden border-t border-border/70 bg-background/95 backdrop-blur-xl safe-area-bottom [touch-action:pan-y] md:hidden">
         <div className="mx-auto grid h-[4.5rem] max-w-xl grid-cols-5 px-2">
           {primaryTabs.map((tab) => {
             const Icon = tab.icon;

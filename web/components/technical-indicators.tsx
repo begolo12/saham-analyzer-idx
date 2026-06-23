@@ -61,25 +61,25 @@ interface ScoreBarProps {
 }
 
 export function ScoreBar({ label, score, weight, color }: ScoreBarProps) {
-  // Normalize -100..+100 to 0..100
-  const normalized = (score + 100) / 2;
   const isPositive = score >= 0;
+  const absScore = Math.abs(score);
+  const widthPercent = (absScore / 100) * 50;
 
   const fillColor =
     color ||
     (isPositive
-      ? "linear-gradient(90deg, #22c55e, #16a34a)"
-      : "linear-gradient(90deg, #f87171, #dc2626)");
+      ? "linear-gradient(90deg, #10b981, #059669)"
+      : "linear-gradient(270deg, #ef4444, #dc2626)");
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5 text-xs">
-        <span className="font-medium">{label}</span>
+        <span className="font-medium text-foreground/80">{label}</span>
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              "tabular-nums font-bold",
-              isPositive ? "text-bull-600" : "text-bear-600",
+              "tabular-nums font-bold text-sm",
+              isPositive ? "text-bull-600 dark:text-bull-400" : "text-bear-600 dark:text-bear-400",
             )}
           >
             {score >= 0 ? "+" : ""}
@@ -92,13 +92,17 @@ export function ScoreBar({ label, score, weight, color }: ScoreBarProps) {
           )}
         </div>
       </div>
-      <div className="score-bar relative">
+      <div className="relative h-2 bg-secondary rounded-full overflow-hidden border border-border/10">
         {/* Center line marker */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border z-10" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-muted-foreground/30 z-10" />
+        
+        {/* Fill bar */}
         <div
-          className="score-bar-fill"
+          className="absolute h-full rounded-full transition-all duration-500 ease-out"
           style={{
-            width: `${normalized}%`,
+            width: `${widthPercent}%`,
+            left: isPositive ? "50%" : "auto",
+            right: !isPositive ? "50%" : "auto",
             background: fillColor,
           }}
         />

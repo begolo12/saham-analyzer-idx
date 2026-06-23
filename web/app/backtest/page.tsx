@@ -47,21 +47,27 @@ export default function BacktestPage() {
     setIhsgReturn(null);
     setLoading(true);
     try {
-      const config: BacktestConfig = {
-        ticker: ticker.toUpperCase().replace(".JK", ""),
-        strategy,
-        period,
-        initialCapital: parseFloat(capital) || 10_000_000,
-      };
-      const [btResult, ihsg] = await Promise.all([
-        runBacktest(config),
-        compareWithIHSG(period),
-      ]);
-      setIhsgReturn(ihsg.ihsgReturnPct);
-      setResult({
-        ...btResult,
-        outperformance: Math.round((btResult.totalReturnPct - ihsg.ihsgReturnPct) * 100) / 100,
+      const res = await fetch("/api/backtest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticker: ticker.toUpperCase().replace(".JK", ""),
+          strategy,
+          period,
+          initialCapital: capital,
+        }),
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Gagal menjalankan backtest (${res.status})`);
+      }
+
+      const data = await res.json();
+      setIhsgReturn(data.ihsgReturn);
+      setResult(data.result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Backtest gagal");
       console.error(err);
@@ -278,7 +284,7 @@ export default function BacktestPage() {
                   },
                   {
                     label: "vs IHSG",
-                    value: `${ihsgReturn !== null ? (ihsgReturn >= 0 ? "+" : "") + ihsgReturn.toFixed(1) + "%" : "—"}`,
+                    value: `${result.outperformance >= 0 ? "+" : ""}${result.outperformance.toFixed(1)}%`,
                     tone: result.outperformance >= 0 ? "bull" : "bear",
                   },
                   {
@@ -294,8 +300,8 @@ export default function BacktestPage() {
               className={cn(
                 "p-5 border-2",
                 result.totalReturnPct >= 0
-                  ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5"
-                  : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5",
+                  ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5 shadow-lg shadow-bull-500/5"
+                  : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5 shadow-lg shadow-bear-500/5",
               )}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -320,7 +326,7 @@ export default function BacktestPage() {
 
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <StatPill label="vs Buy & Hold" value={result.buyHoldReturnPct} suffix="%" />
-                <StatPill label="vs IHSG" value={ihsgReturn ?? 0} suffix="%" />
+                <StatPill label="vs IHSG" value={result.outperformance} suffix="%" />
                 <StatPill label="Win Rate" value={result.winRate} suffix="%" />
                 <StatPill label="Max Drawdown" value={-result.maxDrawdown} suffix="%" />
                 <StatPill label="Win / Loss" value={`${result.winCount} / ${result.lossCount}`} />

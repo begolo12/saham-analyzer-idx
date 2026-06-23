@@ -49,8 +49,10 @@ export interface StockSummary {
 }
 
 export function validateTicker(ticker: string): string {
-  const t = ticker.toUpperCase().trim().replace(/\.JK$/, "");
-  return `${t}.JK`;
+  const t = ticker.toUpperCase().trim();
+  if (t.startsWith("^")) return t;
+  const base = t.replace(/\.JK$/, "");
+  return `${base}.JK`;
 }
 
 const UA =

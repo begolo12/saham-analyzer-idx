@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Star,
   Trash2,
@@ -92,7 +92,16 @@ function Sparkline({ closes, up }: { closes: number[]; up: boolean }) {
 }
 
 export default function WatchlistPage() {
+  return (
+    <Suspense fallback={<div className="page-main container"><div className="shimmer h-32 w-full rounded-2xl" /></div>}>
+      <WatchlistPageContent />
+    </Suspense>
+  );
+}
+
+function WatchlistPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [data, setData] = useState<Record<string, WatchlistStockData>>({});
@@ -102,6 +111,26 @@ export default function WatchlistPage() {
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>("all");
   const [alertModalTicker, setAlertModalTicker] = useState<string | null>(null);
   const [mobileSection, setMobileSection] = useState<MobileSection>("watching");
+
+  // Preset handling: /watchlist?preset=IDX30 or ?preset=LQ45
+  useEffect(() => {
+    if (!mounted) return;
+    const preset = searchParams.get("preset");
+    if (!preset) return;
+    const existing = getWatchlistItems();
+    if (existing.length > 0) return;
+
+    const codes: string[] = preset === "IDX30"
+      ? POPULAR_STOCKS.slice(0, 30).map((s) => s.code)
+      : preset === "LQ45"
+      ? POPULAR_STOCKS.slice(0, 45).map((s) => s.code)
+      : [];
+
+    if (codes.length === 0) return;
+    setWatchlist(codes);
+    toast.success(`⭐ Watchlist ${preset} ditambahkan (${codes.length} saham)`);
+    router.replace("/watchlist");
+  }, [mounted, searchParams, router]);
 
   useEffect(() => {
     setMounted(true);

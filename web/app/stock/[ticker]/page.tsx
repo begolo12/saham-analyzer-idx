@@ -256,7 +256,16 @@ function StockDetailContent() {
 
             {/* MOBILE: Big hero + section switcher */}
             <div className="md:hidden">
-              <section className="mobile-hero">
+              <section
+                className={cn(
+                  "mobile-hero",
+                  recommendation?.action === "BUY" || recommendation?.action === "STRONG_BUY"
+                    ? "hero-bull"
+                    : recommendation?.action === "SELL" || recommendation?.action === "STRONG_SELL"
+                    ? "hero-bear"
+                    : "hero-hold",
+                )}
+              >
                 <div className="page-eyebrow text-white/80">Live price</div>
                 <div className="mobile-hero__row">
                   <div>
@@ -428,18 +437,115 @@ function StockDetailContent() {
                   ]}
                   subline="Buka tab sesuai sudut pandang analisa"
                 />
+
+                <div className="mt-3 animate-fade-in">
+                  {activeTab === "technical" && (
+                    <TechnicalIndicatorsOnly technical={technical} />
+                  )}
+                  {activeTab === "fundamental" && (
+                    <Card className="p-4 sm:p-5">
+                      <div className="mb-4 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Score</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {fundamental?.overallScore?.toFixed(0) ?? 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Data Available</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {((fundamental?.dataAvailability || 0) * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mb-4 text-xs italic text-muted-foreground">
+                        {fundamental?.summary}
+                      </p>
+                      <FundamentalMetrics metrics={fundamental?.metrics || []} />
+                    </Card>
+                  )}
+                  {activeTab === "behavioral" && (
+                    <Card className="p-4 sm:p-5">
+                      <div className="mb-4 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Score</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {behavioral?.overallScore?.toFixed(0) ?? 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Signal</div>
+                          <div className="text-lg font-semibold">
+                            {behavioral?.overallSignal?.replace("_", " ")}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mb-4 text-xs italic text-muted-foreground">
+                        {behavioral?.summary}
+                      </p>
+                      <BehavioralPatterns
+                        patterns={behavioral?.patterns || []}
+                        supportLevels={behavioral?.supportLevels || []}
+                        resistanceLevels={behavioral?.resistanceLevels || []}
+                      />
+                    </Card>
+                  )}
+                  {activeTab === "sentiment" && (
+                    <Card className="p-4 sm:p-5">
+                      <div className="mb-4 grid grid-cols-3 gap-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Score</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {sentiment?.overallScore?.toFixed(0) ?? 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Articles</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {sentiment?.articles?.length || 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Confidence</div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {((sentiment?.confidence || 0) * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mb-4 text-xs italic text-muted-foreground">
+                        {sentiment?.summary}
+                      </p>
+                      <NewsList
+                        articles={sentiment?.articles || []}
+                        positiveCount={sentiment?.positiveCount || 0}
+                        negativeCount={sentiment?.negativeCount || 0}
+                        neutralCount={sentiment?.neutralCount || 0}
+                      />
+                    </Card>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* MOBILE: Details section = reasoning + charts on desktop, summary on mobile */}
+            {/* MOBILE: Details section = reasoning, warnings, and company stats */}
             {mobileSection === "details" && (
               <div className="md:hidden space-y-4">
+                {recommendation?.warnings?.length > 0 && (
+                  <div className="space-y-2">
+                    {recommendation.warnings.map((w: string, i: number) => (
+                      <Alert key={i} variant="warning">
+                        {w}
+                      </Alert>
+                    ))}
+                  </div>
+                )}
+
                 {recommendation?.reasoning && (
                   <Card className="p-4">
                     <div className="page-section-heading mb-3">
                       <div>
                         <div className="page-section-title">Kenapa rekomendasi ini?</div>
-                        <div className="page-section-subtitle">Ringkasan otomatis</div>
+                        <div className="page-section-subtitle">Ringkasan keputusan otomatis</div>
                       </div>
                     </div>
                     <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground/90 dark:prose-invert [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2">
@@ -450,35 +556,45 @@ function StockDetailContent() {
                   </Card>
                 )}
 
-                <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="grid w-full grid-cols-4" aria-label="Detail analisa mobile">
-                    <TabsTrigger value="technical">📊</TabsTrigger>
-                    <TabsTrigger value="fundamental">💼</TabsTrigger>
-                    <TabsTrigger value="behavioral">🔍</TabsTrigger>
-                    <TabsTrigger value="sentiment">📰</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="technical">
-                    <TechnicalIndicatorsOnly technical={technical} />
-                  </TabsContent>
-                  <TabsContent value="fundamental">
-                    <FundamentalMetrics metrics={fundamental?.metrics || []} />
-                  </TabsContent>
-                  <TabsContent value="behavioral">
-                    <BehavioralPatterns
-                      patterns={behavioral?.patterns || []}
-                      supportLevels={behavioral?.supportLevels || []}
-                      resistanceLevels={behavioral?.resistanceLevels || []}
-                    />
-                  </TabsContent>
-                  <TabsContent value="sentiment">
-                    <NewsList
-                      articles={sentiment?.articles || []}
-                      positiveCount={sentiment?.positiveCount || 0}
-                      negativeCount={sentiment?.negativeCount || 0}
-                      neutralCount={sentiment?.neutralCount || 0}
-                    />
-                  </TabsContent>
-                </Tabs>
+                <Card className="p-4">
+                  <div className="page-section-heading mb-3">
+                    <div>
+                      <div className="page-section-title">Informasi Perusahaan</div>
+                      <div className="page-section-subtitle">Statistik emiten {ticker}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-xl bg-secondary/50 p-3">
+                      <div className="text-muted-foreground">Sektor</div>
+                      <div className="mt-1 font-bold text-foreground truncate">{summary?.sector || "N/A"}</div>
+                    </div>
+                    <div className="rounded-xl bg-secondary/50 p-3">
+                      <div className="text-muted-foreground">Market Cap</div>
+                      <div className="mt-1 font-bold text-foreground tabular-nums">
+                        {summary?.marketCap ? formatIDR(summary.marketCap) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-secondary/50 p-3">
+                      <div className="text-muted-foreground">Rata-rata Volume</div>
+                      <div className="mt-1 font-bold text-foreground tabular-nums">
+                        {summary?.averageVolume ? formatNumber(summary.averageVolume) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-secondary/50 p-3">
+                      <div className="text-muted-foreground">Rata-rata 50 Hari</div>
+                      <div className="mt-1 font-bold text-foreground tabular-nums">
+                        {summary?.fiftyDayAverage ? formatIDR(summary.fiftyDayAverage) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-secondary/50 p-3 col-span-2">
+                      <div className="text-muted-foreground">Rentang 52 Minggu</div>
+                      <div className="mt-1 flex justify-between font-bold text-foreground tabular-nums">
+                        <span>Low: {summary?.fiftyTwoWeekLow ? formatIDR(summary.fiftyTwoWeekLow) : "N/A"}</span>
+                        <span>High: {summary?.fiftyTwoWeekHigh ? formatIDR(summary.fiftyTwoWeekHigh) : "N/A"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               </div>
             )}
 

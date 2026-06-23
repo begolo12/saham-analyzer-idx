@@ -117,7 +117,7 @@ export default function ScreenerPage() {
     return date.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" });
   }, [lastUpdated]);
 
-  const activeQuickPresets = useMemo(() => filteredPresets.slice(0, 4), [filteredPresets]);
+
 
   return (
     <div className="app-shell min-h-screen bg-background">
@@ -158,19 +158,6 @@ export default function ScreenerPage() {
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            {activeQuickPresets.map((preset) => (
-              <MobileQuickAction
-                key={preset.id}
-                href="#screener-results"
-                icon={<span className="text-lg">{preset.icon}</span>}
-                label={preset.name}
-                description={preset.description}
-                className={selectedScreen === preset.id ? "ring-2 ring-primary/30" : undefined}
-              />
-            ))}
-          </div>
         </div>
 
         {/* Category filter */}
@@ -196,10 +183,12 @@ export default function ScreenerPage() {
           </div>
         </div>
 
-        {/* Presets */}
-        <div className="space-y-2">
+        {/* Presets Grid */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {filteredPresets.map((preset) => {
             const active = selectedScreen === preset.id;
+            const isBull = preset.color === "bull";
+            const isBear = preset.color === "bear";
             return (
               <button
                 key={preset.id}
@@ -208,48 +197,59 @@ export default function ScreenerPage() {
                 disabled={loading && active}
                 aria-pressed={active}
                 className={cn(
-                  "w-full min-h-14 text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.99]",
+                  "w-full text-left rounded-2xl border-2 p-3 transition-all duration-300 ease-out transform relative flex flex-col justify-between min-h-[7.5rem]",
                   active
-                    ? "border-primary bg-primary/5 shadow-md"
-                    : "border-border bg-card hover:border-primary/40 hover:bg-accent/30",
+                    ? isBull
+                      ? "border-bull-500 bg-gradient-to-br from-emerald-50/60 to-bull-50/40 dark:from-emerald-950/20 dark:to-bull-950/10 shadow-lg shadow-bull-500/10 scale-[1.02] -translate-y-0.5"
+                      : isBear
+                        ? "border-bear-500 bg-gradient-to-br from-rose-50/60 to-bear-50/40 dark:from-rose-950/20 dark:to-bear-950/10 shadow-lg shadow-bear-500/10 scale-[1.02] -translate-y-0.5"
+                        : "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg shadow-primary/10 scale-[1.02] -translate-y-0.5"
+                    : isBull
+                      ? "border-border bg-card hover:border-bull-500/40 hover:bg-bull-50/10 dark:hover:bg-bull-950/5 hover:-translate-y-0.5"
+                      : isBear
+                        ? "border-border bg-card hover:border-bear-500/40 hover:bg-bear-50/10 dark:hover:bg-bear-950/5 hover:-translate-y-0.5"
+                        : "border-border bg-card hover:border-primary/40 hover:bg-primary/5 hover:-translate-y-0.5"
                 )}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start justify-between w-full">
                   <div
                     className={cn(
-                      "shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl",
+                      "w-9 h-9 rounded-xl flex items-center justify-center text-lg",
                       active
-                        ? preset.color === "bull"
+                        ? isBull
                           ? "bg-bull-100 dark:bg-bull-700/30"
-                          : preset.color === "bear"
+                          : isBear
                             ? "bg-bear-100 dark:bg-bear-700/30"
-                            : "bg-amber-100 dark:bg-amber-700/30"
+                            : "bg-primary/10"
                         : "bg-secondary",
                     )}
-                    aria-hidden
                   >
                     {preset.icon}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn("font-bold text-base", active && "text-primary")}>
-                        {preset.name}
-                      </span>
-                      {active && loading && (
-                        <Loader2 className="h-3 w-3 animate-spin" aria-label="Memindai" />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 leading-snug">
-                      {preset.description}
-                    </p>
+                  {active && (
+                    <span className="flex h-2 w-2 relative">
+                      <span
+                        className={cn(
+                          "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                          isBull ? "bg-bull-400" : isBear ? "bg-bear-400" : "bg-primary",
+                        )}
+                      ></span>
+                      <span
+                        className={cn(
+                          "relative inline-flex rounded-full h-2 w-2",
+                          isBull ? "bg-bull-500" : isBear ? "bg-bear-500" : "bg-primary",
+                        )}
+                      ></span>
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3">
+                  <div className={cn("font-bold text-xs sm:text-sm line-clamp-1", active && "text-foreground")}>
+                    {preset.name}
                   </div>
-                  <ChevronRight
-                    className={cn(
-                      "shrink-0 h-5 w-5 text-muted-foreground transition-transform",
-                      active && "translate-x-1 text-primary",
-                    )}
-                    aria-hidden
-                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-tight">
+                    {preset.description}
+                  </p>
                 </div>
               </button>
             );
@@ -390,10 +390,10 @@ function ScreenerResultCard({ result, onClick }: { result: ScreenerResult; onCli
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left rounded-xl border-2 bg-card p-4 card-hover transition-all",
-        isStrong && isUp && "border-bull-500/30 bg-bull-50/20 dark:bg-bull-700/5",
-        isStrong && !isUp && "border-bear-500/30 bg-bear-50/20 dark:bg-bear-700/5",
-        !isStrong && "border-border",
+        "w-full text-left rounded-xl border-2 bg-card p-4 transition-all duration-200 ease-out transform hover:-translate-y-0.5 hover:shadow-md",
+        isStrong && isUp && "border-bull-500/40 bg-gradient-to-r from-bull-50/20 to-transparent dark:from-bull-950/5",
+        isStrong && !isUp && "border-bear-500/40 bg-gradient-to-r from-bear-50/20 to-transparent dark:from-bear-950/5",
+        !isStrong && "border-border hover:border-primary/30",
       )}
     >
       <div className="flex items-start justify-between gap-3">

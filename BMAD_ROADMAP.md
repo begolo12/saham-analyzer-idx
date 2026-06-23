@@ -20,6 +20,7 @@
 | F5 | ⬜ TODO | Telegram bot (signal alerts + portfolio quick check) |
 | F6 | ⬜ TODO | Test coverage expansion + audit + polish |
 | F7 | ⬜ TODO | Production deploy + monitoring |
+| **V2.1** | **✅ DONE** | **UX/UI overhaul — multi-horizon, top picks, freshness pill, preset watchlists** |
 
 **Status legend:** ⬜ TODO | 🟨 IN PROGRESS | ✅ DONE | ❌ BLOCKED
 
@@ -355,6 +356,39 @@ Sebelum F1-F7 parallel kick off, kerjakan quick wins ini dulu (1-2 hari):
 | 2026-06-22 | Web PWA + Telegram (Q4) | Owner mobile-first, Telegram untuk alert real-time |
 | 2026-06-22 | Backend host: Railway (planned F7) | Always-on ML inference, $5/mo acceptable |
 | 2026-06-22 | ML stack: PyTorch + XGBoost + SHAP | Mature, well-documented, fast inference |
+
+---
+
+## V2.1 — UX/UI Overhaul ✅ DONE (2026-06-23)
+
+**Goal:** Improve user experience flow + redesign UI tanpa menunggu backend F1-F7 selesai. Mock data acceptable untuk multi-horizon (PRD F2 backlog).
+
+**Deliverables:**
+- [x] **Multi-horizon RecommendationHero** — segmented 1d/5d/20d selector + 3-up glance comparison
+- [x] **Top Sinyal Hari Ini** section on homepage — top 5 high-confidence signals (mock-derived from market data)
+- [x] **Data Freshness Pill** — global timestamp indicator, stale/offline states
+- [x] **Smart Empty Home** — preset watchlists IDX30/LQ45 one-tap add untuk first-time users
+- [x] **v2.1 utility classes** — `.ticker-pill`, `.horizon-selector`, `.horizon-row`, `.freshness-pill`, `.stock-tabs`, `.top-pick`, `.pulse-strip`, `.preset-card`
+- [x] Quality gates — `tsc --noEmit` 0 errors, `next lint` 0 warnings, vitest 24/24 pass
+
+**New components:**
+- [components/data-freshness-pill.tsx](file:///d:/saham-claude/web/components/data-freshness-pill.tsx) — global data timestamp
+- [components/horizon-selector.tsx](file:///d:/saham-claude/web/components/horizon-selector.tsx) — segmented 1d/5d/20d switcher
+- [components/top-picks-section.tsx](file:///d:/saham-claude/web/components/top-picks-section.tsx) — top signal cards
+
+**New API:**
+- [app/api/market/top-picks/route.ts](file:///d:/saham-claude/web/app/api/market/top-picks/route.ts) — top 5 signals with mock confidence derived from changePct + volume spike
+
+**Decisions captured (V2.1):**
+- 2026-06-23 | Multi-horizon dengan mock data | Owner pilih opsi A (mock derivation dari single rec.horizon)
+- 2026-06-23 | Full tabbed refactor (N/A) | Mobile sudah punya tab, refactor deemed too risky → light refactor
+- 2026-06-23 | Balanced glass + gradients | Subtle glass utilities added, rec tints kept as-is
+
+**Next iteration (V2.2 candidates):**
+- Replace mock multi-horizon dengan actual backend F2 output
+- Quick action sheet (bottom modal) untuk add to watchlist/portfolio
+- Real-time price ticker animation (price-flash keyframe sudah ready, tinggal wire)
+- Compact-mode presets integration
 
 ---
 

@@ -39,6 +39,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Disclaimer } from "@/components/alert";
 import { MobileAppBar, MobileQuickAction, MobileListItem } from "@/components/mobile-app-bar";
+import { TopPicksSection, type TopPick } from "@/components/top-picks-section";
+import { DataFreshnessPill } from "@/components/data-freshness-pill";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 
 interface MarketStock {
@@ -65,9 +67,12 @@ export default function HomePage() {
   const router = useRouter();
   const [topGainers, setTopGainers] = useState<MarketStock[]>([]);
   const [topLosers, setTopLosers] = useState<MarketStock[]>([]);
+  const [topPicks, setTopPicks] = useState<TopPick[]>([]);
+  const [picksLoading, setPicksLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [marketTimestamp, setMarketTimestamp] = useState<string | undefined>(undefined);
 
   const fetchOverview = () => {
     setLoading(true);
@@ -82,6 +87,7 @@ export default function HomePage() {
         const sorted = [...stocks].sort((a, b) => b.changePct - a.changePct);
         setTopGainers(sorted.slice(0, 5));
         setTopLosers(sorted.slice(-5).reverse());
+        setMarketTimestamp(data.cached_at || new Date().toISOString());
         setLoading(false);
       })
       .catch((err) => {
@@ -91,8 +97,23 @@ export default function HomePage() {
       });
   };
 
+  const fetchTopPicks = () => {
+    setPicksLoading(true);
+    fetch("/api/market/top-picks")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .then((data) => {
+        setTopPicks(data.picks || []);
+        setPicksLoading(false);
+      })
+      .catch(() => {
+        setTopPicks([]);
+        setPicksLoading(false);
+      });
+  };
+
   useEffect(() => {
     fetchOverview();
+    fetchTopPicks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -211,6 +232,20 @@ export default function HomePage() {
             </div>
           )}
 
+          {/* Top picks — highest conviction signals today */}
+          <CollapsibleSection
+            title="Top Sinyal Hari Ini"
+            icon={<TrendingUp className="h-4 w-4 text-primary" />}
+            storageKey="home.top-picks.open"
+            defaultOpen={true}
+            framed={false}
+            action={
+              <DataFreshnessPill updatedAt={marketTimestamp} />
+            }
+          >
+            <TopPicksSection picks={topPicks} loading={picksLoading} />
+          </CollapsibleSection>
+
           {/* Search */}
           <section className="rounded-2xl border bg-card p-3">
             <div className="flex items-center gap-2">
@@ -221,25 +256,14 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Quick actions */}
+          {/* Quick actions — 4 core actions (rest in Tools drawer) */}
           <div className="grid grid-cols-2 gap-2.5">
             <MobileQuickAction
-              href="/search"
-              icon={<Search className="h-4 w-4" />}
-              label="Cari Saham"
-              description="900+ emiten IDX"
-            />
-            <MobileQuickAction
-              href="/watchlist"
-              icon={<Star className="h-4 w-4" />}
-              label="Watchlist"
-              description="Saham favorit kamu"
-            />
-            <MobileQuickAction
-              href="/portfolio"
-              icon={<Briefcase className="h-4 w-4" />}
-              label="Portfolio"
-              description="Lacak performa investasi"
+              href="/screener"
+              icon={<Filter className="h-4 w-4" />}
+              label="Screener"
+              description="Scan peluang teknikal"
+              variant="primary"
             />
             <MobileQuickAction
               href="/compare"
@@ -248,18 +272,50 @@ export default function HomePage() {
               description="2-3 saham IDX"
             />
             <MobileQuickAction
-              href="/screener"
-              icon={<Filter className="h-4 w-4" />}
-              label="Screener"
-              description="Scan peluang teknikal"
-            />
-            <MobileQuickAction
               href="/backtest"
               icon={<FlaskConical className="h-4 w-4" />}
               label="Backtest"
               description="Uji strategi historis"
             />
+            <MobileQuickAction
+              href="/portfolio"
+              icon={<Briefcase className="h-4 w-4" />}
+              label="Portfolio"
+              description="Lacak performa investasi"
+            />
           </div>
+
+          {/* Smart empty home — preset watchlists for first-time users */}
+          {topPicks.length === 0 && !picksLoading && (
+            <section className="space-y-2">
+              <div className="px-1">
+                <div className="text-xs font-bold text-muted-foreground">
+                  Mau mulai dari mana?
+                </div>
+                <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+                  Tap preset di bawah untuk isi watchlist kamu dalam 1 detik.
+                </div>
+              </div>
+              <Link href="/watchlist?preset=IDX30" className="preset-card">
+                <div className="preset-card__icon">
+                  <Star className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="preset-card__title">Watchlist IDX30</div>
+                  <div className="preset-card__desc">30 saham blue chip utama</div>
+                </div>
+              </Link>
+              <Link href="/watchlist?preset=LQ45" className="preset-card">
+                <div className="preset-card__icon">
+                  <Star className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="preset-card__title">Watchlist LQ45</div>
+                  <div className="preset-card__desc">45 saham likuid pilihan</div>
+                </div>
+              </Link>
+            </section>
+          )}
         </div>
 
         {/* DESKTOP: Slim inline search */}
@@ -278,6 +334,20 @@ export default function HomePage() {
 
         {/* Daily Briefing */}
         <DailyBriefing />
+
+        {/* Top Picks — highest conviction signals today */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold">Top Sinyal Hari Ini</h3>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                Sinyal dengan confidence tertinggi
+              </span>
+            </div>
+            <DataFreshnessPill updatedAt={marketTimestamp} />
+          </div>
+          <TopPicksSection picks={topPicks} loading={picksLoading} />
+        </section>
 
         {/* Today's Movers */}
         <CollapsibleSection

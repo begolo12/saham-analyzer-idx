@@ -40,7 +40,7 @@ export function Alert({ variant = "info", children, className, icon = true }: Al
 
 export function Disclaimer() {
   return (
-    <Alert variant="danger" className="mb-4">
+    <Alert variant="info" className="mb-4">
       <strong>⚠️ Disclaimer:</strong> Aplikasi ini adalah <strong>alat bantu analisa</strong>,
       bukan saran finansial. Semua keputusan investasi sepenuhnya tanggung jawab Anda.
       Selalu lakukan riset sendiri (DYOR).

@@ -51,6 +51,12 @@ export function DailyBriefing() {
 
   useEffect(() => {
     let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setData(null);
+        setLoading(false);
+      }
+    }, 12000);
     (async () => {
       setLoading(true);
       try {
@@ -90,6 +96,7 @@ export function DailyBriefing() {
           (s): s is BriefingStock => s !== null,
         );
         if (cancelled) return;
+        clearTimeout(timeout);
 
         // 1. Watchlist hari ini
         const watchlist = personalTickers
@@ -141,6 +148,7 @@ export function DailyBriefing() {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
   }, []);
 
@@ -151,8 +159,16 @@ export function DailyBriefing() {
           <Newspaper className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-bold">Daily Briefing</h2>
         </div>
-        <div className="text-sm text-muted-foreground animate-pulse">
-          Menyiapkan ringkasan hari ini...
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between rounded-lg border p-2 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-12 bg-muted rounded" />
+                <div className="h-3 w-20 bg-muted rounded" />
+              </div>
+              <div className="h-4 w-16 bg-muted rounded" />
+            </div>
+          ))}
         </div>
       </Card>
     );

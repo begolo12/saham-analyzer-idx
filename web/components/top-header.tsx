@@ -21,7 +21,7 @@ export function TopHeader() {
     { href: "/screener", label: "Screener", icon: Filter },
     { href: "/watchlist", label: "Watchlist", icon: Star },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-    { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/settings", label: "Pengaturan", icon: Settings },
   ];
 
   const handleSearch = (e: React.FormEvent) => {

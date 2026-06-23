@@ -72,7 +72,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [marketTimestamp, setMarketTimestamp] = useState<string | undefined>(undefined);
+  const [marketTimestamp, setMarketTimestamp] = useState<string | undefined>(new Date().toISOString());
 
   const fetchOverview = () => {
     setLoading(true);
@@ -232,29 +232,7 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Top picks — highest conviction signals today */}
-          <CollapsibleSection
-            title="Top Sinyal Hari Ini"
-            icon={<TrendingUp className="h-4 w-4 text-primary" />}
-            storageKey="home.top-picks.open"
-            defaultOpen={true}
-            framed={false}
-            action={
-              <DataFreshnessPill updatedAt={marketTimestamp} />
-            }
-          >
-            <TopPicksSection picks={topPicks} loading={picksLoading} />
-          </CollapsibleSection>
 
-          {/* Search */}
-          <section className="rounded-2xl border bg-card p-3">
-            <div className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-muted-foreground shrink-0 ml-1" />
-              <div className="flex-1">
-                <StockSearch />
-              </div>
-            </div>
-          </section>
 
           {/* Quick actions — 4 core actions (rest in Tools drawer) */}
           <div className="grid grid-cols-2 gap-2.5">
@@ -455,9 +433,9 @@ export default function HomePage() {
               <QuickChip href="/screener" icon={<Filter className="h-3.5 w-3.5" />} label="Screener" />
               <QuickChip href="/portfolio" icon={<Briefcase className="h-3.5 w-3.5" />} label="Portfolio" />
               <QuickChip href="/watchlist" icon={<Star className="h-3.5 w-3.5" />} label="Watchlist" />
-              <QuickChip href="/compare" icon={<Scale className="h-3.5 w-3.5" />} label="Compare" />
+              <QuickChip href="/compare" icon={<Scale className="h-3.5 w-3.5" />} label="Bandingkan" />
               <QuickChip href="/backtest" icon={<FlaskConical className="h-3.5 w-3.5" />} label="Backtest" />
-              <QuickChip href="/settings" icon={<BarChart3 className="h-3.5 w-3.5" />} label="Settings" />
+              <QuickChip href="/settings" icon={<BarChart3 className="h-3.5 w-3.5" />} label="Pengaturan" />
             </div>
           </CollapsibleSection>
 

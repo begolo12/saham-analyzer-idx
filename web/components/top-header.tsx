@@ -7,7 +7,6 @@ import { Search, Star, BarChart3, Settings, Briefcase, Filter, Sparkles } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { DataFreshnessPill } from "@/components/data-freshness-pill";
 
 /**
  * Desktop-only top header. On mobile, BottomNav takes over.
@@ -70,7 +69,6 @@ export function TopHeader() {
         </nav>
 
         <div className="flex items-center gap-3 flex-1 max-w-md justify-end">
-          <DataFreshnessPill updatedAt={new Date(Date.now() - 5 * 60_000)} />
           <form onSubmit={handleSearch} className="flex-1 max-w-xs">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

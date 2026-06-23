@@ -154,7 +154,7 @@ export default function HomePage() {
 
       <MobileAppBar
         title="Beranda"
-        subtitle="Cari saham, pantau watchlist, cek portfolio"
+        subtitle="Pantau pasar & temukan sinyal"
         trailing={
           <Link
             href="/search"

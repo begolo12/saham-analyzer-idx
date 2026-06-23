@@ -18,17 +18,17 @@ import {
 import { cn } from "@/lib/utils";
 
 const primaryTabs = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/search", label: "Search", icon: Search },
+  { href: "/", label: "Beranda", icon: Home },
+  { href: "/search", label: "Cari", icon: Search },
   { href: "/watchlist", label: "Watchlist", icon: Star },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
 ];
 
 const toolLinks = [
   { href: "/screener", label: "Screener", icon: Filter, description: "Scan peluang cepat" },
-  { href: "/compare", label: "Compare", icon: Scale, description: "Bandingkan 2-3 saham" },
+  { href: "/compare", label: "Bandingkan", icon: Scale, description: "Bandingkan 2-3 saham" },
   { href: "/backtest", label: "Backtest", icon: FlaskConical, description: "Uji strategi historis" },
-  { href: "/settings", label: "Settings", icon: Settings, description: "Atur preferensi & data" },
+  { href: "/settings", label: "Pengaturan", icon: Settings, description: "Atur preferensi & data" },
 ];
 
 function isPathActive(pathname: string, href: string) {

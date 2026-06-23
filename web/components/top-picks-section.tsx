@@ -54,7 +54,12 @@ export function TopPicksSection({ picks, loading = false, className }: TopPicksS
   }
 
   if (!picks.length) {
-    return null;
+    return (
+      <div className="rounded-2xl border border-dashed border-muted-foreground/20 bg-muted/30 p-6 text-center">
+        <div className="text-sm font-semibold text-muted-foreground">Belum ada sinyal tersedia</div>
+        <div className="text-[11px] text-muted-foreground/70 mt-1">Data akan muncul saat market buka</div>
+      </div>
+    );
   }
 
   return (

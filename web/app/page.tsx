@@ -199,7 +199,7 @@ export default function HomePage() {
               )}
             >
               <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                <Activity className="h-3 w-3" /> Market pulse
+                <Activity className="h-3 w-3" /> Denyut pasar
               </div>
               <div className="mt-1.5 flex items-baseline gap-2">
                 <div
@@ -308,10 +308,12 @@ export default function HomePage() {
           </Card>
         </div>
 
-        <Disclaimer />
+
 
         {/* Daily Briefing */}
         <DailyBriefing />
+
+        <Disclaimer />
 
         {/* Top Picks — highest conviction signals today */}
         <section className="space-y-2">
@@ -385,7 +387,7 @@ export default function HomePage() {
               {topGainers.length > 0 && (
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                   <TrendingUp className="h-3 w-3 text-bull-600" aria-hidden />
-                  <span>Top Gainers</span>
+                  <span>Top Naik</span>
                 </div>
               )}
               {topGainers.map((stock) => (
@@ -402,7 +404,7 @@ export default function HomePage() {
               {topLosers.length > 0 && (
                 <div className="flex items-center gap-1 px-2 py-1.5 mt-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                   <TrendingDown className="h-3 w-3 text-bear-600" aria-hidden />
-                  <span>Top Losers</span>
+                  <span>Top Turun</span>
                 </div>
               )}
               {topLosers.map((stock) => (
@@ -449,7 +451,7 @@ export default function HomePage() {
           </CollapsibleSection>
 
           <CollapsibleSection
-            title="Sector Heatmap"
+            title="Heatmap Sektor"
             icon={<Activity className="h-4 w-4 text-cyan-600" />}
             storageKey="home.heatmap.open"
             defaultOpen={false}
@@ -458,7 +460,7 @@ export default function HomePage() {
           </CollapsibleSection>
 
           <CollapsibleSection
-            title="Foreign Flow"
+            title="Aliran Asing"
             icon={<ArrowDownRight className="h-4 w-4 text-fuchsia-600" />}
             subtitle="Estimasi aktivitas asing (proxy volume spike)"
             storageKey="home.foreign.open"
@@ -469,7 +471,7 @@ export default function HomePage() {
         </div>
 
         <footer className="text-center text-[10px] text-muted-foreground py-3">
-          📊 Yahoo Finance • Not financial advice
+          📊 Yahoo Finance • Bukan saran finansial
         </footer>
       </main>
     </div>

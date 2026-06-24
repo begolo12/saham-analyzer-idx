@@ -13,7 +13,7 @@ interface DataFreshnessPillProps {
 
 function timeAgo(date: Date): string {
   const diffSec = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
-  if (diffSec < 60) return `${diffSec}d lalu`;
+  if (diffSec < 60) return "Baru saja";
   const min = Math.round(diffSec / 60);
   if (min < 60) return `${min}m lalu`;
   const hr = Math.round(min / 60);
@@ -64,7 +64,7 @@ export function DataFreshnessPill({
       title={`Update: ${date.toLocaleString("id-ID")}`}
     >
       <span className="freshness-pill__dot" aria-hidden />
-      {isOffline ? "Stale" : `Update ${timeAgo(date)}`}
+      {isOffline ? "Kadaluarsa" : `Update ${timeAgo(date)}`}
     </span>
   );
 }

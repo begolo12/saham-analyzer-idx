@@ -42,7 +42,7 @@ export function TopHeader() {
           </div>
           <div>
             <div className="font-bold text-base leading-tight">SahamIDX</div>
-            <div className="text-[10px] text-muted-foreground leading-tight">Stock Analyzer</div>
+            <div className="text-[10px] text-muted-foreground leading-tight">Analisis Saham</div>
           </div>
         </Link>
 

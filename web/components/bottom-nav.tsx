@@ -59,7 +59,7 @@ export function BottomNav() {
           <div className="absolute inset-x-0 bottom-0 rounded-t-[1.75rem] border border-border/70 bg-background px-4 pb-5 pt-4 shadow-2xl safe-area-bottom animate-slide-up">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <div className="page-eyebrow">Tools</div>
+                <div className="page-eyebrow">Alat</div>
                 <div className="text-base font-bold">Aksi lanjutan</div>
               </div>
               <button
@@ -160,7 +160,7 @@ export function BottomNav() {
             >
               <Grid2X2 className={cn("h-5 w-5 transition-transform", activeTool && "scale-110")} strokeWidth={activeTool ? 2.5 : 2} />
             </div>
-            <span>Tools</span>
+            <span>Alat</span>
           </button>
         </div>
       </nav>

@@ -20,6 +20,9 @@ import {
   TrendingDown,
   Activity,
   Search,
+  BarChart3,
+  History,
+  Zap,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,10 +56,12 @@ import {
 import { MobileAppBar, MobileSectionTabs, MobileListItem } from "@/components/mobile-app-bar";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
-type SortBy = "default" | "hot" | "change" | "name" | "viewed";
+type SortBy = "default" | "hot" | "change" | "name" | "viewed" | "performance";
 type SectorFilter = "all" | string;
 type MobileSection = "watching" | "alerts" | "discovery";
+type ConfirmAction = { type: "clearAll" } | null;
 
 // Build a tiny inline sparkline from closes (no SVG lib needed)
 function Sparkline({ closes, up }: { closes: number[]; up: boolean }) {
@@ -93,7 +98,7 @@ function Sparkline({ closes, up }: { closes: number[]; up: boolean }) {
 
 export default function WatchlistPage() {
   return (
-    <Suspense fallback={<div className="page-main container"><div className="shimmer h-32 w-full rounded-2xl" /></div>}>
+    <Suspense fallback={<div className="page-main container"><div className="shimmer h-32 w-full rounded-2xl" style={{boxShadow: 'shadow-sm'}} /></div>}>
       <WatchlistPageContent />
     </Suspense>
   );
@@ -111,6 +116,7 @@ function WatchlistPageContent() {
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>("all");
   const [alertModalTicker, setAlertModalTicker] = useState<string | null>(null);
   const [mobileSection, setMobileSection] = useState<MobileSection>("watching");
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   // Preset handling: /watchlist?preset=IDX30 or ?preset=LQ45
   useEffect(() => {
@@ -218,10 +224,12 @@ function WatchlistPageContent() {
   };
 
   const clearAll = () => {
-    if (confirm("Hapus semua dari watchlist?")) {
-      clearAllWatchlist();
-      toast.success("Watchlist cleared");
-    }
+    setConfirmAction({ type: "clearAll" });
+  };
+
+  const executeClearAll = () => {
+    clearAllWatchlist();
+    toast.success("Watchlist cleared");
   };
 
   const addToWatchlist = (ticker: string) => {
@@ -263,6 +271,20 @@ function WatchlistPageContent() {
       case "viewed":
         arr.sort((a, b) => b.viewCount - a.viewCount);
         break;
+      case "performance": {
+        arr.sort((a, b) => {
+          const aItem = items.find((i) => i.ticker === a.ticker);
+          const bItem = items.find((i) => i.ticker === b.ticker);
+          const aReturn = aItem?.priceAtAdded && data[a.ticker]?.price
+            ? ((data[a.ticker]!.price! - aItem.priceAtAdded) / aItem.priceAtAdded) * 100
+            : -Infinity;
+          const bReturn = bItem?.priceAtAdded && data[b.ticker]?.price
+            ? ((data[b.ticker]!.price! - bItem.priceAtAdded) / bItem.priceAtAdded) * 100
+            : -Infinity;
+          return bReturn - aReturn;
+        });
+        break;
+      }
       default:
         arr.sort((a, b) => {
           if (b.viewCount !== a.viewCount) return b.viewCount - a.viewCount;
@@ -370,6 +392,12 @@ function WatchlistPageContent() {
           </div>
           {items.length > 0 && (
             <div className="flex gap-1">
+              <Link href="/alerts">
+                <Button variant="ghost" size="sm" className="min-h-9 text-xs">
+                  <Bell className="mr-1 h-4 w-4" aria-hidden />
+                  <span className="hidden sm:inline">Alert Manager</span>
+                </Button>
+              </Link>
               <ShareWatchlistButton tickers={items.map((i) => i.ticker)} />
               <Button
                 variant="ghost"
@@ -387,7 +415,7 @@ function WatchlistPageContent() {
 
         {items.length === 0 ? (
           <div className="md:hidden">
-            <Card className="p-6 text-center">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center">
               <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
                 <Star className="h-6 w-6 fill-amber-500" />
               </div>
@@ -449,7 +477,7 @@ function WatchlistPageContent() {
                 return (
                   <div
                     className={cn(
-                      "rounded-2xl border p-3 mb-2",
+                      "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl rounded-2xl border p-3 mb-2",
                       tone === "bull" && "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-50/30",
                       tone === "bear" && "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-50/30",
                       tone === "neutral" && "border-border bg-card",
@@ -492,6 +520,22 @@ function WatchlistPageContent() {
                   { value: "discovery", label: "Discovery", count: discovery.length },
                 ]}
               />
+
+              {/* Quick action buttons */}
+              <div className="flex gap-2 mt-2">
+                <Link href="/compare" className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full min-h-10 text-xs font-bold rounded-xl">
+                    <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                    Bandingkan
+                  </Button>
+                </Link>
+                <Link href="/alerts" className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full min-h-10 text-xs font-bold rounded-xl">
+                    <History className="h-3.5 w-3.5 mr-1.5" />
+                    Riwayat Alert
+                  </Button>
+                </Link>
+              </div>
             </section>
 
             {/* MOBILE: Watching section */}
@@ -509,13 +553,18 @@ function WatchlistPageContent() {
                     <StockRowSkeleton count={Math.max(items.length, 3)} />
                   </div>
                 ) : sortedItems.length > 0 ? (
-                  <div className="rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden">
+                  <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden">
                     {sortedItems.map((item) => {
                       const stock = data[item.ticker];
                       if (!stock) return null;
                       const isUp = (stock.changePct ?? 0) >= 0;
                       const showChange = stock.changePct !== null && stock.changePct !== undefined;
                       const recentCloses = (stock as { recentCloses?: number[] }).recentCloses;
+                      // Performance since added
+                      const returnSinceAdded = item.priceAtAdded && stock.price
+                        ? ((stock.price - item.priceAtAdded) / item.priceAtAdded) * 100
+                        : null;
+                      const returnUp = returnSinceAdded !== null ? returnSinceAdded >= 0 : true;
                       return (
                         <MobileListItem
                           key={item.ticker}
@@ -527,6 +576,14 @@ function WatchlistPageContent() {
                           change={showChange ? { text: formatPercent(stock.changePct), positive: isUp } : undefined}
                           accessory={
                             <div className="flex items-center gap-1.5">
+                              {returnSinceAdded !== null && (
+                                <span className={cn(
+                                  "text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                                  returnUp ? "bg-bull-100 text-bull-700 dark:bg-bull-700/20 dark:text-bull-500" : "bg-bear-100 text-bear-700 dark:bg-bear-700/20 dark:text-bear-500",
+                                )}>
+                                  {returnUp ? "+" : ""}{returnSinceAdded.toFixed(1)}%
+                                </span>
+                              )}
                               {recentCloses && recentCloses.length > 1 && (
                                 <Sparkline closes={recentCloses} up={isUp} />
                               )}
@@ -585,7 +642,7 @@ function WatchlistPageContent() {
                 ) : (
                   <>
                     {alerts.filter((a) => a.status === "triggered").map((a) => (
-                      <Card key={a.id} className="p-3 border-amber-500/40">
+                      <Card key={a.id} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 border-amber-500/40">
                         <div className="flex items-start gap-2">
                           <Bell className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                           <div className="min-w-0 flex-1">
@@ -610,7 +667,7 @@ function WatchlistPageContent() {
                     ))}
                     {smartAlerts.map(({ stock, type, text }) => (
                       <Link key={stock.code} href={`/stock/${stock.code}`}>
-                        <Card className="p-3 hover:bg-accent/50 transition-colors">
+                        <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 hover:bg-accent/50 transition-colors">
                           <div className="flex items-center gap-2">
                             {type === "hot" ? (
                               <Flame className="h-4 w-4 text-bull-600 shrink-0" />
@@ -643,7 +700,7 @@ function WatchlistPageContent() {
                   discovery.map((d) => {
                     const isUp = (d.changePct ?? 0) >= 0;
                     return (
-                      <Card key={d.code} className="p-3">
+                      <Card key={d.code} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3">
                         <div className="flex items-center gap-3">
                           <Link href={`/stock/${d.code}`} className="flex-1 min-w-0">
                             <div className="font-bold text-sm">{d.code}</div>
@@ -717,7 +774,7 @@ function WatchlistPageContent() {
                       .map((a) => (
                         <Card
                           key={a.id}
-                          className="p-3 border-amber-500/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-700/10 dark:to-amber-700/5"
+                          className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 border-amber-500/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-700/10 dark:to-amber-700/5"
                         >
                           <div className="flex items-start gap-2">
                             <Bell className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -765,7 +822,7 @@ function WatchlistPageContent() {
               {loading && items.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Memuat data watchlist">
                   {items.map((i) => (
-                    <Card key={i.ticker} className="p-4 space-y-2 animate-pulse">
+                    <Card key={i.ticker} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 space-y-2 animate-pulse">
                       <div className="h-4 w-20 rounded bg-muted" />
                       <div className="h-3 w-32 rounded bg-muted" />
                       <div className="flex justify-between pt-1">
@@ -801,9 +858,47 @@ function WatchlistPageContent() {
               )}
 
               {!loading && items.length > 0 && sortedItems.length === 0 && (
-                <Card className="p-6 text-center text-sm text-muted-foreground">
+                <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center text-sm text-muted-foreground">
                   Tidak ada saham di sektor &quot;{sectorFilter}&quot;.
                 </Card>
+              )}
+
+              {/* Batch Analysis + Quick Actions */}
+              {!loading && items.length >= 2 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Link href={`/compare?tickers=${items.slice(0, 3).map((i) => i.ticker).join(",")}`}>
+                    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 hover:shadow-md transition-all cursor-pointer border-primary/20 hover:border-primary/40">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <BarChart3 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold">Batch Compare</div>
+                          <div className="text-xs text-muted-foreground">
+                            Bandingkan {Math.min(items.length, 3)} saham teratas
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
+                      </div>
+                    </Card>
+                  </Link>
+                  <Link href="/alerts">
+                    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 hover:shadow-md transition-all cursor-pointer border-amber-500/20 hover:border-amber-500/40">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                          <Bell className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold">Alert Manager</div>
+                          <div className="text-xs text-muted-foreground">
+                            {triggeredCount > 0 ? `${triggeredCount} alert triggered` : "Kelola semua alert"}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
+                      </div>
+                    </Card>
+                  </Link>
+                </div>
               )}
 
               {!loading && discovery.length > 0 && (
@@ -855,7 +950,7 @@ function WatchlistPageContent() {
         {items.length === 0 && (
           <div className="hidden md:block">
             <EmptyState
-              icon={<Star className="h-6 w-6 text-amber-500" aria-hidden />}
+              illustration="watchlist"
               title="Watchlist kosong"
               description="Tambahkan saham favorit dari halaman analisa untuk monitoring harga real-time + smart alerts."
               actions={[
@@ -884,6 +979,16 @@ function WatchlistPageContent() {
           onClose={() => setAlertModalTicker(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmAction?.type === "clearAll"}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title="Hapus semua watchlist?"
+        description="Semua saham akan dihapus dari watchlist. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel="Hapus Semua"
+        variant="danger"
+        onConfirm={executeClearAll}
+      />
     </div>
   );
 
@@ -918,6 +1023,7 @@ function FilterBar({
           { key: "change", label: "% Change" },
           { key: "name", label: "A-Z" },
           { key: "viewed", label: "👁 Dilihat" },
+          { key: "performance", label: "📈 Return" },
         ].map((opt) => (
           <button
             key={opt.key}
@@ -925,7 +1031,7 @@ function FilterBar({
             onClick={() => setSortBy(opt.key as SortBy)}
             aria-pressed={sortBy === opt.key}
             className={cn(
-              "shrink-0 inline-flex min-h-9 items-center rounded-full px-3 py-1 text-xs font-bold transition-colors",
+              "shrink-0 inline-flex min-h-9 items-center rounded-[0.75rem] px-3 py-1 text-xs font-bold transition-colors shadow-[shadow-sm]",
               sortBy === opt.key
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted hover:bg-accent",
@@ -945,7 +1051,7 @@ function FilterBar({
           <button
             onClick={() => setSectorFilter("all")}
             className={cn(
-              "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
+              "shrink-0 px-3 py-1 rounded-[0.75rem] text-xs font-bold transition-colors shadow-[shadow-sm]",
               sectorFilter === "all"
                 ? "bg-foreground text-background"
                 : "bg-muted hover:bg-accent",
@@ -958,7 +1064,7 @@ function FilterBar({
               key={sec}
               onClick={() => setSectorFilter(sec)}
               className={cn(
-                "shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-colors",
+                "shrink-0 px-3 py-1 rounded-[0.75rem] text-xs font-bold transition-colors shadow-[shadow-sm]",
                 sectorFilter === sec
                   ? "bg-foreground text-background"
                   : "bg-muted hover:bg-accent",

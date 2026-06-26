@@ -10,7 +10,8 @@ import {
   TrendingUp,
   TrendingDown,
   Check,
-  ChevronRight,
+  Trophy,
+  Crown,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,13 +34,18 @@ interface CompareStock {
   trailingPE: number | null;
   forwardPE: number | null;
   priceToBook: number | null;
+  priceToSales: number | null;
   returnOnEquity: number | null;
+  returnOnAssets: number | null;
   profitMargins: number | null;
+  grossMargins: number | null;
   revenueGrowth: number | null;
   earningsGrowth: number | null;
   dividendYield: number | null;
   debtToEquity: number | null;
+  currentRatio: number | null;
   volume: number | null;
+  averageVolume: number | null;
   performance: {
     oneDay: number;
     oneWeek: number;
@@ -48,6 +54,7 @@ interface CompareStock {
   };
   rsi14: number | null;
   macdSignal: "bullish" | "bearish" | "neutral" | null;
+  trend: "uptrend" | "downtrend" | "sideways" | null;
 }
 
 interface MetricRow {
@@ -105,11 +112,25 @@ const METRICS: MetricRow[] = [
     hasData: (s) => s.trailingPE !== null && s.trailingPE > 0,
   },
   {
+    label: "P/E (forward)",
+    category: "valuation",
+    format: (v) => v.toFixed(2),
+    better: (v) => (v > 0 && v < 15 ? "good" : v > 25 ? "bad" : "neutral"),
+    hasData: (s) => s.forwardPE !== null && s.forwardPE > 0,
+  },
+  {
     label: "P/B",
     category: "valuation",
     format: (v) => v.toFixed(2),
     better: (v) => (v > 0 && v < 1.5 ? "good" : v > 3 ? "bad" : "neutral"),
     hasData: (s) => s.priceToBook !== null && s.priceToBook > 0,
+  },
+  {
+    label: "P/S",
+    category: "valuation",
+    format: (v) => v.toFixed(2),
+    better: (v) => (v > 0 && v < 2 ? "good" : v > 5 ? "bad" : "neutral"),
+    hasData: (s) => s.priceToSales !== null && s.priceToSales > 0,
   },
   {
     label: "ROE",
@@ -119,7 +140,14 @@ const METRICS: MetricRow[] = [
     hasData: (s) => s.returnOnEquity !== null,
   },
   {
-    label: "Profit Margin",
+    label: "ROA",
+    category: "profitability",
+    format: (v) => `${(v * 100).toFixed(1)}%`,
+    better: (v) => (v > 0.05 ? "good" : v < 0.02 ? "bad" : "neutral"),
+    hasData: (s) => s.returnOnAssets !== null,
+  },
+  {
+    label: "Net Margin",
     category: "profitability",
     format: (v) => `${(v * 100).toFixed(1)}%`,
     better: (v) => (v > 0.15 ? "good" : v < 0.05 ? "bad" : "neutral"),
@@ -140,7 +168,7 @@ const METRICS: MetricRow[] = [
     hasData: (s) => s.revenueGrowth !== null,
   },
   {
-    label: "Earnings Growth",
+    label: "EPS Growth",
     category: "growth",
     format: (v) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`,
     better: (v) => (v > 0.1 ? "good" : v < 0 ? "bad" : "neutral"),
@@ -152,6 +180,13 @@ const METRICS: MetricRow[] = [
     format: (v) => v.toFixed(2),
     better: (v) => (v < 0.5 ? "good" : v > 1.5 ? "bad" : "neutral"),
     hasData: (s) => s.debtToEquity !== null,
+  },
+  {
+    label: "Current Ratio",
+    category: "risk",
+    format: (v) => v.toFixed(2),
+    better: (v) => (v > 1.5 ? "good" : v < 1 ? "bad" : "neutral"),
+    hasData: (s) => s.currentRatio !== null,
   },
   {
     label: "RSI(14)",
@@ -166,6 +201,13 @@ const METRICS: MetricRow[] = [
     format: (v) => String(v),
     better: (v) => (v === 1 ? "good" : v === -1 ? "bad" : "neutral"),
     hasData: (s) => s.macdSignal !== null,
+  },
+  {
+    label: "Trend",
+    category: "technical",
+    format: (v) => String(v),
+    better: (v) => (v === 1 ? "good" : v === -1 ? "bad" : "neutral"),
+    hasData: (s) => s.trend !== null,
   },
   {
     label: "1 Hari",
@@ -228,26 +270,40 @@ function getMetricValue(stock: CompareStock, metric: MetricRow): number | null {
       return stock.volume;
     case "P/E (trailing)":
       return stock.trailingPE;
+    case "P/E (forward)":
+      return stock.forwardPE;
     case "P/B":
       return stock.priceToBook;
+    case "P/S":
+      return stock.priceToSales;
     case "ROE":
       return stock.returnOnEquity;
-    case "Profit Margin":
+    case "ROA":
+      return stock.returnOnAssets;
+    case "Net Margin":
       return stock.profitMargins;
     case "Dividend Yield":
       return stock.dividendYield;
     case "Revenue Growth":
       return stock.revenueGrowth;
-    case "Earnings Growth":
+    case "EPS Growth":
       return stock.earningsGrowth;
     case "Debt to Equity":
       return stock.debtToEquity;
+    case "Current Ratio":
+      return stock.currentRatio;
     case "RSI(14)":
       return stock.rsi14;
     case "MACD Signal":
       return stock.macdSignal === "bullish"
         ? 1
         : stock.macdSignal === "bearish"
+          ? -1
+          : 0;
+    case "Trend":
+      return stock.trend === "uptrend"
+        ? 1
+        : stock.trend === "downtrend"
           ? -1
           : 0;
     case "1 Hari":
@@ -298,6 +354,199 @@ function categorySummary(results: CompareStock[], category: MetricCategory) {
     score: ranked[0][1],
     total: metrics.length,
   };
+}
+
+/**
+ * Compute overall winner — sum of wins across all categories.
+ */
+function computeOverallWinner(results: CompareStock[]): { code: string; wins: number; total: number } | null {
+  const scores = new Map<string, number>();
+  results.forEach((r) => scores.set(r.code, 0));
+  let total = 0;
+
+  for (const metric of METRICS) {
+    const winner = getWinnerCode(results, metric);
+    if (winner) {
+      scores.set(winner, (scores.get(winner) || 0) + 1);
+      total++;
+    }
+  }
+
+  if (total === 0) return null;
+  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+  return { code: ranked[0][0], wins: ranked[0][1], total };
+}
+
+/**
+ * Radar chart dimensions for visual comparison.
+ * Each axis is a category score normalized to 0-100.
+ */
+const RADAR_AXES: { key: MetricCategory; label: string }[] = [
+  { key: "valuation", label: "Valuasi" },
+  { key: "profitability", label: "Profit" },
+  { key: "growth", label: "Growth" },
+  { key: "dividends", label: "Dividen" },
+  { key: "technical", label: "Teknikal" },
+  { key: "risk", label: "Risiko" },
+];
+
+function computeRadarScores(results: CompareStock[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  results.forEach((r) => map.set(r.code, []));
+
+  for (const axis of RADAR_AXES) {
+    const catMetrics = METRICS.filter((m) => m.category === axis.key);
+    const scores = new Map<string, number>();
+    results.forEach((r) => scores.set(r.code, 0));
+
+    let scored = 0;
+    for (const metric of catMetrics) {
+      const winner = getWinnerCode(results, metric);
+      if (winner) {
+        scores.set(winner, (scores.get(winner) || 0) + 1);
+        scored++;
+      }
+    }
+
+    for (const r of results) {
+      const existing = map.get(r.code) ?? [];
+      existing.push(scored > 0 ? ((scores.get(r.code) ?? 0) / scored) * 100 : 50);
+      map.set(r.code, existing);
+    }
+  }
+
+  return map;
+}
+
+const RADAR_COLORS = ["#6366f1", "#f59e0b", "#10b981"];
+const RADAR_FILLS = ["rgba(99,102,241,0.12)", "rgba(245,158,11,0.12)", "rgba(16,185,129,0.12)"];
+
+/**
+ * SVG radar/spider chart — pure inline SVG, no library.
+ */
+function RadarChart({
+  results,
+  size = 220,
+}: {
+  results: CompareStock[];
+  size?: number;
+}) {
+  const radarScores = useMemo(() => computeRadarScores(results), [results]);
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 30;
+  const axes = RADAR_AXES.length;
+
+  const getPoint = (index: number, value: number) => {
+    const angle = (Math.PI * 2 * index) / axes - Math.PI / 2;
+    const dist = (value / 100) * r;
+    return {
+      x: cx + dist * Math.cos(angle),
+      y: cy + dist * Math.sin(angle),
+    };
+  };
+
+  const rings = [0.25, 0.5, 0.75, 1];
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto">
+      {/* Background rings */}
+      {rings.map((ring) => {
+        const points = Array.from({ length: axes }, (_, i) => {
+          const p = getPoint(i, ring * 100);
+          return `${p.x},${p.y}`;
+        }).join(" ");
+        return (
+          <polygon
+            key={ring}
+            points={points}
+            fill="none"
+            stroke="currentColor"
+            className="text-border/50"
+            strokeWidth="0.5"
+          />
+        );
+      })}
+
+      {/* Axis lines */}
+      {RADAR_AXES.map((_, i) => {
+        const p = getPoint(i, 100);
+        return (
+          <line
+            key={i}
+            x1={cx}
+            y1={cy}
+            x2={p.x}
+            y2={p.y}
+            stroke="currentColor"
+            className="text-border/40"
+            strokeWidth="0.5"
+          />
+        );
+      })}
+
+      {/* Axis labels */}
+      {RADAR_AXES.map((axis, i) => {
+        const p = getPoint(i, 115);
+        return (
+          <text
+            key={axis.key}
+            x={p.x}
+            y={p.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="fill-muted-foreground text-[9px] font-semibold"
+          >
+            {axis.label}
+          </text>
+        );
+      })}
+
+      {/* Data polygons for each stock */}
+      {results.map((stock, idx) => {
+        const scores = radarScores.get(stock.code) ?? [];
+        const points = scores
+          .map((v, i) => {
+            const p = getPoint(i, v);
+            return `${p.x},${p.y}`;
+          })
+          .join(" ");
+        return (
+          <g key={stock.code}>
+            <polygon
+              points={points}
+              fill={RADAR_FILLS[idx] ?? RADAR_FILLS[0]}
+              stroke={RADAR_COLORS[idx] ?? RADAR_COLORS[0]}
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            {/* Dots at vertices */}
+            {scores.map((v, i) => {
+              const p = getPoint(i, v);
+              return (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r="3"
+                  fill={RADAR_COLORS[idx] ?? RADAR_COLORS[0]}
+                />
+              );
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/**
+ * Format trend value for display.
+ */
+function formatTrend(v: number): string {
+  if (v === 1) return "📈 Uptrend";
+  if (v === -1) return "📉 Downtrend";
+  return "↔️ Sideways";
 }
 
 export function StockComparison({
@@ -375,6 +624,11 @@ export function StockComparison({
         ...summary,
       };
     }).filter(Boolean) as Array<{ id: MetricCategory; label: string; icon: string; code: string; score: number; total: number }>;
+  }, [results]);
+
+  const overallWinner = useMemo(() => {
+    if (!results || results.length < 2) return null;
+    return computeOverallWinner(results);
   }, [results]);
 
   return (
@@ -475,6 +729,35 @@ export function StockComparison({
 
       {results && results.length >= 2 && (
         <div className="space-y-4">
+          {/* Overall Winner Banner */}
+          {overallWinner && (
+            <Card className="p-4 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-900/10 border-amber-500/30">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20">
+                  <Crown className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                    Pemenang Keseluruhan
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-xl font-black text-foreground">
+                      {overallWinner.code}
+                    </span>
+                    <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-[11px] font-bold">
+                      <Trophy className="h-3 w-3 mr-1" />
+                      {overallWinner.wins}/{overallWinner.total} metric unggul
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Unggul di {overallWinner.wins} dari {overallWinner.total} metric yang tersedia
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Stock header cards */}
           <div className="mobile-topbar md:hidden">
             <div className="mobile-topbar__inner">
               <div className="min-w-0 flex-1">
@@ -485,18 +768,32 @@ export function StockComparison({
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            {results.map((s) => {
+            {results.map((s, idx) => {
               const isUp = s.changePct >= 0;
+              const isOverallWinner = overallWinner?.code === s.code;
               return (
-                <Card key={s.code} className="p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border border-border">
+                <Card
+                  key={s.code}
+                  className={cn(
+                    "p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border",
+                    isOverallWinner
+                      ? "border-amber-500/50 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-900/10 ring-1 ring-amber-500/20"
+                      : "border-border",
+                  )}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <Link
-                        href={`/stock/${s.code}`}
-                        className="text-lg font-black hover:underline text-primary"
-                      >
-                        {s.code}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={`/stock/${s.code}`}
+                          className="text-lg font-black hover:underline text-primary"
+                        >
+                          {s.code}
+                        </Link>
+                        {isOverallWinner && (
+                          <Crown className="h-4 w-4 text-amber-500" />
+                        )}
+                      </div>
                       <div className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{s.name}</div>
                     </div>
                     <Badge variant="outline" className="text-[10px]">
@@ -520,6 +817,31 @@ export function StockComparison({
             })}
           </div>
 
+          {/* Radar Chart */}
+          <Card className="p-4">
+            <div className="page-section-heading mb-3">
+              <div>
+                <div className="page-section-title">📊 Radar Perbandingan</div>
+                <div className="page-section-subtitle">
+                  Visualisasi kekuatan per kategori — semakin luas area, semakin kuat
+                </div>
+              </div>
+            </div>
+            <RadarChart results={results} />
+            <div className="mt-3 flex items-center justify-center gap-4 flex-wrap">
+              {results.map((s, idx) => (
+                <div key={s.code} className="flex items-center gap-1.5 text-xs font-bold">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: RADAR_COLORS[idx] ?? RADAR_COLORS[0] }}
+                  />
+                  {s.code}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Category Winner Summary */}
           {summaryCards.length > 0 && (
             <Card className="p-4">
               <div className="page-section-heading">
@@ -544,6 +866,7 @@ export function StockComparison({
             </Card>
           )}
 
+          {/* Detailed comparison per category */}
           {CATEGORIES.map((cat) => {
             const catMetrics = METRICS.filter(
               (m) => m.category === cat.id && results.some((s) => m.hasData(s)),
@@ -583,6 +906,12 @@ export function StockComparison({
                             }
                             const isBest = best === s.code;
                             const verdict = metric.better(v);
+                            // Special format for Trend and MACD
+                            const displayValue = metric.label === "Trend"
+                              ? formatTrend(v)
+                              : metric.label === "MACD Signal"
+                                ? (v === 1 ? "📈 Bullish" : v === -1 ? "📉 Bearish" : "↔️ Neutral")
+                                : metric.format(v);
                             return (
                               <div
                                 key={s.code}
@@ -596,7 +925,7 @@ export function StockComparison({
                               >
                                 <span className="font-semibold">{s.code}</span>
                                 <span className="flex items-center gap-1 font-bold tabular-nums">
-                                  {metric.format(v)}
+                                  {displayValue}
                                   {isBest && <Check className="h-3.5 w-3.5" />}
                                 </span>
                               </div>

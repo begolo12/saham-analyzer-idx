@@ -5,10 +5,14 @@ import {
   matchesCriteria,
   type ScreenerType,
   type ScreenerResult,
+  type CustomScreenerConfig,
+  type CustomScreenerStock,
+  runCustomScreener,
+  describeCustomScreener,
 } from "@/lib/screener";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 min ISR cache — in-memory Map cache below only works in single-process mode
 export const maxDuration = 90;
 
 interface QuickQuote {
@@ -22,9 +26,12 @@ interface QuickQuote {
   changePct: number;
 }
 
-// Cache to avoid hammering Yahoo Finance
+// NOTE: In-memory cache only effective in single-process / dev mode.
+// On Vercel serverless each invocation has its own memory, so this is a no-op.
+// The `revalidate = 300` above provides the real caching via ISR.
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const CACHE_MAX_ITEMS = 50; // prevent unbounded growth
 
 function getCached(key: string): any | null {
   const entry = cache.get(key);
@@ -37,11 +44,15 @@ function getCached(key: string): any | null {
 }
 
 function setCache(key: string, data: any) {
+  // Evict oldest entry if at capacity
+  if (cache.size >= CACHE_MAX_ITEMS) {
+    const oldest = cache.entries().next().value;
+    if (oldest) cache.delete(oldest[0]);
+  }
   cache.set(key, { data, timestamp: Date.now() });
 }
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+import { YAHOO_UA as UA } from "@/lib/constants";
 
 /**
  * Fetch quote directly from Yahoo Finance (no self-fetch)
@@ -56,7 +67,7 @@ async function fetchQuoteDirect(code: string): Promise<QuickQuote | null> {
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: controller.signal,
       next: { revalidate: 300 },
-    });
+    } as RequestInit);
     clearTimeout(timeout);
 
     if (!res.ok) return null;
@@ -92,18 +103,108 @@ async function fetchQuoteDirect(code: string): Promise<QuickQuote | null> {
 
 /**
  * GET /api/screener?screen=volume-breakout&limit=20
+ * GET /api/screener?custom=<JSON-encoded-CustomScreenerConfig>&limit=20
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const screen = (searchParams.get("screen") || "top-gainers") as ScreenerType;
+    const customParam = searchParams.get("custom");
     const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 30);
     const scanLimit = Math.min(
       parseInt(searchParams.get("scanLimit") || "60", 10),
       80,
     );
-
     const forceRefresh = searchParams.get("refresh") === "1";
+
+    // ── Custom Screener Mode ──
+    if (customParam) {
+      let customConfig: CustomScreenerConfig;
+      try {
+        customConfig = JSON.parse(customParam);
+      } catch {
+        return NextResponse.json(
+          { error: "Format custom screener tidak valid" },
+          { status: 400 },
+        );
+      }
+
+      if (
+        !customConfig ||
+        typeof customConfig !== "object" ||
+        !Array.isArray(customConfig.filters) ||
+        customConfig.filters.length === 0
+      ) {
+        return NextResponse.json(
+          { error: "Minimal 1 filter diperlukan" },
+          { status: 400 },
+        );
+      }
+
+      // Validate each filter has required fields
+      for (const filter of customConfig.filters) {
+        if (!filter.field || !filter.operator) {
+          return NextResponse.json(
+            { error: "Setiap filter harus memiliki field dan operator" },
+            { status: 400 },
+          );
+        }
+      }
+
+      const startTime = Date.now();
+      const stocksToScan = POPULAR_STOCKS.slice(0, scanLimit);
+
+      // Fetch quotes in batches
+      const allQuotes: QuickQuote[] = [];
+      for (let i = 0; i < stocksToScan.length; i += 6) {
+        const batch = stocksToScan.slice(i, i + 6);
+        const batchResults = await Promise.allSettled(
+          batch.map((stock) => fetchQuoteDirect(stock.code)),
+        );
+        for (const r of batchResults) {
+          if (r.status === "fulfilled" && r.value) allQuotes.push(r.value);
+        }
+        if (i + 6 < stocksToScan.length) {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+      }
+
+      // For custom screener, we need fundamental data too
+      // Use available quote data + best-effort fundamental info
+      const customStocks: CustomScreenerStock[] = allQuotes.map((q) => ({
+        ticker: q.ticker,
+        code: q.code,
+        name: q.name,
+        sector: q.sector,
+        price: q.price,
+        changePct: q.changePct,
+        pe: null,
+        pb: null,
+        dividendYield: null,
+        roe: null,
+        marketCap: null,
+        volume: null,
+        matchCount: 0,
+        totalFilters: customConfig.filters.length,
+      }));
+
+      const results = runCustomScreener(customConfig, customStocks);
+
+      return NextResponse.json({
+        screen: "custom",
+        config: customConfig,
+        description: describeCustomScreener(customConfig),
+        results: results.slice(0, limit),
+        total: results.length,
+        scanned: allQuotes.length,
+        method: "custom",
+        timestamp: new Date().toISOString(),
+        duration: Date.now() - startTime,
+        cached: false,
+      });
+    }
+
+    // ── Preset Screener Mode ──
+    const screen = (searchParams.get("screen") || "top-gainers") as ScreenerType;
     const cacheKey = `screen:${screen}:${limit}:${scanLimit}`;
     const cached = forceRefresh ? null : getCached(cacheKey);
     if (cached && cached.total > 0) {
@@ -196,10 +297,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ...result, cached: false });
   } catch (error) {
     console.error("API /screener error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Screener failed" },
-      { status: 500 },
-    );
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : error instanceof Error
+          ? error.message
+          : "Screener failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

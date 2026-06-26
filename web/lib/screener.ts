@@ -84,7 +84,7 @@ export const SCREENER_PRESETS: ScreenerPreset[] = [
   {
     id: "golden-cross",
     name: "Golden Cross",
-    description: "SMA50 memotong SMA50 ke atas = tren naik jangka panjang",
+    description: "SMA50 memotong SMA200 ke atas = tren naik jangka panjang",
     icon: "🌟",
     color: "bull",
   },
@@ -344,4 +344,174 @@ export function quickScreenTopLosers(
   return quotes
     .filter((q) => q.changePct <= maxPct)
     .sort((a, b) => a.changePct - b.changePct);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Custom Screener Filter Builder
+// ─────────────────────────────────────────────────────────────
+
+export type FilterOperator = "lt" | "lte" | "gt" | "gte" | "eq" | "between";
+export type FilterField =
+  | "pe"
+  | "pb"
+  | "dividendYield"
+  | "roe"
+  | "marketCap"
+  | "changePct"
+  | "price"
+  | "volume";
+
+export interface ScreenerFilter {
+  field: FilterField;
+  operator: FilterOperator;
+  value: number;
+  value2?: number; // For "between" operator
+}
+
+export interface CustomScreenerConfig {
+  id: string;
+  name: string;
+  filters: ScreenerFilter[];
+  logic: "AND" | "OR";
+  createdAt: string;
+}
+
+export interface CustomScreenerStock {
+  ticker: string;
+  code: string;
+  name: string;
+  sector: string;
+  price: number;
+  changePct: number;
+  pe: number | null;
+  pb: number | null;
+  dividendYield: number | null;
+  roe: number | null;
+  marketCap: number | null;
+  volume: number | null;
+  matchCount: number;
+  totalFilters: number;
+}
+
+export const FILTER_FIELD_LABELS: Record<FilterField, string> = {
+  pe: "P/E Ratio",
+  pb: "P/B Ratio",
+  dividendYield: "Dividend Yield (%)",
+  roe: "ROE (%)",
+  marketCap: "Kapitalisasi Pasar (T)",
+  changePct: "Perubahan Hari Ini (%)",
+  price: "Harga (Rp)",
+  volume: "Volume",
+};
+
+export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
+  lt: "kurang dari (<)",
+  lte: "kurang dari sama dengan (≤)",
+  gt: "lebih dari (>)",
+  gte: "lebih dari sama dengan (≥)",
+  eq: "sama dengan (=)",
+  between: "antara",
+};
+
+/**
+ * Evaluate a single filter against a stock.
+ */
+export function evaluateFilter(
+  filter: ScreenerFilter,
+  stock: CustomScreenerStock,
+): boolean {
+  let fieldValue: number | null;
+
+  switch (filter.field) {
+    case "pe": fieldValue = stock.pe; break;
+    case "pb": fieldValue = stock.pb; break;
+    case "dividendYield": fieldValue = stock.dividendYield; break;
+    case "roe": fieldValue = stock.roe; break;
+    case "marketCap": fieldValue = stock.marketCap; break;
+    case "changePct": fieldValue = stock.changePct; break;
+    case "price": fieldValue = stock.price; break;
+    case "volume": fieldValue = stock.volume; break;
+    default: return false;
+  }
+
+  if (fieldValue === null || fieldValue === undefined) return false;
+
+  switch (filter.operator) {
+    case "lt": return fieldValue < filter.value;
+    case "lte": return fieldValue <= filter.value;
+    case "gt": return fieldValue > filter.value;
+    case "gte": return fieldValue >= filter.value;
+    case "eq": return Math.abs(fieldValue - filter.value) < 0.01;
+    case "between":
+      return filter.value2 !== undefined
+        ? fieldValue >= filter.value && fieldValue <= filter.value2
+        : false;
+    default: return false;
+  }
+}
+
+/**
+ * Run custom screener with multiple filters.
+ */
+export function runCustomScreener(
+  config: CustomScreenerConfig,
+  stocks: CustomScreenerStock[],
+): CustomScreenerStock[] {
+  const results = stocks
+    .map((stock) => {
+      const matches = config.filters.map((f) => evaluateFilter(f, stock));
+      const matchCount = config.logic === "AND"
+        ? matches.filter(Boolean).length
+        : matches.some(Boolean) ? 1 : 0;
+
+      const passes = config.logic === "AND"
+        ? matches.every(Boolean)
+        : matches.some(Boolean);
+
+      return passes ? { ...stock, matchCount, totalFilters: config.filters.length } : null;
+    })
+    .filter((s): s is CustomScreenerStock => s !== null);
+
+  return results.sort((a, b) => b.matchCount - a.matchCount);
+}
+
+/**
+ * Generate a human-readable description of a custom screener config.
+ */
+export function describeCustomScreener(config: CustomScreenerConfig): string {
+  if (config.filters.length === 0) return "Tidak ada filter didefinisikan";
+
+  const logicWord = config.logic === "AND" ? "DAN" : "ATAU";
+  const parts = config.filters.map((f) => {
+    const fieldLabel = FILTER_FIELD_LABELS[f.field];
+    const opLabel = FILTER_OPERATOR_LABELS[f.operator];
+    if (f.operator === "between" && f.value2 !== undefined) {
+      return `${fieldLabel} antara ${f.value} dan ${f.value2}`;
+    }
+    return `${fieldLabel} ${opLabel} ${f.value}`;
+  });
+
+  return parts.join(` ${logicWord} `);
+}
+
+/**
+ * Save custom screener configs to a serializable format (for localStorage).
+ */
+export function serializeScreenerConfigs(configs: CustomScreenerConfig[]): string {
+  return JSON.stringify(configs);
+}
+
+/**
+ * Deserialize custom screener configs from localStorage.
+ */
+export function deserializeScreenerConfigs(json: string): CustomScreenerConfig[] {
+  try {
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (c: any) => c && typeof c.id === "string" && Array.isArray(c.filters),
+    );
+  } catch {
+    return [];
+  }
 }

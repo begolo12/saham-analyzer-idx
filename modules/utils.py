@@ -8,6 +8,33 @@ from typing import Optional, Dict, List
 from datetime import datetime
 
 
+import logging
+import time
+from functools import wraps
+
+logger = logging.getLogger(__name__)
+
+
+def retry(max_attempts: int = 3, delay: float = 1.0, backoff: float = 2.0):
+    """Simple retry decorator with exponential backoff"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exc = e
+                    if attempt < max_attempts:
+                        wait = delay * (backoff ** (attempt - 1))
+                        logger.warning(f"{func.__name__} attempt {attempt}/{max_attempts} failed: {e}, retrying in {wait:.1f}s")
+                        time.sleep(wait)
+            raise last_exc
+        return wrapper
+    return decorator
+
+
 def format_currency(value: float, currency: str = "IDR") -> str:
     """Format angka ke currency string"""
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -64,7 +91,7 @@ def calculate_position_size(
 
     return {
         "shares": shares,
-        "lots_lots": lots // 100,
+        "lots": lots // 100,
         "position_value": position_value,
         "risk_amount": risk_amount,
         "actual_risk": lots * price_risk,

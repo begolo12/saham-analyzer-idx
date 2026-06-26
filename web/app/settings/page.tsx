@@ -60,6 +60,7 @@ import {
 import { MobileAppBar, MobileQuickAction, MobileSectionTabs } from "@/components/mobile-app-bar";
 import { formatIDR, cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const ACTION_LABEL: Record<TrackedAction, string> = {
   STRONG_BUY: "🟢🟢 Strong Buy",
@@ -83,6 +84,7 @@ export default function SettingsPage() {
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [mobileSection, setMobileSection] = useState<MobileSection>("preferences");
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
 
   const tickersToCheck = useMemo(() => {
     const now = Date.now();
@@ -265,7 +267,7 @@ export default function SettingsPage() {
         {/* MOBILE: Data */}
         {mobileSection === "data" && (
           <div className="md:hidden space-y-3">
-            <Card className="p-4">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4">
               <div className="page-section-title flex items-center gap-2">
                 <Database className="h-4 w-4 text-primary" /> Data & Backup
               </div>
@@ -278,7 +280,7 @@ export default function SettingsPage() {
         {/* MOBILE: Learning */}
         {mobileSection === "learning" && (
           <div className="md:hidden space-y-3">
-            <Card className="p-4 bg-gradient-to-br from-primary/5 to-purple-500/5">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 bg-gradient-to-br from-primary/5 to-purple-500/5">
               <div className="page-section-title flex items-center gap-2">
                 <Brain className="h-4 w-4 text-primary" /> System Health
               </div>
@@ -318,7 +320,7 @@ export default function SettingsPage() {
         {/* MOBILE: Danger */}
         {mobileSection === "danger" && (
           <div className="md:hidden space-y-3">
-            <Card className="p-4 border-amber-500/30 bg-amber-50/40 dark:bg-amber-700/10">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 border-amber-500/30 bg-amber-50/40 dark:bg-amber-700/10">
               <div className="page-section-title flex items-center gap-2 text-amber-700 dark:text-amber-500">
                 <ShieldAlert className="h-4 w-4" /> Danger Zone
               </div>
@@ -331,7 +333,7 @@ export default function SettingsPage() {
         {/* DESKTOP: legacy stacked view */}
         <div className="hidden md:block space-y-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
-            <Card className="p-4">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4">
               <div className="page-section-title">Data & kontrol</div>
               <div className="page-section-subtitle">Browser-local storage, backup, reset, notifikasi</div>
               <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
@@ -340,7 +342,7 @@ export default function SettingsPage() {
                 <p>• Self-analysis membantu kalibrasi rekomendasi dari histori penggunaan.</p>
               </div>
             </Card>
-            <Card className="p-4">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4">
               <div className="page-section-title">Quick links</div>
               <div className="page-section-subtitle">Akses cepat ke area utama app</div>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -370,7 +372,7 @@ export default function SettingsPage() {
           <WeightOptimizationDesktop health={health} />
           <CalibrationDesktop health={health} />
           {records.length > 0 && (
-            <Card className="p-4 sm:p-5">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-primary" />
@@ -380,10 +382,7 @@ export default function SettingsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    if (confirm("Hapus semua tracking history?")) {
-                      clearAllRecords();
-                      toast.success("History dihapus");
-                    }
+                    setConfirmClearHistory(true);
                   }}
                   className="text-xs"
                 >
@@ -413,6 +412,19 @@ export default function SettingsPage() {
           <NotificationSettingsCard />
         </div>
       </main>
+
+      <ConfirmDialog
+        open={confirmClearHistory}
+        onOpenChange={setConfirmClearHistory}
+        title="Hapus semua tracking history?"
+        description="Semua data rekomendasi dan history tracking akan dihapus permanen."
+        confirmLabel="Hapus History"
+        variant="danger"
+        onConfirm={() => {
+          clearAllRecords();
+          toast.success("History dihapus");
+        }}
+      />
     </div>
   );
 }
@@ -427,7 +439,7 @@ function RecommendationHistoryMobile({
   onFeedback: (id: string, feedback: "correct" | "wrong") => void;
 }) {
   return (
-    <Card className="p-4">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4">
       <div className="page-section-title flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-primary" /> Recommendation History
       </div>
@@ -450,7 +462,7 @@ function SystemHealthCardDesktop({
   records: ReturnType<typeof useSelfAnalysis>["records"];
 }) {
   return (
-    <Card className="p-5 bg-gradient-to-br from-primary/5 to-purple-500/5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 bg-gradient-to-br from-primary/5 to-purple-500/5">
       <div className="flex items-center gap-2 mb-3">
         <Brain className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">System Health</h2>
@@ -497,7 +509,7 @@ function SystemHealthCardDesktop({
 function SignalAccuracyDesktop({ health }: { health: SystemHealth | null }) {
   if (!health || health.trackedOutcomes < 5) return null;
   return (
-    <Card className="p-5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Activity className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Akurasi per Sinyal</h2>
@@ -539,7 +551,7 @@ function SignalAccuracyDesktop({ health }: { health: SystemHealth | null }) {
 function WeightOptimizationDesktop({ health }: { health: SystemHealth | null }) {
   if (!health || health.trackedOutcomes < 10 || !health.bias.description) return null;
   return (
-    <Card className={cn("p-5 border-2", health.bias.overweighted ? "border-amber-500/30 bg-amber-50/30 dark:bg-amber-700/10" : "border-bull-500/20 bg-bull-50/30 dark:bg-bull-700/5")}>
+    <Card className={cn("bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 border-2", health.bias.overweighted ? "border-amber-500/30 bg-amber-50/30 dark:bg-amber-700/10" : "border-bull-500/20 bg-bull-50/30 dark:bg-bull-700/5")}>
       <div className="flex items-center gap-2 mb-2">
         <Target className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Weight Optimization</h2>
@@ -579,7 +591,7 @@ function WeightOptimizationDesktop({ health }: { health: SystemHealth | null }) 
 function CalibrationDesktop({ health }: { health: SystemHealth | null }) {
   if (!health || health.trackedOutcomes < 5) return null;
   return (
-    <Card className="p-5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Award className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Confidence Calibration</h2>
@@ -611,7 +623,7 @@ function CalibrationDesktop({ health }: { health: SystemHealth | null }) {
 
 function AboutCard() {
   return (
-    <Card className="p-5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Info className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Tentang Self-Analysis</h2>
@@ -631,6 +643,7 @@ function BackupRestoreCard() {
   const [stats, setStats] = useState<ReturnType<typeof getBackupStats> | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   useEffect(() => {
     setStats(getBackupStats());
@@ -652,14 +665,14 @@ function BackupRestoreCard() {
   };
 
   const handleImport = async (file: File) => {
-    if (!confirm(
-      "Import akan MENGGANTI data saat ini (watchlist, portfolio, cash ledger, snapshots, alerts) dengan data dari file. Lanjutkan?",
-    )) {
-      return;
-    }
+    setPendingImportFile(file);
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImportFile) return;
     setImporting(true);
     try {
-      const result = await importFromFile(file);
+      const result = await importFromFile(pendingImportFile);
       toast.success(`✅ Restore berhasil! ${result.imported.length} kategori diimport`, {
         description: result.skipped.length > 0 ? `${result.skipped.length} dilewati (kosong)` : undefined,
         duration: 5000,
@@ -669,6 +682,7 @@ function BackupRestoreCard() {
       toast.error(`Gagal import: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
       setImporting(false);
+      setPendingImportFile(null);
     }
   };
 
@@ -676,7 +690,7 @@ function BackupRestoreCard() {
   const totalItems = (stats?.watchlistCount ?? 0) + (stats?.portfolioCount ?? 0) + (stats?.cashCount ?? 0) + (stats?.snapshotCount ?? 0) + (stats?.alertCount ?? 0);
 
   return (
-    <Card className="p-5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Heart className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Backup & Restore</h2>
@@ -699,10 +713,10 @@ function BackupRestoreCard() {
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Button onClick={handleExport} variant="outline" className="h-11">
+        <Button onClick={handleExport} variant="outline" className="bg-[hsl(var(--primary))] text-white rounded-lg px-4 py-2 font-medium h-11">
           📦 Export Backup (JSON)
         </Button>
-        <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={importing} className="h-11">
+        <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={importing} className="bg-[hsl(var(--primary))] text-white rounded-lg px-4 py-2 font-medium h-11">
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...
@@ -714,6 +728,15 @@ function BackupRestoreCard() {
         <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImport(file); e.target.value = ""; }} />
       </div>
       <p className="text-[10px] text-muted-foreground mt-3 italic">💡 Tips: Export backup setiap minggu. Simpan di cloud supaya tidak hilang kalau ganti browser atau clear cache.</p>
+      <ConfirmDialog
+        open={!!pendingImportFile}
+        onOpenChange={(open) => { if (!open) setPendingImportFile(null); }}
+        title="Import Backup?"
+        description="Import akan MENGGANTI data saat ini (watchlist, portfolio, cash ledger, snapshots, alerts) dengan data dari file."
+        confirmLabel="Lanjutkan Import"
+        variant="danger"
+        onConfirm={confirmImport}
+      />
     </Card>
   );
 }
@@ -756,7 +779,7 @@ function ResetAllDataCard() {
   const handleCancel = () => setConfirmStep(0);
 
   return (
-    <Card className="p-5 border-2 border-bear-500/30 bg-bear-50/30 dark:bg-bear-700/10">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 border-2 border-bear-500/30 bg-bear-50/30 dark:bg-bear-700/10">
       <div className="flex items-center gap-2 mb-2">
         <Trash2 className="h-5 w-5 text-bear-600" />
         <h2 className="font-bold text-lg text-bear-700 dark:text-bear-500">Reset Semua Data</h2>
@@ -765,7 +788,7 @@ function ResetAllDataCard() {
       <p className="text-sm text-muted-foreground mb-3">Hapus <strong>semua</strong> data app: portfolio, cash ledger, watchlist, price alerts, snapshots, dan history self-analysis ({itemCount} item). Tidak bisa di-undo.</p>
       <p className="text-[11px] text-amber-700 dark:text-amber-500 mb-3 italic">⚠️ Saran: Export backup dulu sebelum reset.</p>
       {confirmStep === 0 && (
-        <Button onClick={handleResetClick} variant="outline" disabled={itemCount === 0 || busy} className="w-full h-11 border-bear-500/50 text-bear-700 dark:text-bear-500 hover:bg-bear-100 dark:hover:bg-bear-700/20">
+        <Button onClick={handleResetClick} variant="outline" disabled={itemCount === 0 || busy} className="bg-[hsl(var(--primary))] text-white rounded-lg px-4 py-2 font-medium w-full h-11 border-bear-500/50 text-bear-700 dark:text-bear-500 hover:bg-bear-100 dark:hover:bg-bear-700/20">
           <Trash2 className="h-4 w-4 mr-2" /> Reset Semua Data
         </Button>
       )}
@@ -944,7 +967,7 @@ function NotificationSettingsCard() {
   if (!mounted) return null;
 
   return (
-    <Card className="p-5">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Bell className="h-5 w-5 text-primary" />
         <h2 className="font-bold text-lg">Push Notifications</h2>
@@ -978,7 +1001,7 @@ function NotificationSettingsCard() {
               <div className="text-sm font-medium">Aktifkan Notifikasi</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">{enabled ? "Aktif — alert akan muncul saat trigger" : "Nonaktif — tidak ada notifikasi"}</div>
             </div>
-            <button onClick={() => handleToggle(!enabled)} className={cn("relative w-12 h-6 rounded-full transition-colors", enabled ? "bg-bull-500" : "bg-muted")} aria-label="Toggle notifications">
+            <button onClick={() => handleToggle(!enabled)} className={cn("relative w-12 h-6 rounded-full transition-all", enabled ? "bg-bull-500 shadow-[4px_4px_8px_rgba(0,0,0,0.1),-4px_-4px_8px_rgba(255,255,255,0.5)]" : "bg-muted shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)]")} aria-label="Toggle notifications">
               <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform", enabled ? "left-6" : "left-0.5")} />
             </button>
           </div>

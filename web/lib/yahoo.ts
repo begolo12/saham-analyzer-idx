@@ -48,15 +48,19 @@ export interface StockSummary {
   trailingAnnualDividendYield: number | null;
 }
 
+const TICKER_REGEX = /^[A-Z0-9^.\-]{1,10}(\.JK)?$/;
+
 export function validateTicker(ticker: string): string {
   const t = ticker.toUpperCase().trim();
+  if (!TICKER_REGEX.test(t)) {
+    throw new Error(`Invalid ticker format: ${ticker}`);
+  }
   if (t.startsWith("^")) return t;
   const base = t.replace(/\.JK$/, "");
   return `${base}.JK`;
 }
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+import { YAHOO_UA as UA } from "./constants";
 
 interface YahooChartResponse {
   chart: {

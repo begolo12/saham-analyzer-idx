@@ -66,8 +66,7 @@ const TV_COLUMNS = [
   "description",
 ];
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+import { YAHOO_UA as UA } from "./constants";
 
 /**
  * Fetch real-time quotes untuk banyak ticker via TradingView scanner.

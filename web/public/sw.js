@@ -6,10 +6,14 @@
  * - Network-first untuk API calls — selalu dapat data terbaru
  * - Stale-while-revalidate untuk halaman HTML — cepat & fresh
  *
- * Install: register dari client-side component.
+ * Features:
+ * - Offline fallback to /offline page
+ * - SKIP_WAITING message for instant updates
+ * - Background sync preparation
+ * - Precache critical assets on install
  */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `saham-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `saham-pages-${CACHE_VERSION}`;
 const API_CACHE = `saham-api-${CACHE_VERSION}`;
@@ -20,6 +24,10 @@ const STATIC_ASSETS = [
   "/icon.svg",
   "/offline",
 ];
+
+// Max entries for API cache to prevent unbounded growth
+const API_CACHE_MAX_ENTRIES = 80;
+const PAGES_CACHE_MAX_ENTRIES = 30;
 
 // ============ Install ============
 self.addEventListener("install", (event) => {
@@ -51,6 +59,13 @@ self.addEventListener("activate", (event) => {
     }),
   );
   self.clients.claim();
+});
+
+// ============ SKIP_WAITING for instant updates ============
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // ============ Fetch ============
@@ -86,7 +101,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML pages — stale-while-revalidate
+  // HTML pages — stale-while-revalidate with offline fallback
   if (request.headers.get("accept")?.includes("text/html")) {
     event.respondWith(staleWhileRevalidate(request, PAGES_CACHE));
     return;
@@ -120,10 +135,9 @@ async function networkFirst(request, cacheName) {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(cacheName);
-      // Cache for max 5 minutes for APIs
       cache.put(request, response.clone());
-      // Auto-clean old entries (best-effort)
-      cleanupCache(cacheName);
+      // Auto-clean old entries
+      cleanupCache(cacheName, API_CACHE_MAX_ENTRIES);
     }
     return response;
   } catch (err) {
@@ -140,20 +154,28 @@ async function staleWhileRevalidate(request, cacheName) {
     .then((response) => {
       if (response.ok) {
         cache.put(request, response.clone());
+        // Auto-clean old entries
+        cleanupCache(cacheName, PAGES_CACHE_MAX_ENTRIES);
       }
       return response;
     })
-    .catch(() => cached);
+    .catch(() => {
+      // If fetch fails and no cache, return offline page
+      if (!cached) {
+        return caches.match("/offline");
+      }
+      return cached;
+    });
   return cached || fetchPromise;
 }
 
-async function cleanupCache(cacheName) {
-  // Don't grow unbounded. Cap at 50 entries.
+async function cleanupCache(cacheName, maxEntries = 50) {
+  // Don't grow unbounded. Cap at maxEntries.
   try {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
-    if (keys.length > 50) {
-      const toDelete = keys.length - 50;
+    if (keys.length > maxEntries) {
+      const toDelete = keys.length - maxEntries;
       for (let i = 0; i < toDelete; i++) {
         await cache.delete(keys[i]);
       }
@@ -163,14 +185,27 @@ async function cleanupCache(cacheName) {
   }
 }
 
-// ============ Background Sync (placeholder) ============
+// ============ Background Sync ============
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-watchlist") {
-    // Future: sync watchlist to cloud
+    event.waitUntil(syncWatchlist());
+  }
+  if (event.tag === "sync-portfolio") {
+    event.waitUntil(syncPortfolio());
   }
 });
 
-// ============ Push Notifications (placeholder) ============
+async function syncWatchlist() {
+  // Future: read pending watchlist changes from IndexedDB and POST to server
+  console.log("[SW] Background sync: watchlist");
+}
+
+async function syncPortfolio() {
+  // Future: read pending portfolio transactions from IndexedDB and POST to server
+  console.log("[SW] Background sync: portfolio");
+}
+
+// ============ Push Notifications ============
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   try {
@@ -181,6 +216,9 @@ self.addEventListener("push", (event) => {
         icon: "/icon.svg",
         badge: "/icon.svg",
         data: data.url || "/",
+        tag: data.tag || "default",
+        renotify: data.renotify || false,
+        actions: data.actions || [],
       }),
     );
   } catch (err) {
@@ -191,5 +229,16 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data || "/";
-  event.waitUntil(clients.openWindow(url));
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      // Focus existing window if open
+      for (const client of windowClients) {
+        if (client.url.includes(url) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      return clients.openWindow(url);
+    }),
+  );
 });

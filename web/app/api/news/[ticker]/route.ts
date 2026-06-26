@@ -18,7 +18,7 @@ export async function GET(
     const ticker = validateTicker(params.ticker);
     const code = ticker.replace(".JK", "");
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "15", 10);
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "15", 10) || 15, 1), 50);
 
     const summary = await fetchSummary(code);
 
@@ -28,11 +28,12 @@ export async function GET(
     return NextResponse.json(result);
   } catch (error) {
     console.error("API /news error:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to fetch news",
-      },
-      { status: 500 },
-    );
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : error instanceof Error
+          ? error.message
+          : "Failed to fetch news";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

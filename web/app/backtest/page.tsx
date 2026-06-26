@@ -119,8 +119,8 @@ export default function BacktestPage() {
         </div>
 
         {/* Config */}
-        <Card className="p-5 space-y-4">
-          <h2 className="font-bold text-base">Konfigurasi</h2>
+        <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 space-y-4">
+          <h2 className="font-bold text-base text-foreground">Konfigurasi</h2>
 
           <div>
             <label className="text-xs text-muted-foreground mb-1.5 block">Saham</label>
@@ -129,7 +129,7 @@ export default function BacktestPage() {
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               placeholder="BBCA"
               maxLength={6}
-              className="font-bold"
+              className="font-bold shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.03)] rounded-[0.75rem]"
             />
             <div className="flex flex-wrap gap-1 mt-2">
               {POPULAR_STOCKS.slice(0, 8).map((s) => (
@@ -140,6 +140,7 @@ export default function BacktestPage() {
                   aria-pressed={ticker === s.code}
                   aria-label={`Pilih saham ${s.code}`}
                   className="inline-flex min-h-8 items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-accent active:bg-accent/70"
+                  /* pill style */
                 >
                   + {s.code}
                 </button>
@@ -158,7 +159,7 @@ export default function BacktestPage() {
                   aria-checked={strategy === s.id}
                   onClick={() => setStrategy(s.id)}
                   className={cn(
-                    "min-h-12 text-left rounded-lg border-2 p-3 transition-colors active:scale-[0.99]",
+                    "min-h-12 text-left rounded-[0.75rem] border-2 p-3 transition-colors active:scale-[0.99]",
                     strategy === s.id
                       ? "border-primary bg-primary/5"
                       : "border-border hover:bg-accent/50",
@@ -182,7 +183,7 @@ export default function BacktestPage() {
                   aria-checked={period === p.id}
                   onClick={() => setPeriod(p.id)}
                   className={cn(
-                    "min-h-10 rounded-lg border-2 px-3 py-2 font-medium text-sm transition-colors active:scale-[0.99]",
+                    "min-h-10 rounded-[0.75rem] border-2 px-3 py-2 font-medium text-sm transition-colors active:scale-[0.99]",
                     period === p.id
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border hover:bg-accent/50",
@@ -202,7 +203,7 @@ export default function BacktestPage() {
               onChange={(e) => setCapital(e.target.value)}
               min={100000}
               step={1000000}
-              className="font-bold tabular-nums"
+              className="font-bold tabular-nums shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.03)] rounded-[0.75rem]"
             />
             <div className="flex gap-1 mt-2">
               {["5000000", "10000000", "50000000", "100000000"].map((v) => (
@@ -213,6 +214,7 @@ export default function BacktestPage() {
                   aria-pressed={capital === v}
                   aria-label={`Modal ${formatIDR(parseFloat(v))}`}
                   className="min-h-9 flex-1 rounded px-2 py-1 text-[11px] font-semibold bg-muted hover:bg-accent transition-colors tabular-nums"
+                  /* preset pill */
                 >
                   {formatIDR(parseFloat(v))}
                 </button>
@@ -230,7 +232,7 @@ export default function BacktestPage() {
         </Card>
 
         {loading && !result && (
-          <Card className="p-5 space-y-3" aria-busy="true">
+          <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 space-y-3" aria-busy="true">
             <div className="h-5 w-32 bg-secondary rounded shimmer" />
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border bg-card p-3 space-y-2 animate-pulse">
@@ -252,7 +254,7 @@ export default function BacktestPage() {
 
         {!loading && !result && !error && (
           <div className="md:hidden">
-            <Card className="p-6 text-center">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center">
               <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Play className="h-6 w-6" />
               </div>
@@ -298,7 +300,7 @@ export default function BacktestPage() {
 
             <Card
               className={cn(
-                "p-5 border-2",
+                "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 border-2",
                 result.totalReturnPct >= 0
                   ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5 shadow-lg shadow-bull-500/5"
                   : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5 shadow-lg shadow-bear-500/5",
@@ -345,7 +347,7 @@ export default function BacktestPage() {
             </Card>
 
             {result.trades.length > 0 && (
-              <Card className="p-5">
+              <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
                 <h2 className="text-base font-bold mb-3">Trade History ({result.trades.filter((t) => t.action === "SELL").length} transaksi)</h2>
                 <div className="space-y-1.5 max-h-96 overflow-y-auto">
                   {result.trades.map((t, i) => (
@@ -376,7 +378,7 @@ export default function BacktestPage() {
 
       <MobileActionBar
         primary={{
-          label: loading ? "Menjalankan..." : "Run Backtest",
+          label: loading ? "Menjalankan..." : "🚀 Run Backtest",
           ariaLabel: loading ? "Menjalankan backtest" : "Jalankan backtest",
           icon: loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />,
           onClick: handleRun,
@@ -392,7 +394,7 @@ function StatPill({ label, value, suffix }: { label: string; value: number | str
   const isPositive = typeof value === "number" && value > 0;
   const isNegative = typeof value === "number" && value < 0;
   return (
-    <div className="rounded-lg bg-card border p-2 text-center">
+    <div className="rounded-[0.75rem] bg-card border p-2 text-center shadow-[shadow-sm]">
       <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</div>
       <div className={cn("text-sm font-black tabular-nums", isPositive && "text-bull-600", isNegative && "text-bear-600")}>
         {typeof value === "number" && value > 0 ? "+" : ""}{displayValue}{suffix}

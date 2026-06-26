@@ -504,7 +504,7 @@ function SearchPageContent() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            className="h-12 rounded-2xl pl-12 pr-12 text-base shadow-sm sm:h-11 sm:text-sm"
+            className="h-12 rounded-xl pl-12 pr-12 text-base shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)] sm:h-11 sm:text-sm"
             autoFocus
             aria-label="Cari saham IDX"
           />
@@ -728,7 +728,7 @@ function SearchPageContent() {
         )}
       </div>
 
-      <div ref={listRef} className="rounded-xl border bg-card overflow-hidden divide-y divide-border/40">
+      <div ref={listRef} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl rounded-xl overflow-hidden divide-y divide-border/40">
         {isSearching && query.trim().length >= 2 ? (
           <LoadingRows />
         ) : displayRows.length === 0 ? (

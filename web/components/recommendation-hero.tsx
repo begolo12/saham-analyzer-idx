@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ACTION_INDONESIAN,
   ACTION_EMOJI,
-  HORIZON_INDONESIAN,
   type Recommendation,
   type Action,
 } from "@/lib/recommender";
 import { formatIDR, formatPercent, cn } from "@/lib/utils";
 import { Target, MapPin, ShieldAlert, TrendingUp, Sparkles, Zap, Compass } from "lucide-react";
 import { HorizonSelector, type HorizonKey } from "@/components/horizon-selector";
+import { Card } from "@/components/ui/card";
 
 const actionClass: Record<string, string> = {
   STRONG_BUY: "rec-strong-buy",
@@ -112,10 +112,73 @@ function computeHorizonTargets(rec: Recommendation, view: HorizonView) {
   };
 }
 
+/** Animated confidence bar */
+function AnimatedConfidenceBar({ confidence, action }: { confidence: number; action: Action }) {
+  const [width, setWidth] = useState(0);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      const t = setTimeout(() => setWidth(confidence), 150);
+      return () => clearTimeout(t);
+    }
+    setWidth(confidence);
+  }, [confidence]);
+
+  const isBuy = action === "BUY" || action === "STRONG_BUY";
+  const isSell = action === "SELL" || action === "STRONG_SELL";
+  const barColor = isBuy
+    ? "from-emerald-400 to-emerald-600"
+    : isSell
+      ? "from-red-400 to-red-600"
+      : "from-amber-400 to-amber-600";
+
+  if (confidence < 20) {
+    return (
+      <div className="space-y-1.5">
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-muted/60 text-muted-foreground border border-border/40"
+          style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.06), -2px -2px 4px rgba(255,255,255,0.4)" }}
+        >
+          ⚠️ Data terbatas
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="opacity-90 font-semibold">Keyakinan</span>
+        <span className="font-black tabular-nums text-lg font-num">{confidence}%</span>
+      </div>
+      <div
+        className="relative h-3 rounded-full overflow-hidden"
+        style={{
+          background: "hsl(var(--muted) / 0.3)",
+          boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.3)",
+        }}
+      >
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-full bg-gradient-to-r transition-all duration-1000 ease-out",
+            barColor,
+          )}
+          style={{ width: `${width}%` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent shimmer" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RecommendationHero({ rec }: { rec: Recommendation }) {
   const [selected, setSelected] = useState<HorizonKey>(
     rec.horizon === "SHORT" ? "1d" : rec.horizon === "LONG" ? "20d" : "5d",
   );
+  const [mounted, setMounted] = useState(false);
 
   const horizons = deriveHorizons(rec);
   const view = horizons[selected];
@@ -124,8 +187,14 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
   const isSell = view.action === "STRONG_SELL" || view.action === "SELL";
   const HorizonIcon = view.icon;
 
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
-    <div className="space-y-3 stagger-item">
+    <div className="space-y-3">
+      {/* Horizon selector row */}
       <div className="flex items-center gap-2">
         <HorizonIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
         <span className="text-xs font-semibold text-muted-foreground">Horizon:</span>
@@ -142,7 +211,15 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
         </div>
       </div>
 
-      <div className={cn("rounded-2xl p-5 sm:p-7 shadow-md relative overflow-hidden", actionClass[view.action])}>
+      {/* Main recommendation card */}
+      <div
+        className={cn(
+          "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl relative overflow-hidden transition-all duration-500",
+          actionClass[view.action],
+          mounted ? "opacity-100 scale-100" : "opacity-0 scale-95",
+        )}
+        style={{ padding: "1.25rem 1.5rem", borderRadius: "20px" }}
+      >
         <div
           className="absolute inset-0 opacity-20 pointer-events-none"
           style={{ background: "radial-gradient(circle at 100% 0%, rgba(255,255,255,0.25) 0%, transparent 60%)" }}
@@ -151,25 +228,26 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
             <div className="text-caption-1 opacity-90 uppercase tracking-wider font-semibold">
-              📊 Rekomendasi · {view.description}
+              📊 Sinyal · {view.label}
             </div>
-            <div className="text-display mt-1.5 leading-none font-display font-bold">
+            <div className="text-[2rem] sm:text-[2.5rem] mt-1.5 leading-none font-display font-black tracking-tight">
               {ACTION_EMOJI[view.action]} {ACTION_INDONESIAN[view.action]}
             </div>
             <div className="mt-3 text-subhead opacity-95 inline-flex items-center gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" aria-hidden />
-              {view.label} · expected {formatPercent(view.targetMove * 100, 1)}
+              <span>
+                Target {view.targetMove >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(view.targetMove) * 100, 1)}
+              </span>
             </div>
           </div>
-          <div className="sm:text-right shrink-0">
-            <div className="text-caption-1 opacity-90 uppercase tracking-wider font-semibold">Confidence</div>
-            <div className="text-display mt-1 leading-none font-display font-bold font-num">{view.confidence}%</div>
-            <div className="mt-2 text-subhead opacity-95 font-num">💰 {formatIDR(rec.currentPrice)}</div>
+          <div className="sm:text-right shrink-0 sm:min-w-[160px]">
+            <AnimatedConfidenceBar confidence={view.confidence} action={view.action} />
           </div>
         </div>
       </div>
 
-      <div className="horizon-row">
+      {/* Horizon row */}
+      <div className="grid grid-cols-3 gap-2">
         {(["1d", "5d", "20d"] as HorizonKey[]).map((k) => {
           const h = horizons[k];
           const isActive = k === selected;
@@ -184,88 +262,110 @@ export function RecommendationHero({ rec }: { rec: Recommendation }) {
               key={k}
               type="button"
               onClick={() => setSelected(k)}
-              className={cn("horizon-row__cell", isActive && "horizon-row__cell--active")}
+              className={cn(
+                "rounded-2xl p-3 text-center transition-all duration-200",
+                isActive
+                  ? "bg-[hsl(var(--card))] rounded-xl bg-primary/5 border-primary/20"
+                  : "bg-card border border-border/40 hover:bg-accent/30",
+                isActive && "shadow-[4px_4px_8px_rgba(0,0,0,0.08),-4px_-4px_8px_rgba(255,255,255,0.5)]",
+              )}
               aria-pressed={isActive}
               aria-label={`Pilih horizon ${HORIZON_META[k].label}: ${ACTION_INDONESIAN[h.action]}, confidence ${h.confidence}%`}
             >
-              <div className="horizon-row__label">{HORIZON_META[k].label}</div>
-              <div className={cn("horizon-row__action", tone)}>{ACTION_INDONESIAN[h.action]}</div>
-              <div className="horizon-row__conf">
-                {h.confidence}% · {formatPercent(h.targetMove * 100, 1)}
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{HORIZON_META[k].label}</div>
+              <div className={cn("text-sm font-bold mt-0.5", tone)}>{ACTION_INDONESIAN[h.action]}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums font-num">
+                {h.confidence < 20
+                  ? "Data terbatas"
+                  : `${h.confidence}% · ${formatPercent(h.targetMove * 100, 1)}`}
               </div>
             </button>
           );
         })}
       </div>
 
+      {/* Target cards */}
       {(targets.entryZone || targets.target || targets.stopLoss) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {targets.entryZone && (
-            <div className="card-elevated p-4 stagger-item">
-              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+            <Card className="p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                 <MapPin className="h-3 w-3" aria-hidden />
                 Entry Zone
               </div>
               <div className="mt-2.5 space-y-0.5 font-num">
-                <div className="text-callout font-bold">{formatIDR(targets.entryZone[0])}</div>
-                <div className="text-footnote text-muted-foreground">— {formatIDR(targets.entryZone[1])}</div>
+                <div className="text-sm font-bold">{formatIDR(targets.entryZone[0])}</div>
+                <div className="text-[11px] text-muted-foreground">— {formatIDR(targets.entryZone[1])}</div>
               </div>
-            </div>
+            </Card>
           )}
 
           {targets.target && rec.currentPrice && (
-            <div className="card-elevated p-4 stagger-item">
-              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+            <Card className="p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                 <Target className="h-3 w-3" aria-hidden />
                 Target Price
               </div>
               <div className="mt-2.5 font-num">
-                <div className="text-callout font-bold">{formatIDR(targets.target)}</div>
-                <div className={cn("text-footnote font-semibold inline-flex items-center gap-0.5", isBuy ? "text-success" : "text-destructive")}>
+                <div className="text-sm font-bold">{formatIDR(targets.target)}</div>
+                <div className={cn("text-[11px] font-semibold inline-flex items-center gap-0.5", isBuy ? "text-success" : "text-destructive")}>
                   {formatPercent(((targets.target - rec.currentPrice) / rec.currentPrice) * 100)}
                 </div>
               </div>
-            </div>
+            </Card>
           )}
 
           {targets.stopLoss && rec.currentPrice && (
-            <div className="card-elevated p-4 stagger-item">
-              <div className="flex items-center gap-1.5 text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">
+            <Card className="p-4 stagger-item">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                 <ShieldAlert className="h-3 w-3" aria-hidden />
                 Stop Loss
               </div>
               <div className="mt-2.5 font-num">
-                <div className="text-callout font-bold">{formatIDR(targets.stopLoss)}</div>
-                <div className={cn("text-footnote font-semibold", isSell ? "text-success" : "text-destructive")}>
+                <div className="text-sm font-bold">{formatIDR(targets.stopLoss)}</div>
+                <div className={cn("text-[11px] font-semibold", isSell ? "text-success" : "text-destructive")}>
                   {formatPercent(((targets.stopLoss - rec.currentPrice) / rec.currentPrice) * 100)}
                 </div>
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
+      {/* Risk/Reward */}
       {targets.rr && (
-        <div className="card-elevated p-4 flex items-center justify-between stagger-item">
+        <Card className="p-4 flex items-center justify-between stagger-item">
           <div>
-            <div className="text-caption-1 uppercase tracking-wider text-muted-foreground font-semibold">Risk / Reward Ratio</div>
-            <div className="text-title-3 mt-1 font-num font-bold">{targets.rr.toFixed(2)}x</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Risk / Reward Ratio</div>
+            <div className="text-lg mt-1 font-num font-bold">{targets.rr.toFixed(2)}x</div>
           </div>
           <div className="text-right">
             {targets.rr >= 2 ? (
-              <span className={cn("px-2.5 py-1 rounded-full text-caption-1 font-bold", actionTint[isBuy ? "BUY" : "HOLD"])}>✅ Bagus</span>
+              <span
+                className={cn("px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center", actionTint[isBuy ? "BUY" : "HOLD"])}
+                style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.06), -2px -2px 4px rgba(255,255,255,0.4)" }}
+              >
+                ✅ Bagus
+              </span>
             ) : targets.rr >= 1 ? (
-              <span className="rec-tint-hold px-2.5 py-1 rounded-full text-caption-1 font-bold">⚠️ Cukup</span>
+              <span
+                className="rec-tint-hold px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.06), -2px -2px 4px rgba(255,255,255,0.4)" }}
+              >
+                ⚠️ Cukup
+              </span>
             ) : (
-              <span className="rec-tint-sell px-2.5 py-1 rounded-full text-caption-1 font-bold">❌ Kurang</span>
+              <span
+                className="rec-tint-sell px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.06), -2px -2px 4px rgba(255,255,255,0.4)" }}
+              >
+                ❌ Kurang
+              </span>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="text-[10px] text-muted-foreground text-center italic">
-        Rekomendasi asli engine: {HORIZON_INDONESIAN[rec.horizon]}
-      </div>
     </div>
   );
 }

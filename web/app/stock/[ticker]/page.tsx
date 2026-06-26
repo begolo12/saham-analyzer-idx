@@ -1,10 +1,9 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
   TrendingUp,
@@ -12,46 +11,84 @@ import {
   Briefcase,
   RefreshCw,
   Star,
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+  BarChart3,
+  Building2,
+  Newspaper,
+  AlertTriangle,
 } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Alert } from "@/components/alert";
 import {
   RecommendationSkeleton,
   ChartSkeleton,
+  StockDetailFullSkeleton,
 } from "@/components/skeleton";
-import { MetricCard } from "@/components/mini-chart";
 import { RecommendationHero } from "@/components/recommendation-hero";
 import { TechnicalIndicators, ScoreBar } from "@/components/technical-indicators";
 import { FundamentalMetrics } from "@/components/fundamental-metrics";
 import { BehavioralPatterns } from "@/components/behavioral-patterns";
 import { NewsList } from "@/components/news-list";
-import { PriceChart } from "@/components/price-chart";
-import { WatchlistButton, bumpWatchView } from "@/components/watchlist-button";
+const PriceChart = dynamic(
+  () => import("@/components/price-chart").then((m) => ({ default: m.PriceChart })),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+);
+
+const LazyMarkdown = dynamic(
+  async () => {
+    const [{ default: ReactMarkdown }, { default: remarkGfm }] = await Promise.all([
+      import("react-markdown"),
+      import("remark-gfm"),
+    ]);
+    return function MarkdownWrapper({ children }: { children: string }) {
+      return <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>;
+    };
+  },
+  { ssr: false },
+);
+
+import { WatchlistButton, bumpWatchView, getWatchlist } from "@/components/watchlist-button";
 import { AddTransactionModal } from "@/components/add-transaction-modal";
 import { useTrackRecommendation } from "@/components/track-recommendation";
 import { ErrorBanner } from "@/components/error-banner";
 import { EmptyState } from "@/components/empty-state";
-import { MobileAppBar, MobileActionBar, MobileStatRow, MobileSegmentedTabs } from "@/components/mobile-app-bar";
+import { CollapsibleCard } from "@/components/collapsible-card";
+import { DataFreshnessPill } from "@/components/data-freshness-pill";
 import { formatIDR, formatNumber, formatPercent, cn } from "@/lib/utils";
+import {
+  ACTION_INDONESIAN,
+  ACTION_EMOJI,
+  type Recommendation,
+} from "@/lib/recommender";
+
+import type { StockSummary, StockPrice } from "@/lib/yahoo";
+import type { TechnicalAnalysisResult } from "@/lib/technical";
+import type { FundamentalAnalysisResult } from "@/lib/fundamental";
+import type { BehavioralAnalysisResult } from "@/lib/behavioral";
+import type { SentimentSummary } from "@/lib/news";
 
 interface AnalysisData {
-  summary: any;
-  historical: any[];
-  technical: any;
-  fundamental: any;
-  behavioral: any;
-  sentiment: any;
-  recommendation: any;
-  meta: any;
+  summary: StockSummary;
+  historical: StockPrice[];
+  technical: TechnicalAnalysisResult;
+  fundamental: FundamentalAnalysisResult;
+  behavioral: BehavioralAnalysisResult;
+  sentiment: SentimentSummary | null;
+  recommendation: Recommendation;
+  meta: {
+    confluence: any;
+    supportResistance: any;
+    weightedScoring: any;
+    patterns: any;
+    updatedAt?: string;
+  };
 }
 
 type Period = "1mo" | "3mo" | "6mo" | "1y" | "2y";
-type Tab = "technical" | "fundamental" | "behavioral" | "sentiment";
-type MobileSection = "overview" | "signals" | "details";
 
 const PERIODS: Period[] = ["1mo", "3mo", "6mo", "1y", "2y"];
 const PERIOD_LABELS: Record<Period, string> = {
@@ -61,7 +98,6 @@ const PERIOD_LABELS: Record<Period, string> = {
   "1y": "1T",
   "2y": "2T",
 };
-const VALID_TABS: Tab[] = ["technical", "fundamental", "behavioral", "sentiment"];
 
 export default function StockDetailPage() {
   return (
@@ -69,6 +105,45 @@ export default function StockDetailPage() {
       <StockDetailContent />
     </Suspense>
   );
+}
+
+/** Hook: detect swipe left/right on a container */
+function useSwipeNavigation(
+  containerRef: React.RefObject<HTMLElement | null>,
+  onSwipeLeft: () => void,
+  onSwipeRight: () => void,
+) {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStart.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStart.current) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStart.current.x;
+      const dy = touch.clientY - touchStart.current.y;
+      touchStart.current = null;
+
+      if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+
+      if (dx < 0) onSwipeLeft();
+      else onSwipeRight();
+    };
+
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [containerRef, onSwipeLeft, onSwipeRight]);
 }
 
 function StockDetailContent() {
@@ -82,31 +157,44 @@ function StockDetailContent() {
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const [showBuyModal, setShowBuyModal] = useState(false);
-  const [mobileSection, setMobileSection] = useState<MobileSection>("overview");
   const [period, setPeriod] = useState<Period>("1y");
-  const [activeTab, setActiveTab] = useState<Tab>("technical");
+
+  // Price flash animation state
+  const [priceFlash, setPriceFlash] = useState<"up" | "down" | null>(null);
+  const prevPriceRef = useRef<number | null>(null);
+
+  // Swipe navigation
+  const mainRef = useRef<HTMLElement>(null);
+  const watchlist = typeof window !== "undefined" ? getWatchlist() : [];
+  const currentIdx = watchlist.indexOf(ticker);
+
+  const navigateToStock = useCallback((t: string) => {
+    router.push(`/stock/${t}`);
+  }, [router]);
+
+  const swipeNext = useCallback(() => {
+    if (watchlist.length < 2) return;
+    const nextIdx = (currentIdx + 1) % watchlist.length;
+    navigateToStock(watchlist[nextIdx]);
+  }, [watchlist, currentIdx, navigateToStock]);
+
+  const swipePrev = useCallback(() => {
+    if (watchlist.length < 2) return;
+    const prevIdx = (currentIdx - 1 + watchlist.length) % watchlist.length;
+    navigateToStock(watchlist[prevIdx]);
+  }, [watchlist, currentIdx, navigateToStock]);
+
+  useSwipeNavigation(mainRef, swipeNext, swipePrev);
 
   const updateUrl = useCallback(
-    (next: { tab?: Tab; period?: Period; section?: MobileSection }) => {
+    (next: { period?: Period }) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (next.tab) params.set("tab", next.tab);
-      else if (params.get("tab")) params.delete("tab");
       if (next.period) params.set("period", next.period);
       else if (params.get("period")) params.delete("period");
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [pathname, router, searchParams],
-  );
-
-  const handleTabChange = useCallback(
-    (tab: string) => {
-      if (!VALID_TABS.includes(tab as Tab)) return;
-      setActiveTab(tab as Tab);
-      setMobileSection("signals");
-      updateUrl({ tab: tab as Tab });
-    },
-    [updateUrl],
   );
 
   const handlePeriodChange = useCallback(
@@ -135,6 +223,13 @@ function StockDetailContent() {
       .then((json) => {
         setData(json);
         setLoading(false);
+
+        const newPrice = json?.summary?.currentPrice;
+        if (prevPriceRef.current !== null && newPrice && newPrice !== prevPriceRef.current) {
+          setPriceFlash(newPrice > prevPriceRef.current ? "up" : "down");
+          setTimeout(() => setPriceFlash(null), 500);
+        }
+        prevPriceRef.current = newPrice ?? null;
       })
       .catch((err) => {
         console.error(err);
@@ -155,7 +250,7 @@ function StockDetailContent() {
   const behavioral = data?.behavioral;
   const sentiment = data?.sentiment;
 
-  useTrackRecommendation(ticker, recommendation);
+  useTrackRecommendation(ticker, recommendation ?? null);
 
   const lastPrice = summary?.currentPrice;
   const prevClose = summary?.previousClose;
@@ -165,26 +260,17 @@ function StockDetailContent() {
     : 0;
   const isUp = priceChange >= 0;
 
-  const mobileTitle = summary?.name ? `${ticker} · ${summary.name}` : ticker;
+  const hasNext = watchlist.length > 1;
+  const nextTicker = hasNext ? watchlist[(currentIdx + 1) % watchlist.length] : null;
+  const prevTicker = hasNext ? watchlist[(currentIdx - 1 + watchlist.length) % watchlist.length] : null;
 
   return (
     <div className="app-shell min-h-screen bg-background">
       <TopHeader />
 
-      <MobileAppBar
-        title={ticker}
-        subtitle={summary?.name || "Analisa saham IDX"}
-        backHref="/"
-        emphasis="ticker"
-        trailingValue={lastPrice ? formatIDR(lastPrice) : undefined}
-        trailingChange={lastPrice ? formatPercent(priceChangePct) : undefined}
-      />
-
       <main
-        className={cn(
-          "page-main container space-y-4",
-          data && lastPrice && "data-[mobile-action=true]:pb-[10rem]",
-        )}
+        ref={mainRef}
+        className="page-main container space-y-4 overflow-x-hidden pb-24"
         data-sticky-actions="true"
       >
         {loading && <LoadingState />}
@@ -212,619 +298,204 @@ function StockDetailContent() {
 
         {data && !loading && (
           <div className="space-y-5 animate-fade-in">
-            <section className="page-hero-card p-4 sm:p-5 hidden md:block">
-              <div className="page-eyebrow">Stock workspace</div>
-              <div className="mt-2 flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
-                      {ticker}
-                    </h1>
-                    <Badge variant="outline" className="text-[10px]">
-                      {summary?.sector || "N/A"}
-                    </Badge>
-                  </div>
-                  {summary?.name && (
-                    <p className="mt-1 text-sm sm:text-base text-muted-foreground">
-                      {summary.name}
-                    </p>
-                  )}
+            {/* ─── HERO: Ticker + Price + Recommendation ─── */}
+            <HeroSection
+              ticker={ticker}
+              summary={summary}
+              recommendation={recommendation}
+              lastPrice={lastPrice ?? undefined}
+              priceChange={priceChange}
+              priceChangePct={priceChangePct}
+              isUp={isUp}
+              priceFlash={priceFlash}
+              data={data}
+              hasNext={hasNext}
+              nextTicker={nextTicker}
+              prevTicker={prevTicker}
+              swipeNext={swipeNext}
+              swipePrev={swipePrev}
+              onBuy={() => setShowBuyModal(true)}
+            />
+
+            {/* ─── QUICK INSIGHT: 3 Horizon Cards ─── */}
+            {recommendation && (
+              <RecommendationHero rec={recommendation} />
+            )}
+
+            {/* ─── CHART ─── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-bold">📈 Chart</div>
+                  <div className="text-[10px] text-muted-foreground">Harga historis & analisa teknikal</div>
                 </div>
-                {lastPrice ? (
-                  <div className="hidden sm:block shrink-0 text-right">
-                    <div className="page-eyebrow">Harga saat ini</div>
-                    <div className="mt-1 text-2xl font-black tabular-nums">
-                      {formatIDR(lastPrice)}
-                    </div>
-                    <div
-                      className={cn(
-                        "mt-1 inline-flex items-center gap-1 text-xs font-bold tabular-nums",
-                        isUp ? "text-bull-600" : "text-bear-600",
-                      )}
-                    >
-                      {isUp ? (
-                        <TrendingUp className="h-3.5 w-3.5" aria-hidden />
-                      ) : (
-                        <TrendingDown className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      <span>{formatPercent(priceChangePct)}</span>
-                    </div>
-                  </div>
-                ) : null}
+                <div
+                  role="radiogroup"
+                  aria-label="Periode chart"
+                  className="inline-flex items-center gap-0.5 rounded-full bg-muted/60 p-0.5"
+                  style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.5)" }}
+                >
+                  {PERIODS.map((p) => {
+                    const active = period === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => handlePeriodChange(p)}
+                        className={cn(
+                          "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-all duration-200",
+                          active
+                            ? "bg-background text-foreground shadow-[3px_3px_6px_rgba(0,0,0,0.08),-3px_-3px_6px_rgba(255,255,255,0.7)]"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {PERIOD_LABELS[p]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              <Card className="overflow-hidden p-3" style={{ borderRadius: "20px" }}>
+                <PriceChart
+                  prices={data.historical || []}
+                  technical={technical}
+                  supportResistance={data.meta?.supportResistance}
+                  height={typeof window !== "undefined" && window.innerWidth < 640 ? 260 : 380}
+                />
+              </Card>
             </section>
 
-            {/* MOBILE: Big hero + section switcher */}
-            <div className="md:hidden">
-              <section
-                className={cn(
-                  "mobile-hero",
-                  recommendation?.action === "BUY" || recommendation?.action === "STRONG_BUY"
-                    ? "hero-bull"
-                    : recommendation?.action === "SELL" || recommendation?.action === "STRONG_SELL"
-                    ? "hero-bear"
-                    : "hero-hold",
-                )}
+            {/* ─── ANALYSIS ACCORDION ─── */}
+            <div className="space-y-3">
+              <div className="text-sm font-bold mb-2 flex items-center gap-2">
+                <span className="text-lg">🔬</span>
+                <span>Analisa Detail</span>
+              </div>
+
+              {/* Sinyal */}
+              <CollapsibleCard
+                title="Sinyal"
+                icon={<Activity className="h-4 w-4 text-blue-500" />}
+                subtitle={`Skor ${recommendation ? (recommendation.componentScores.technical * recommendation.weights.technical + recommendation.componentScores.fundamental * recommendation.weights.fundamental + recommendation.componentScores.behavioral * recommendation.weights.behavioral + recommendation.componentScores.sentiment * recommendation.weights.sentiment).toFixed(0) : "0"} · ${recommendation?.action ? (ACTION_INDONESIAN[recommendation.action as keyof typeof ACTION_INDONESIAN]) : "—"}${recommendation?.confidence && recommendation.confidence >= 20 ? ` · Confidence ${recommendation.confidence.toFixed(0)}%` : ""}`}
+                defaultOpen={false}
+                storageKey="stock-detail-acc-sinyal"
+                density="tight"
+                accentColor="border-l-blue-500"
               >
-                <div className="page-eyebrow text-white/80">Live price</div>
-                <div className="mobile-hero__row">
-                  <div>
-                    <div className="mobile-hero__value">
-                      {lastPrice ? formatIDR(lastPrice) : "—"}
-                    </div>
-                    <div className="mobile-hero__delta">
-                      {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      <span>{formatPercent(priceChangePct)}</span>
-                      {prevClose && (
-                        <span className="opacity-80">· {formatIDR(prevClose - lastPrice!)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="mobile-hero__label">Rekomendasi</div>
-                    <div className="mt-1 text-sm font-bold">
-                      {recommendation?.action?.replace("_", " ") ?? "—"}
-                    </div>
-                    {recommendation?.confidence !== undefined && (
-                      <div className="text-[10px] opacity-80">
-                        {Math.round(recommendation.confidence)}% confidence
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {summary?.sector && (
-                  <div className="mobile-hero__sub">{summary.sector}</div>
-                )}
-              </section>
-
-              <MobileSegmentedTabs<MobileSection>
-                value={mobileSection}
-                onChange={setMobileSection}
-                options={[
-                  { value: "overview", label: "Overview" },
-                  { value: "signals", label: "Sinyal" },
-                  { value: "details", label: "Detail" },
-                ]}
-                subline={
-                  mobileSection === "overview"
-                    ? "Chart dan snapshot utama"
-                    : mobileSection === "signals"
-                      ? "Detail teknikal, fundamental, behavioral, sentimen"
-                      : "Tentang keputusan investasi"
-                }
-              />
-            </div>
-
-            {/* DESKTOP: Persisted header / actions (md:flex) */}
-            <div className="hidden md:flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Link href="/" aria-label="Kembali ke Beranda">
-                  <Button variant="ghost" size="sm" className="min-h-9 rounded-full px-3">
-                    <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
-                    <span className="hidden sm:inline">Beranda</span>
-                  </Button>
-                </Link>
-                <div className="flex items-center gap-2">
-                  <WatchlistButton ticker={ticker} />
-                  <Button
-                    onClick={() => setShowBuyModal(true)}
-                    size="sm"
-                    aria-label={`Catat transaksi beli ${ticker}`}
-                    className="min-h-9 rounded-full bg-bull-600 px-4 hover:bg-bull-700"
-                  >
-                    <Briefcase className="mr-1 h-4 w-4" aria-hidden />
-                    <span>Beli</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* MOBILE: Overview section = hero + snapshot + chart */}
-            {mobileSection === "overview" && (
-              <div className="md:hidden space-y-4">
-                <MobileStatRow
-                  items={[
-                    {
-                      label: "Volume",
-                      value: formatNumber(summary?.volume),
-                      tone: "neutral",
-                    },
-                    {
-                      label: "52W High",
-                      value: summary?.fiftyTwoWeekHigh ? formatIDR(summary.fiftyTwoWeekHigh) : "—",
-                      tone: "bull",
-                    },
-                    {
-                      label: "52W Low",
-                      value: summary?.fiftyTwoWeekLow ? formatIDR(summary.fiftyTwoWeekLow) : "—",
-                      tone: "bear",
-                    },
-                  ]}
-                />
-
-                <section>
-                  <div className="page-section-heading">
-                    <div>
-                      <div className="page-section-title">Chart</div>
-                      <div className="page-section-subtitle">Pilih horizon</div>
-                    </div>
-                    <div
-                      role="radiogroup"
-                      aria-label="Periode chart"
-                      className="inline-flex items-center gap-0.5 rounded-full bg-muted p-0.5"
-                    >
-                      {PERIODS.map((p) => {
-                        const active = period === p;
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            role="radio"
-                            aria-checked={active}
-                            onClick={() => handlePeriodChange(p)}
-                            className={cn(
-                              "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
-                              active
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            {PERIOD_LABELS[p]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <Card className="overflow-hidden p-2">
-                    <PriceChart
-                      prices={data.historical || []}
-                      technical={technical}
-                      height={typeof window !== "undefined" && window.innerWidth < 640 ? 240 : 400}
-                    />
-                  </Card>
-                </section>
-              </div>
-            )}
-
-            {/* MOBILE: Signals section = recommendation + score breakdown */}
-            {mobileSection === "signals" && (
-              <div className="md:hidden space-y-4">
-                <RecommendationHero rec={recommendation} />
-
-                <Card className="p-4">
-                  <div className="page-section-heading mb-3">
-                    <div>
-                      <div className="page-section-title">Skor sinyal</div>
-                      <div className="page-section-subtitle">Tiap mesin analisa</div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <ScoreBar label="📊 Teknikal" score={technical?.overallScore ?? 0} weight={recommendation?.weights?.technical * 100} />
-                    <ScoreBar label="💼 Fundamental" score={fundamental?.overallScore ?? 0} weight={recommendation?.weights?.fundamental * 100} />
-                    <ScoreBar label="🔍 Behavioral" score={behavioral?.overallScore ?? 0} weight={recommendation?.weights?.behavioral * 100} />
-                    <ScoreBar label="📰 Sentimen" score={sentiment?.overallScore ?? 0} weight={recommendation?.weights?.sentiment * 100} />
-                  </div>
-                </Card>
-
-                <MobileSegmentedTabs<Tab>
-                  value={activeTab}
-                  onChange={handleTabChange}
-                  options={[
-                    { value: "technical", label: "📊 Tech" },
-                    { value: "fundamental", label: "💼 Fund" },
-                    { value: "behavioral", label: "🔍 Pattern" },
-                    { value: "sentiment", label: "📰 News" },
-                  ]}
-                  subline="Buka tab sesuai sudut pandang analisa"
-                />
-
-                <div className="mt-3 animate-fade-in">
-                  {activeTab === "technical" && (
-                    <TechnicalIndicatorsOnly technical={technical} />
-                  )}
-                  {activeTab === "fundamental" && (
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {fundamental?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Data Available</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {((fundamental?.dataAvailability || 0) * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {fundamental?.summary}
-                      </p>
-                      <FundamentalMetrics metrics={fundamental?.metrics || []} />
-                    </Card>
-                  )}
-                  {activeTab === "behavioral" && (
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {behavioral?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Signal</div>
-                          <div className="text-lg font-semibold">
-                            {behavioral?.overallSignal?.replace("_", " ")}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {behavioral?.summary}
-                      </p>
-                      <BehavioralPatterns
-                        patterns={behavioral?.patterns || []}
-                        supportLevels={behavioral?.supportLevels || []}
-                        resistanceLevels={behavioral?.resistanceLevels || []}
-                      />
-                    </Card>
-                  )}
-                  {activeTab === "sentiment" && (
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-3 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {sentiment?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Articles</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {sentiment?.articles?.length || 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Confidence</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {((sentiment?.confidence || 0) * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {sentiment?.summary}
-                      </p>
-                      <NewsList
-                        articles={sentiment?.articles || []}
-                        positiveCount={sentiment?.positiveCount || 0}
-                        negativeCount={sentiment?.negativeCount || 0}
-                        neutralCount={sentiment?.neutralCount || 0}
-                      />
-                    </Card>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* MOBILE: Details section = reasoning, warnings, and company stats */}
-            {mobileSection === "details" && (
-              <div className="md:hidden space-y-4">
-                {recommendation?.warnings?.length > 0 && (
-                  <div className="space-y-2">
-                    {recommendation.warnings.map((w: string, i: number) => (
-                      <Alert key={i} variant="warning">
-                        {w}
-                      </Alert>
-                    ))}
-                  </div>
-                )}
-
-                {recommendation?.reasoning && (
-                  <Card className="p-4">
-                    <div className="page-section-heading mb-3">
-                      <div>
-                        <div className="page-section-title">Kenapa rekomendasi ini?</div>
-                        <div className="page-section-subtitle">Ringkasan keputusan otomatis</div>
-                      </div>
-                    </div>
-                    <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground/90 dark:prose-invert [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {recommendation.reasoning}
-                      </ReactMarkdown>
-                    </div>
-                  </Card>
-                )}
-
-                <Card className="p-4">
-                  <div className="page-section-heading mb-3">
-                    <div>
-                      <div className="page-section-title">Informasi Perusahaan</div>
-                      <div className="page-section-subtitle">Statistik emiten {ticker}</div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <div className="text-muted-foreground">Sektor</div>
-                      <div className="mt-1 font-bold text-foreground truncate">{summary?.sector || "N/A"}</div>
-                    </div>
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <div className="text-muted-foreground">Market Cap</div>
-                      <div className="mt-1 font-bold text-foreground tabular-nums">
-                        {summary?.marketCap ? formatIDR(summary.marketCap) : "N/A"}
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <div className="text-muted-foreground">Rata-rata Volume</div>
-                      <div className="mt-1 font-bold text-foreground tabular-nums">
-                        {summary?.averageVolume ? formatNumber(summary.averageVolume) : "N/A"}
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <div className="text-muted-foreground">Rata-rata 50 Hari</div>
-                      <div className="mt-1 font-bold text-foreground tabular-nums">
-                        {summary?.fiftyDayAverage ? formatIDR(summary.fiftyDayAverage) : "N/A"}
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-secondary/50 p-3 col-span-2">
-                      <div className="text-muted-foreground">Rentang 52 Minggu</div>
-                      <div className="mt-1 flex justify-between font-bold text-foreground tabular-nums">
-                        <span>Low: {summary?.fiftyTwoWeekLow ? formatIDR(summary.fiftyTwoWeekLow) : "N/A"}</span>
-                        <span>High: {summary?.fiftyTwoWeekHigh ? formatIDR(summary.fiftyTwoWeekHigh) : "N/A"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* DESKTOP: Render all sections stacked */}
-            <div className="hidden md:block space-y-5">
-              <RecommendationHero rec={recommendation} />
-
-              {recommendation?.warnings?.length > 0 && (
-                <div className="space-y-2">
-                  {recommendation.warnings.map((w: string, i: number) => (
-                    <Alert key={i} variant="warning">
-                      {w}
-                    </Alert>
-                  ))}
-                </div>
-              )}
-
-              <section>
-                <div className="page-section-heading">
-                  <div>
-                    <div className="page-section-title">Snapshot utama</div>
-                    <div className="page-section-subtitle">Harga, perubahan, likuiditas, rentang 52 minggu</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <MetricCard label="Harga" value={formatIDR(lastPrice)} delta={isUp ? "+" : ""} />
-                  <MetricCard
-                    label="Perubahan"
-                    value={formatPercent(priceChangePct)}
-                    delta={`${isUp ? "+" : ""}${Math.round(priceChange).toLocaleString("id-ID")}`}
-                    deltaPositive={isUp}
-                    icon={isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                <div className="space-y-3 pt-2">
+                  <ScoreBar
+                    label="📊 Teknikal"
+                    score={technical?.overallScore ?? 0}
                   />
-                  <MetricCard label="Volume" value={formatNumber(summary?.volume)} delta={`Avg: ${formatNumber(summary?.averageVolume)}`} />
-                  <MetricCard
-                    label="52w Range"
-                    value={formatIDR(summary?.fiftyTwoWeekLow)}
-                    delta={`— ${formatIDR(summary?.fiftyTwoWeekHigh)}`}
+                  <ScoreBar
+                    label="💼 Fundamental"
+                    score={fundamental?.overallScore ?? 0}
+                  />
+                  <ScoreBar
+                    label="🔍 Behavioral"
+                    score={behavioral?.overallScore ?? 0}
+                  />
+                  {recommendation?.reasoning && (
+                    <div className="border-t border-border/40 pt-3 mt-1">
+                      <div className="prose prose-sm max-w-none text-xs leading-relaxed text-foreground/90 dark:prose-invert [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2">
+                        <LazyMarkdown>
+                          {recommendation.reasoning}
+                        </LazyMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleCard>
+
+              {/* Teknikal */}
+              <CollapsibleCard
+                title="Teknikal"
+                icon={<BarChart3 className="h-4 w-4 text-emerald-500" />}
+                subtitle={`Skor ${technical?.overallScore?.toFixed(0) ?? 0} · Tren: ${technical?.trend ?? "—"} · ${(technical?.overallSignal ?? "—").replace("_", " ")}`}
+                defaultOpen={false}
+                storageKey="stock-detail-acc-technical"
+                density="tight"
+                accentColor="border-l-emerald-500"
+              >
+                <div className="pt-2">
+                  <TechnicalIndicators indicators={technical?.indicators || []} />
+                </div>
+              </CollapsibleCard>
+
+              {/* Fundamental */}
+              <CollapsibleCard
+                title="Fundamental"
+                icon={<Building2 className="h-4 w-4 text-purple-500" />}
+                subtitle={`Skor ${fundamental?.overallScore?.toFixed(0) ?? 0} · Data: ${((fundamental?.dataAvailability || 0) * 100).toFixed(0)}% tersedia`}
+                defaultOpen={false}
+                storageKey="stock-detail-acc-fundamental"
+                density="tight"
+                accentColor="border-l-purple-500"
+              >
+                <div className="pt-2">
+                  {fundamental?.summary && (
+                    <p className="mb-3 text-xs italic text-muted-foreground">
+                      {fundamental.summary}
+                    </p>
+                  )}
+                  <FundamentalMetrics metrics={fundamental?.metrics || []} />
+                </div>
+              </CollapsibleCard>
+
+              {/* Pola Perilaku */}
+              <CollapsibleCard
+                title="Pola Perilaku"
+                icon={<span className="text-sm">🔍</span>}
+                subtitle={`Skor ${behavioral?.overallScore?.toFixed(0) ?? 0} · ${(behavioral?.overallSignal ?? "—").replace("_", " ")}`}
+                defaultOpen={false}
+                storageKey="stock-detail-acc-behavioral"
+                density="tight"
+                accentColor="border-l-indigo-500"
+              >
+                <div className="pt-2">
+                  {behavioral?.summary && (
+                    <p className="mb-3 text-xs italic text-muted-foreground">
+                      {behavioral.summary}
+                    </p>
+                  )}
+                  <BehavioralPatterns
+                    patterns={behavioral?.patterns || []}
+                    supportLevels={behavioral?.supportLevels || []}
+                    resistanceLevels={behavioral?.resistanceLevels || []}
                   />
                 </div>
-              </section>
+              </CollapsibleCard>
 
-              <section>
-                <div className="page-section-heading">
-                  <div>
-                    <div className="page-section-title">Chart & analisa</div>
-                    <div className="page-section-subtitle">Pilih horizon lalu baca sinyal utamanya</div>
-                  </div>
-                  <div
-                    role="radiogroup"
-                    aria-label="Periode chart"
-                    className="inline-flex items-center gap-0.5 rounded-full bg-muted p-0.5"
-                  >
-                    {PERIODS.map((p) => {
-                      const active = period === p;
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          role="radio"
-                          aria-checked={active}
-                          onClick={() => handlePeriodChange(p)}
-                          className={cn(
-                            "min-h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
-                            active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          {PERIOD_LABELS[p]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <Card className="overflow-hidden p-2 sm:p-4">
-                  <PriceChart
-                    prices={data.historical || []}
-                    technical={technical}
-                    height={typeof window !== "undefined" && window.innerWidth < 640 ? 300 : 400}
+              {/* Berita & Sentimen */}
+              <CollapsibleCard
+                title="Berita & Sentimen"
+                icon={<Newspaper className="h-4 w-4 text-orange-500" />}
+                subtitle={`Skor ${sentiment?.overallScore?.toFixed(0) ?? 0} · ${sentiment?.articles?.length || 0} artikel · Confidence: ${((sentiment?.confidence || 0) * 100).toFixed(0)}%`}
+                defaultOpen={false}
+                storageKey="stock-detail-acc-sentiment"
+                density="tight"
+                accentColor="border-l-orange-500"
+              >
+                <div className="pt-2">
+                  {sentiment?.summary && (
+                    <p className="mb-3 text-xs italic text-muted-foreground">
+                      {sentiment.summary}
+                    </p>
+                  )}
+                  <NewsList
+                    articles={sentiment?.articles || []}
+                    positiveCount={sentiment?.positiveCount || 0}
+                    negativeCount={sentiment?.negativeCount || 0}
+                    neutralCount={sentiment?.neutralCount || 0}
                   />
-                </Card>
-              </section>
-
-              <Card className="p-4 sm:p-5">
-                <div className="page-section-heading mb-3">
-                  <div>
-                    <div className="page-section-title">Signal breakdown</div>
-                    <div className="page-section-subtitle">Lihat kontribusi tiap mesin analisa</div>
-                  </div>
                 </div>
-                <div className="space-y-3">
-                  <ScoreBar label="📊 Teknikal" score={technical?.overallScore ?? 0} weight={recommendation?.weights?.technical * 100} />
-                  <ScoreBar label="💼 Fundamental" score={fundamental?.overallScore ?? 0} weight={recommendation?.weights?.fundamental * 100} />
-                  <ScoreBar label="🔍 Behavioral" score={behavioral?.overallScore ?? 0} weight={recommendation?.weights?.behavioral * 100} />
-                  <ScoreBar label="📰 Sentimen" score={sentiment?.overallScore ?? 0} weight={recommendation?.weights?.sentiment * 100} />
-                </div>
-                {recommendation?.reasoning && (
-                  <div className="mt-4 border-t pt-4">
-                    <div className="prose prose-sm max-w-none text-xs leading-relaxed text-foreground/90 dark:prose-invert sm:text-sm [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:font-bold [&_strong]:text-foreground [&_ul]:my-2">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {recommendation.reasoning}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              <section>
-                <div className="page-section-heading">
-                  <div>
-                    <div className="page-section-title">Detail analisa</div>
-                    <div className="page-section-subtitle">Buka tab sesuai sudut pandang yang ingin kamu cek</div>
-                  </div>
-                </div>
-                <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="grid w-full grid-cols-4" aria-label="Detail analisa">
-                    <TabsTrigger value="technical">📊 Tech</TabsTrigger>
-                    <TabsTrigger value="fundamental">💼 Fund</TabsTrigger>
-                    <TabsTrigger value="behavioral">🔍 Pattern</TabsTrigger>
-                    <TabsTrigger value="sentiment">📰 News</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="technical">
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-3 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {technical?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Trend</div>
-                          <div className="text-lg font-semibold">{technical?.trend}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Signal</div>
-                          <div className="text-lg font-semibold">
-                            {technical?.overallSignal?.replace("_", " ")}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {technical?.summary}
-                      </p>
-                      <TechnicalIndicators indicators={technical?.indicators || []} />
-                    </Card>
-                  </TabsContent>
-                  <TabsContent value="fundamental">
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {fundamental?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Data Available</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {((fundamental?.dataAvailability || 0) * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {fundamental?.summary}
-                      </p>
-                      <FundamentalMetrics metrics={fundamental?.metrics || []} />
-                    </Card>
-                  </TabsContent>
-                  <TabsContent value="behavioral">
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {behavioral?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Signal</div>
-                          <div className="text-lg font-semibold">
-                            {behavioral?.overallSignal?.replace("_", " ")}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {behavioral?.summary}
-                      </p>
-                      <BehavioralPatterns
-                        patterns={behavioral?.patterns || []}
-                        supportLevels={behavioral?.supportLevels || []}
-                        resistanceLevels={behavioral?.resistanceLevels || []}
-                      />
-                    </Card>
-                  </TabsContent>
-                  <TabsContent value="sentiment">
-                    <Card className="p-4 sm:p-5">
-                      <div className="mb-4 grid grid-cols-3 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {sentiment?.overallScore?.toFixed(0) ?? 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Articles</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {sentiment?.articles?.length || 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Confidence</div>
-                          <div className="text-2xl font-bold tabular-nums">
-                            {((sentiment?.confidence || 0) * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mb-4 text-xs italic text-muted-foreground">
-                        {sentiment?.summary}
-                      </p>
-                      <NewsList
-                        articles={sentiment?.articles || []}
-                        positiveCount={sentiment?.positiveCount || 0}
-                        negativeCount={sentiment?.negativeCount || 0}
-                        neutralCount={sentiment?.neutralCount || 0}
-                      />
-                    </Card>
-                  </TabsContent>
-                </Tabs>
-              </section>
+              </CollapsibleCard>
             </div>
+
+            {/* ─── DISCLAIMER: Single pill ─── */}
+            <DisclaimerPill warnings={recommendation?.warnings} />
           </div>
         )}
 
@@ -832,22 +503,9 @@ function StockDetailContent() {
       </main>
 
       {data && !loading && lastPrice && (
-        <MobileActionBar
-          primary={{
-            label: `Beli ${ticker}`,
-            ariaLabel: `Catat transaksi beli ${ticker}`,
-            icon: <Briefcase className="h-4 w-4" />,
-            onClick: () => setShowBuyModal(true),
-          }}
-          secondary={{
-            label: "Watchlist",
-            ariaLabel: "Tambah ke watchlist",
-            icon: <Star className="h-4 w-4" />,
-            onClick: () => {
-              const button = document.querySelector<HTMLButtonElement>("[data-watchlist-toggle]");
-              button?.click();
-            },
-          }}
+        <MobileActionBarInline
+          ticker={ticker}
+          onBuy={() => setShowBuyModal(true)}
         />
       )}
 
@@ -862,69 +520,317 @@ function StockDetailContent() {
   );
 }
 
-function TechnicalIndicatorsOnly({ technical }: { technical: any }) {
-  return (
-    <Card className="p-4 sm:p-5">
-      <div className="mb-4 grid grid-cols-3 gap-3">
-        <div>
-          <div className="text-xs text-muted-foreground">Score</div>
-          <div className="text-2xl font-bold tabular-nums">
-            {technical?.overallScore?.toFixed(0) ?? 0}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Trend</div>
-          <div className="text-lg font-semibold">{technical?.trend}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Signal</div>
-          <div className="text-lg font-semibold">
-            {technical?.overallSignal?.replace("_", " ")}
-          </div>
-        </div>
-      </div>
-      <p className="mb-4 text-xs italic text-muted-foreground">
-        {technical?.summary}
-      </p>
-      <TechnicalIndicators indicators={technical?.indicators || []} />
-    </Card>
-  );
-}
+/* ─────────────────────── HERO SECTION ─────────────────────── */
 
-function LoadingState() {
+function HeroSection({
+  ticker,
+  summary,
+  recommendation,
+  lastPrice,
+  priceChange,
+  priceChangePct,
+  isUp,
+  priceFlash,
+  data,
+  hasNext,
+  nextTicker,
+  prevTicker,
+  swipeNext,
+  swipePrev,
+  onBuy,
+}: {
+  ticker: string;
+  summary: any;
+  recommendation: any;
+  lastPrice: number | undefined;
+  priceChange: number;
+  priceChangePct: number;
+  isUp: boolean;
+  priceFlash: "up" | "down" | null;
+  data: AnalysisData;
+  hasNext: boolean;
+  nextTicker: string | null;
+  prevTicker: string | null;
+  swipeNext: () => void;
+  swipePrev: () => void;
+  onBuy: () => void;
+}) {
+  const action = recommendation?.action as string | undefined;
+  const isBuy = action === "BUY" || action === "STRONG_BUY";
+  const isSell = action === "SELL" || action === "STRONG_SELL";
+  const confidence = recommendation?.confidence as number | undefined;
+
   return (
-    <div className="space-y-4">
-      <div className="md:hidden">
-        <div className="mobile-hero opacity-90">
-          <div className="mobile-hero__label">Memuat</div>
-          <div className="mobile-hero__value">···</div>
-          <div className="mobile-hero__sub">Mengambil data saham</div>
+    <div className="space-y-3">
+      {/* Back / nav row */}
+      <div className="flex items-center justify-between">
+        <Link href="/" aria-label="Kembali ke Beranda">
+          <Button variant="ghost" size="sm" className="min-h-9 rounded-full px-3">
+            <ArrowLeft className="mr-1 h-4 w-4" aria-hidden />
+            <span>Beranda</span>
+          </Button>
+        </Link>
+        <div className="flex items-center gap-2">
+          <WatchlistButton ticker={ticker} />
+          <Button
+            onClick={onBuy}
+            size="sm"
+            aria-label={`Catat transaksi beli ${ticker}`}
+            className="bg-[hsl(var(--primary))] text-white rounded-lg px-4 py-2 font-medium min-h-9 rounded-full bg-bull-600 px-4 hover:bg-bull-700"
+          >
+            <Briefcase className="mr-1 h-4 w-4" aria-hidden />
+            <span>Beli</span>
+          </Button>
         </div>
       </div>
-      <div className="hidden md:block page-hero-card p-4 sm:p-5">
-        <div className="h-3 w-24 rounded bg-secondary shimmer" />
-        <div className="mt-3 space-y-2">
-          <div className="h-8 w-32 rounded-lg bg-secondary shimmer" />
-          <div className="h-4 w-48 rounded bg-secondary shimmer" />
+
+      {/* Swipe hints */}
+      {hasNext && (
+        <div className="flex items-center justify-between">
+          <button
+            onClick={swipePrev}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            {prevTicker}
+          </button>
+          <span className="text-[9px] text-muted-foreground/50">← swipe →</span>
+          <button
+            onClick={swipeNext}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {nextTicker}
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
-      </div>
-      <RecommendationSkeleton />
-      <div className="grid grid-cols-3 gap-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="rounded-2xl border bg-card p-3 animate-pulse">
-            <div className="h-2 w-12 rounded bg-muted" />
-            <div className="mt-2 h-5 w-20 rounded bg-muted" />
+      )}
+
+      {/* Hero card — Claymorphism style */}
+      <div
+        className={cn(
+          "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl relative overflow-hidden",
+          isBuy
+            ? "bg-gradient-to-br from-emerald-50 via-emerald-100/50 to-card dark:from-emerald-900/30 dark:via-emerald-950/20 dark:to-card"
+            : isSell
+              ? "bg-gradient-to-br from-red-50 via-red-100/50 to-card dark:from-red-900/30 dark:via-red-950/20 dark:to-card"
+              : "bg-gradient-to-br from-amber-50 via-amber-100/50 to-card dark:from-amber-900/20 dark:via-amber-950/10 dark:to-card",
+        )}
+        style={{ padding: "1.25rem 1.5rem" }}
+      >
+        {/* Subtle radial glow */}
+        <div
+          className="absolute inset-0 opacity-30 pointer-events-none"
+          style={{ background: "radial-gradient(circle at 80% 0%, rgba(255,255,255,0.15) 0%, transparent 50%)" }}
+          aria-hidden
+        />
+
+        <div className="relative">
+          {/* Top row: ticker + freshness */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight">{ticker}</h1>
+              <Badge variant="outline" className="text-[10px]">
+                {summary?.sector || "N/A"}
+              </Badge>
+            </div>
+            {data?.meta?.updatedAt && (
+              <DataFreshnessPill updatedAt={data.meta.updatedAt} />
+            )}
           </div>
-        ))}
+
+          {/* Company name */}
+          {summary?.name && (
+            <p className="mt-0.5 text-sm text-muted-foreground">{summary.name}</p>
+          )}
+
+          {/* Price + Recommendation row */}
+          <div className="mt-4 flex items-end justify-between gap-4">
+            <div>
+              {lastPrice ? (
+                <div
+                  className={cn(
+                    "text-3xl sm:text-4xl font-black tabular-nums font-num",
+                    priceFlash === "up" && "price-flash-up",
+                    priceFlash === "down" && "price-flash-down",
+                  )}
+                >
+                  {formatIDR(lastPrice)}
+                </div>
+              ) : (
+                <div className="text-3xl font-black text-muted-foreground">—</div>
+              )}
+              <div
+                className={cn(
+                  "mt-1 inline-flex items-center gap-1.5 text-sm font-bold tabular-nums font-num",
+                  isUp ? "text-bull-600" : "text-bear-600",
+                )}
+              >
+                {isUp ? (
+                  <TrendingUp className="h-4 w-4" aria-hidden />
+                ) : (
+                  <TrendingDown className="h-4 w-4" aria-hidden />
+                )}
+                <span>{formatPercent(priceChangePct)}</span>
+                {summary?.previousClose && (
+                  <span className="opacity-60 text-xs ml-1">
+                    ({isUp ? "+" : ""}{Math.round(priceChange).toLocaleString("id-ID")})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Recommendation badge */}
+            <div className="text-right">
+              {action && (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-bold border",
+                    "shadow-[4px_4px_8px_rgba(0,0,0,0.08),-4px_-4px_8px_rgba(255,255,255,0.5)]",
+                    isBuy
+                      ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-700/30 dark:text-emerald-400 dark:border-emerald-600/30"
+                      : isSell
+                        ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-700/30 dark:text-red-400 dark:border-red-600/30"
+                        : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-700/30 dark:text-amber-400 dark:border-amber-600/30",
+                  )}
+                >
+                  <span className="text-lg">{ACTION_EMOJI[action as keyof typeof ACTION_EMOJI] ?? "📊"}</span>
+                  {ACTION_INDONESIAN[action as keyof typeof ACTION_INDONESIAN] ?? action}
+                </div>
+              )}
+              {confidence !== undefined && (
+                confidence >= 20 ? (
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <div
+                      className="w-20 h-2 rounded-full bg-muted/60 overflow-hidden"
+                      style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
+                    >
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-1000",
+                          isBuy
+                            ? "bg-gradient-to-r from-emerald-400 to-emerald-600"
+                            : isSell
+                              ? "bg-gradient-to-r from-red-400 to-red-600"
+                              : "bg-gradient-to-r from-amber-400 to-amber-600",
+                        )}
+                        style={{ width: `${Math.round(confidence)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums font-num">
+                      {Math.round(confidence)}%
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center justify-end">
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-muted/60 text-muted-foreground border border-border/30"
+                      style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.04), -2px -2px 4px rgba(255,255,255,0.3)" }}
+                    >
+                      ⚠️ Data terbatas
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-      <ChartSkeleton />
     </div>
   );
 }
 
+/* ─────────────────────── DISCLAIMER PILL ─────────────────────── */
+
+function DisclaimerPill({ warnings }: { warnings?: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!warnings || warnings.length === 0) {
+    return (
+      <div className="flex justify-center">
+        <span
+          className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/60 bg-muted/50 px-4 py-1.5 rounded-full"
+          style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.04), -2px -2px 4px rgba(255,255,255,0.4)" }}
+        >
+          <AlertTriangle className="h-3 w-3" />
+          Bukan saran keuangan · Data dari Yahoo Finance & Google News
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="mx-auto flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-4 py-1.5 rounded-full hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+        style={{ boxShadow: "2px 2px 4px rgba(0,0,0,0.04), -2px -2px 4px rgba(255,255,255,0.4)" }}
+      >
+        <AlertTriangle className="h-3 w-3" />
+        {warnings.length} catatan · Bukan saran keuangan
+      </button>
+      {expanded && (
+        <div className="space-y-1 animate-fade-in">
+          {warnings.map((w: string, i: number) => (
+            <p key={i} className="text-[10px] text-muted-foreground text-center px-4">
+              {w}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── INLINE MOBILE ACTION BAR ─────────────────────── */
+
+function MobileActionBarInline({
+  ticker,
+  onBuy,
+}: {
+  ticker: string;
+  onBuy: () => void;
+}) {
+  return (
+    <div
+      className="fixed left-0 right-0 z-50 p-3 flex items-center gap-2 md:hidden"
+      style={{
+        bottom: "var(--mobile-action-bar-bottom, calc(4.5rem + env(safe-area-inset-bottom) + 0.5rem))",
+        background: "hsl(var(--background) / 0.95)",
+        backdropFilter: "blur(12px)",
+        borderTop: "1px solid hsl(var(--border) / 0.6)",
+      }}
+    >
+      <Button
+        onClick={onBuy}
+        className="bg-[hsl(var(--primary))] text-white rounded-lg px-4 py-2 font-medium flex-1 min-h-[44px] rounded-2xl bg-bull-600 hover:bg-bull-700 font-bold"
+      >
+        <Briefcase className="mr-2 h-4 w-4" />
+        Beli {ticker}
+      </Button>
+      <Button
+        variant="outline"
+        className="min-h-[44px] rounded-2xl px-4"
+        style={{ boxShadow: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.5)" }}
+        onClick={() => {
+          const button = document.querySelector<HTMLButtonElement>("[data-watchlist-toggle]");
+          button?.click();
+        }}
+      >
+        <Star className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+/* ─────────────────────── HELPERS ─────────────────────── */
+
+function LoadingState() {
+  return <StockDetailFullSkeleton />;
+}
+
 function Footer() {
   return (
-    <footer className="mt-8 border-t pb-4 pt-6 text-center text-xs text-muted-foreground">
+    <footer className="mt-8 border-t border-border/40 pb-4 pt-6 text-center text-xs text-muted-foreground">
       <p>📊 Data: Yahoo Finance • Sentimen: Google News</p>
       <p className="mt-1">© 2026 Saham Analyzer IDX • Not financial advice</p>
     </footer>
@@ -936,14 +842,14 @@ function StockDetailSkeleton() {
     <div className="app-shell min-h-screen bg-background">
       <TopHeader />
       <main className="page-main container space-y-4">
-        <div className="h-10 w-32 rounded shimmer bg-secondary" />
-        <div className="page-hero-card p-4 sm:p-5">
-          <div className="h-3 w-24 rounded bg-secondary shimmer" />
+        <div className="h-10 w-32 rounded-xl shimmer bg-secondary" />
+        <Card className="p-4 sm:p-5">
+          <div className="h-3 w-24 rounded-lg bg-secondary shimmer" />
           <div className="mt-3 space-y-2">
-            <div className="h-10 w-40 rounded bg-secondary shimmer" />
-            <div className="h-4 w-56 rounded bg-secondary shimmer" />
+            <div className="h-10 w-40 rounded-lg bg-secondary shimmer" />
+            <div className="h-4 w-56 rounded-lg bg-secondary shimmer" />
           </div>
-        </div>
+        </Card>
         <RecommendationSkeleton />
         <ChartSkeleton />
       </main>

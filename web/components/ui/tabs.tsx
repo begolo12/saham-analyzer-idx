@@ -34,8 +34,10 @@ const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     <div
       ref={ref}
       className={cn(
-        "inline-flex h-11 items-center justify-start rounded-xl bg-muted p-1 text-muted-foreground overflow-x-auto no-scrollbar w-full sm:w-auto",
-        className,
+        "inline-flex h-11 items-center justify-start rounded-xl p-1 text-muted-foreground overflow-x-auto no-scrollbar w-full sm:w-auto",
+        "bg-secondary",
+        "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)]",
+        "dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03)]",
       )}
       role="tablist"
       {...props}
@@ -81,9 +83,16 @@ const TabsTrigger = React.forwardRef<
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium",
+        "ring-offset-background transition-all duration-200 ease-smooth",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "disabled:pointer-events-none disabled:opacity-50",
         isActive
-          ? "bg-background text-foreground shadow-sm"
+          ? [
+              "bg-background text-foreground",
+              "shadow-[3px_3px_6px_rgba(0,0,0,0.08),-3px_-3px_6px_rgba(255,255,255,0.6)]",
+              "dark:shadow-[3px_3px_6px_rgba(0,0,0,0.25),-3px_-3px_6px_rgba(255,255,255,0.04)]",
+            ]
           : "hover:text-foreground/80",
         className,
       )}

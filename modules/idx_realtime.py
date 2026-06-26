@@ -11,6 +11,7 @@ Cache: JSON file dengan TTL, fallback ke data cached kalau network error.
 """
 
 import json
+import logging
 import time
 import urllib.request
 import urllib.error
@@ -27,6 +28,8 @@ from dataclasses import dataclass, asdict, field
 WIB = timezone(timedelta(hours=7))
 CACHE_DIR = Path(__file__).parent.parent / "data" / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -152,15 +155,16 @@ class BrokerSummaryProxy:
 
 # ============== HTTP HELPERS ==============
 
+_SSL_CTX = ssl.create_default_context()
+
 def _http_get(url: str, headers: Optional[Dict] = None, timeout: int = 15) -> Optional[bytes]:
     """GET request dengan gzip support + error handling"""
     h = dict(DEFAULT_HEADERS)
     if headers:
         h.update(headers)
     req = urllib.request.Request(url, headers=h)
-    ctx = ssl.create_default_context()
     try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+        with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as r:
             data = r.read()
             if r.headers.get("Content-Encoding") == "gzip":
                 data = gzip.decompress(data)
@@ -179,9 +183,8 @@ def _http_post(url: str, body: Dict, headers: Optional[Dict] = None, timeout: in
         h.update(headers)
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, headers=h, method="POST", data=data)
-    ctx = ssl.create_default_context()
     try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+        with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as r:
             data = r.read()
             if r.headers.get("Content-Encoding") == "gzip":
                 data = gzip.decompress(data)

@@ -161,7 +161,7 @@ export default function ScreenerPage() {
         </div>
 
         {/* Category filter */}
-        <div className="sticky top-[3.25rem] z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b md:static md:mx-0 md:px-0 md:border-0 md:bg-transparent md:backdrop-blur-0">
+        <div className="sticky top-[var(--mobile-app-bar-top,3.25rem)] z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 border-b md:static md:mx-0 md:px-0 md:border-0 md:bg-transparent md:backdrop-blur-0">
           <div className="flex gap-2 overflow-x-auto no-scrollbar" role="tablist" aria-label="Kategori screener">
             {Object.keys(CATEGORY_LABELS).map((cat) => (
               <button
@@ -171,7 +171,7 @@ export default function ScreenerPage() {
                 aria-selected={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "shrink-0 inline-flex min-h-9 items-center rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  "shrink-0 inline-flex min-h-9 items-center rounded-[0.75rem] px-4 py-2 text-sm font-medium transition-colors shadow-[shadow-sm]",
                   activeCategory === cat
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-secondary text-secondary-foreground hover:bg-accent",
@@ -197,7 +197,7 @@ export default function ScreenerPage() {
                 disabled={loading && active}
                 aria-pressed={active}
                 className={cn(
-                  "w-full text-left rounded-2xl border-2 p-3 transition-all duration-300 ease-out transform relative flex flex-col justify-between min-h-[7.5rem]",
+                  "w-full text-left rounded-[1rem] border-2 p-3 transition-all duration-300 ease-out transform relative flex flex-col justify-between min-h-[7.5rem] shadow-[shadow-sm]",
                   active
                     ? isBull
                       ? "border-bull-500 bg-gradient-to-br from-emerald-50/60 to-bull-50/40 dark:from-emerald-950/20 dark:to-bull-950/10 shadow-lg shadow-bull-500/10 scale-[1.02] -translate-y-0.5"
@@ -257,7 +257,7 @@ export default function ScreenerPage() {
         </div>
 
         {/* Results */}
-        <Card id="screener-results" className="p-4 sm:p-5">
+        <Card id="screener-results" className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <div>
               <h3 className="font-bold text-base flex items-center gap-2">
@@ -322,7 +322,7 @@ export default function ScreenerPage() {
           {loading ? (
             <div className="space-y-2" role="status" aria-label="Memindai saham">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-xl border bg-card/50 p-4 animate-pulse">
+                <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl rounded-[0.75rem] border bg-card/50 p-4 animate-pulse">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-16 bg-secondary rounded" />
                     <div className="flex-1 space-y-2">
@@ -390,7 +390,7 @@ function ScreenerResultCard({ result, onClick }: { result: ScreenerResult; onCli
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left rounded-xl border-2 bg-card p-4 transition-all duration-200 ease-out transform hover:-translate-y-0.5 hover:shadow-md",
+        "w-full text-left rounded-[0.75rem] border-2 bg-card p-4 transition-all duration-200 ease-out transform hover:-translate-y-0.5 shadow-[shadow-sm]",
         isStrong && isUp && "border-bull-500/40 bg-gradient-to-r from-bull-50/20 to-transparent dark:from-bull-950/5",
         isStrong && !isUp && "border-bear-500/40 bg-gradient-to-r from-bear-50/20 to-transparent dark:from-bear-950/5",
         !isStrong && "border-border hover:border-primary/30",

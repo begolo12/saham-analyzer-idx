@@ -20,11 +20,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate enum values
+    const VALID_STRATEGIES = ["RSI_MEAN_REVERSION", "SMA_CROSSOVER", "BUY_HOLD"];
+    const VALID_PERIODS = ["6mo", "1y", "2y"];
+    if (!VALID_STRATEGIES.includes(strategy)) {
+      return NextResponse.json(
+        { error: `Invalid strategy. Must be one of: ${VALID_STRATEGIES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+    if (!VALID_PERIODS.includes(period)) {
+      return NextResponse.json(
+        { error: `Invalid period. Must be one of: ${VALID_PERIODS.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
     const config: BacktestConfig = {
-      ticker: ticker.toUpperCase().replace(".JK", ""),
+      ticker: String(ticker).toUpperCase().replace(".JK", ""),
       strategy,
       period,
-      initialCapital: parseFloat(initialCapital) || 10_000_000,
+      initialCapital: Math.max(0, parseFloat(initialCapital)) || 10_000_000,
     };
 
     const [btResult, ihsg] = await Promise.all([

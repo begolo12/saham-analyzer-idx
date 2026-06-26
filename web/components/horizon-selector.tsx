@@ -60,8 +60,8 @@ export function HorizonSelector<T extends string = HorizonKey>({
               onChange(opt.value);
             }}
             className={cn(
-              "horizon-selector__btn",
-              active && "horizon-selector__btn--active",
+              "horizon-selector__btn transition-all duration-200",
+              active && "horizon-selector__btn--active scale-[1.02]",
             )}
           >
             <span>{opt.label}</span>

@@ -12,10 +12,11 @@ import {
   setWatchlist,
   clearAllWatchlist as clearAllWatchlistRaw,
   bumpWatchView,
+  addToWatchlistWithPrice,
   type WatchlistItem,
 } from "@/components/watchlist-button";
 
-export { getWatchlistItems, setWatchlist, clearAllWatchlistRaw as clearAllWatchlist, bumpWatchView, type WatchlistItem };
+export { getWatchlistItems, setWatchlist, clearAllWatchlistRaw as clearAllWatchlist, bumpWatchView, addToWatchlistWithPrice, type WatchlistItem };
 
 /**
  * React hook untuk watchlist. Returns current tickers and reload-on-update.

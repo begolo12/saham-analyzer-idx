@@ -388,7 +388,7 @@ function analyzeDER(der: number | null): FundamentalMetric {
     );
   }
 
-  const derRatio = der > 5 ? der / 100 : der;
+  const derRatio = der > 100 ? der / 100 : der;
   let signal: FundamentalSignal, score: number, explanation: string;
   if (derRatio < 0.3) {
     signal = "EXCELLENT";

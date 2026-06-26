@@ -78,6 +78,20 @@ const config: Config = {
           500: "#737373",
           700: "#404040",
         },
+        // iOS 18 system colors
+        "ios-blue": "#007AFF",
+        "ios-green": "#34C759",
+        "ios-red": "#FF3B30",
+        "ios-orange": "#FF9500",
+        "ios-purple": "#AF52DE",
+        "ios-gray": {
+          1: "#8E8E93",
+          2: "#636366",
+          3: "#48484A",
+          4: "#3A3A3C",
+          5: "#2C2C2E",
+          6: "#1C1C1E",
+        },
       },
       borderRadius: {
         sm: "var(--radius-sm)",
@@ -181,6 +195,34 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        pullRefresh: {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        scrollReveal: {
+          from: { opacity: "0", transform: "translateY(16px) scale(0.985)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        cardLift: {
+          from: { transform: "translateY(0)", boxShadow: "0 1px 2px hsl(222 25% 11% / 0.04)" },
+          to: { transform: "translateY(-2px)", boxShadow: "0 4px 16px hsl(222 25% 11% / 0.08), 0 1px 3px hsl(222 25% 11% / 0.06)" },
+        },
+        slideInRight: {
+          from: { opacity: "0", transform: "translateX(12px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        pageOverlayIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        pressScale: {
+          from: { transform: "scale(1)" },
+          to: { transform: "scale(0.97)" },
+        },
+        priceFlash: {
+          "0%": { backgroundColor: "hsl(var(--primary) / 0.12)" },
+          "100%": { backgroundColor: "transparent" },
+        },
       },
       animation: {
         "fade-in": "fadeIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both",
@@ -189,6 +231,13 @@ const config: Config = {
         "scale-in": "scaleIn 0.24s cubic-bezier(0.32, 0.72, 0, 1) both",
         "pulse-soft": "pulseSoft 2.4s ease-in-out infinite",
         "shimmer": "shimmer 1.6s ease-in-out infinite",
+        "pull-refresh": "pullRefresh 0.8s linear infinite",
+        "scroll-reveal": "scrollReveal 0.42s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "card-lift": "cardLift 0.28s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "slide-in-right": "slideInRight 0.35s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "page-overlay": "pageOverlayIn 0.2s ease-out both",
+        "press-scale": "pressScale 0.1s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "price-flash": "priceFlash 0.6s ease-out both",
       },
       backdropBlur: {
         xs: "4px",

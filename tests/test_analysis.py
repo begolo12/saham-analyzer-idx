@@ -183,7 +183,7 @@ def test_utils():
         entry_price=10000,
         stop_loss=9500,
     )
-    print(f"   ✓ Position size: {pos['lots_lots']} lots (risk: Rp{pos['risk_amount']:,.0f})")
+    print(f"   ✓ Position size: {pos['lots']} lots (risk: Rp{pos['risk_amount']:,.0f})")
 
     prices = pd.Series([100, 105, 110, 108, 102, 95, 90, 100, 110])
     mdd = calculate_max_drawdown(prices)

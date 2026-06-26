@@ -10,10 +10,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+import { YAHOO_UA as UA } from "@/lib/constants";
 
-interface CompareStock {
+export interface CompareStock {
   code: string;
   name: string;
   sector: string;
@@ -26,13 +25,18 @@ interface CompareStock {
   trailingPE: number | null;
   forwardPE: number | null;
   priceToBook: number | null;
+  priceToSales: number | null;
   returnOnEquity: number | null;
+  returnOnAssets: number | null;
   profitMargins: number | null;
+  grossMargins: number | null;
   revenueGrowth: number | null;
   earningsGrowth: number | null;
   dividendYield: number | null;
   debtToEquity: number | null;
+  currentRatio: number | null;
   volume: number | null;
+  averageVolume: number | null;
   performance: {
     oneDay: number;
     oneWeek: number;
@@ -41,6 +45,7 @@ interface CompareStock {
   };
   rsi14: number | null;
   macdSignal: "bullish" | "bearish" | "neutral" | null;
+  trend: "uptrend" | "downtrend" | "sideways" | null;
 }
 
 /**
@@ -85,11 +90,24 @@ function calcMACDSignal(closes: number[]): "bullish" | "bearish" | "neutral" | n
 }
 
 /**
+ * Detect trend based on 20-day and 50-day moving averages.
+ */
+function calcTrend(closes: number[]): "uptrend" | "downtrend" | "sideways" | null {
+  if (closes.length < 50) return null;
+  const sma = (arr: number[], len: number) => {
+    const slice = arr.slice(-len);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  };
+  const sma20 = sma(closes, 20);
+  const sma50 = sma(closes, 50);
+  const lastPrice = closes[closes.length - 1];
+  if (lastPrice > sma20 && sma20 > sma50) return "uptrend";
+  if (lastPrice < sma20 && sma20 < sma50) return "downtrend";
+  return "sideways";
+}
+
+/**
  * Performance % from closes array.
- * 1D = last vs prev
- * 1W = last vs 7 ago (or first available)
- * 1M = last vs ~22 trading days ago
- * 3M = last vs ~66 trading days ago
  */
 function calcPerformance(closes: number[]): CompareStock["performance"] {
   if (closes.length < 2) {
@@ -153,15 +171,13 @@ export async function GET(request: NextRequest) {
         const result = chartRes?.chart?.result?.[0];
         const closes: number[] = (
           result?.indicators?.quote?.[0]?.close ?? []
-        ).filter((c: any) => typeof c === "number");
+        ).filter((c: unknown): c is number => typeof c === "number");
         const meta = result?.meta ?? {};
         const lastClose = closes[closes.length - 1] ?? meta.regularMarketPrice ?? 0;
         const prevClose =
           closes[closes.length - 2] ?? meta.previousClose ?? meta.chartPreviousClose ?? lastClose;
         const change = lastClose - prevClose;
         const changePct = prevClose ? (change / prevClose) * 100 : 0;
-        const dayHigh = meta.regularMarketDayHigh ?? 0;
-        const dayLow = meta.regularMarketDayLow ?? 0;
         const yearHigh = meta.fiftyTwoWeekHigh ?? 0;
         const yearLow = meta.fiftyTwoWeekLow ?? 0;
         const volume = meta.regularMarketVolume ?? 0;
@@ -180,16 +196,22 @@ export async function GET(request: NextRequest) {
           trailingPE: s?.trailingPE ?? null,
           forwardPE: s?.forwardPE ?? null,
           priceToBook: s?.priceToBook ?? null,
+          priceToSales: s?.priceToSalesTrailing12Months ?? null,
           returnOnEquity: s?.returnOnEquity ?? null,
+          returnOnAssets: s?.returnOnAssets ?? null,
           profitMargins: s?.profitMargins ?? null,
+          grossMargins: null, // Not available in current StockSummary
           revenueGrowth: s?.revenueGrowth ?? null,
           earningsGrowth: s?.earningsGrowth ?? null,
           dividendYield: s?.dividendYield ?? null,
           debtToEquity: s?.debtToEquity ?? null,
+          currentRatio: s?.currentRatio ?? null,
           volume,
+          averageVolume: s?.averageVolume ?? null,
           performance: calcPerformance(closes),
           rsi14: calcRSI(closes),
           macdSignal: calcMACDSignal(closes),
+          trend: calcTrend(closes),
         });
       } catch (err) {
         console.error(`Compare failed for ${ticker}:`, err);

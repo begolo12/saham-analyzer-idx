@@ -4,20 +4,28 @@ import {
   fetchSummary,
   fetchInfo,
   validateTicker,
+  type StockPrice,
 } from "@/lib/yahoo";
 import { analyzeTechnical } from "@/lib/technical";
 import { analyzeFundamental } from "@/lib/fundamental";
 import { analyzeBehavioral } from "@/lib/behavioral";
 import { fetchNews, summarizeSentiment } from "@/lib/news";
 import { generateRecommendation } from "@/lib/recommender";
+import {
+  analyzeConfluence,
+  detectSupportResistance,
+  calculateWeightedScore,
+  detectPatterns,
+} from "@/lib/analysis-engine";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 min ISR cache — reduces redundant Yahoo Finance calls
 export const maxDuration = 60;
 
 /**
  * GET /api/analysis/[ticker]?period=1y&includeNews=true
  * Returns complete analysis: technical, fundamental, behavioral, sentiment + recommendation
+ * Plus: confluence, support/resistance, weighted scoring, pattern recognition
  */
 export async function GET(
   request: NextRequest,
@@ -38,11 +46,15 @@ export async function GET(
     const includeNews = searchParams.get("includeNews") !== "false";
 
     // Fetch all data in parallel
-    const [summaryBase, historical, info] = await Promise.all([
-      fetchSummary(code),
-      fetchHistorical(code, period),
-      fetchInfo(code),
-    ]);
+    // For multi-timeframe, also fetch weekly and monthly data
+    const [summaryBase, historical, info, weeklyPrices, monthlyPrices] =
+      await Promise.all([
+        fetchSummary(code),
+        fetchHistorical(code, period),
+        fetchInfo(code),
+        fetchHistorical(code, "1y", "1wk").catch(() => [] as StockPrice[]),
+        fetchHistorical(code, "2y", "1mo").catch(() => [] as StockPrice[]),
+      ]);
 
     // Merge summary with info (fundamentals)
     const summary = { ...summaryBase, ...info };
@@ -56,6 +68,18 @@ export async function GET(
     const technical = analyzeTechnical(historical);
     const fundamental = analyzeFundamental(summary);
     const behavioral = analyzeBehavioral(historical);
+
+    // Multi-timeframe confluence
+    const confluence = analyzeConfluence(historical, weeklyPrices, monthlyPrices);
+
+    // Enhanced support/resistance detection
+    const supportResistance = detectSupportResistance(historical);
+
+    // Weighted signal scoring
+    const weightedScoring = calculateWeightedScore(technical.indicators);
+
+    // Pattern recognition (candlestick + chart patterns)
+    const patterns = detectPatterns(historical);
 
     // News + sentiment (optional, may be slow)
     let sentimentData: ReturnType<typeof summarizeSentiment> | null = null;
@@ -108,6 +132,11 @@ export async function GET(
       behavioral,
       sentiment: sentimentData,
       recommendation,
+      // New analysis engine features
+      confluence,
+      supportResistance,
+      weightedScoring,
+      patterns,
       meta: {
         ticker,
         code,
@@ -117,12 +146,12 @@ export async function GET(
     });
   } catch (error) {
     console.error("API /analysis error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to analyze stock",
-      },
-      { status: 500 },
-    );
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : error instanceof Error
+          ? error.message
+          : "Failed to analyze stock";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

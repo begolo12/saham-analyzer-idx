@@ -215,6 +215,13 @@ def fmt_pct(n: Optional[float]) -> str:
 def fmt_ts(ts: Optional[float] = None) -> str:
     if ts is None:
         ts = time.time()
+    # Handle string ISO timestamps
+    if isinstance(ts, str):
+        try:
+            dt = datetime.fromisoformat(ts)
+            return dt.astimezone(WIB).strftime("%d %b %Y %H:%M WIB")
+        except (ValueError, TypeError):
+            return ts
     return datetime.fromtimestamp(ts, WIB).strftime("%d %b %Y %H:%M WIB")
 
 

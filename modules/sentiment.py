@@ -95,6 +95,12 @@ class IndonesianSentimentAnalyzer:
         self._load_lexicon(lexicon_path)
 
     def _load_lexicon(self, path: str):
+        if not os.path.exists(path):
+            self.positive_words = set()
+            self.negative_words = set()
+            self.intensifiers = set()
+            self.negations = set()
+            return
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         self.positive_words = set(w.lower().strip() for w in data.get("positive", []))
@@ -160,31 +166,42 @@ class IndonesianSentimentAnalyzer:
                     matched_type = "intensifier"
                 i += 1
             else:
-                # Cek apakah ada negasi 1-2 kata sebelumnya
-                negated = False
-                for j in range(max(0, i - 2), i):
-                    if words[j] in self.negations:
-                        negated = True
-                        break
+                # Phrase match: advance i in the outer block already handled i += phrase_len
+                pass
 
-                if matched_type == "intensifier":
-                    # Intensifier akan diaplikasikan ke sentiment berikutnya
-                    continue
+            # Skip scoring if no match found
+            if matched_phrase is None:
+                continue
 
-                score = matched_score
+            # Intensifier: save and apply to next sentiment word
+            if matched_type == "intensifier":
+                continue
 
-                # Apply negation
-                if negated:
-                    score = -score
-                    matched_type = "negative" if matched_type == "positive" else "positive"
+            # Cek apakah ada negasi 1-2 kata sebelumnya
+            negated = False
+            for j in range(max(0, i - 2), i):
+                if words[j] in self.negations:
+                    negated = True
+                    break
 
-                total_score += score
-                sentiment_word_count += 1
+            score = matched_score
 
-                if matched_type == "positive":
-                    positive_score += 1
-                elif matched_type == "negative":
-                    negative_score += 1
+            # Negate for negative words
+            if matched_type == "negative":
+                score = -score
+
+            # Apply negation
+            if negated:
+                score = -score
+                matched_type = "negative" if matched_type == "positive" else "positive"
+
+            total_score += score
+            sentiment_word_count += 1
+
+            if matched_type == "positive":
+                positive_score += 1
+            elif matched_type == "negative":
+                negative_score += 1
 
         # Normalisasi
         if sentiment_word_count == 0:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ export interface WatchlistItem {
   addedAt: number; // ms timestamp
   viewCount: number;
   lastViewed: number | null; // ms timestamp
+  priceAtAdded: number | null; // price when added, for return tracking
+  sector: string | null; // sector snapshot when added
 }
 
 function migrate(list: unknown): WatchlistItem[] {
@@ -29,6 +31,8 @@ function migrate(list: unknown): WatchlistItem[] {
         addedAt: Date.now(),
         viewCount: 0,
         lastViewed: null,
+        priceAtAdded: null,
+        sector: null,
       };
     }
     // Already an object — fill missing fields
@@ -38,6 +42,8 @@ function migrate(list: unknown): WatchlistItem[] {
       addedAt: e.addedAt ?? Date.now(),
       viewCount: e.viewCount ?? 0,
       lastViewed: e.lastViewed ?? null,
+      priceAtAdded: (e as Record<string, unknown>).priceAtAdded as number | null ?? null,
+      sector: (e as Record<string, unknown>).sector as string | null ?? null,
     };
   });
 }
@@ -76,10 +82,32 @@ export function setWatchlist(tickers: string[]): void {
         addedAt: Date.now(),
         viewCount: 0,
         lastViewed: null,
+        priceAtAdded: null,
+        sector: null,
       }
     );
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent("watchlist-updated"));
+}
+
+/**
+ * Add a single ticker to watchlist with optional price snapshot.
+ */
+export function addToWatchlistWithPrice(ticker: string, price?: number | null, sector?: string | null): void {
+  if (typeof window === "undefined") return;
+  const key = ticker.toUpperCase();
+  const items = getWatchlistItems();
+  if (items.some((i) => i.ticker === key)) return;
+  items.push({
+    ticker: key,
+    addedAt: Date.now(),
+    viewCount: 0,
+    lastViewed: null,
+    priceAtAdded: price ?? null,
+    sector: sector ?? null,
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   window.dispatchEvent(new CustomEvent("watchlist-updated"));
 }
 
@@ -115,6 +143,7 @@ export function WatchlistButton({
 }) {
   const [isWatched, setIsWatched] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -125,9 +154,14 @@ export function WatchlistButton({
     return () => window.removeEventListener("watchlist-updated", handler);
   }, [ticker]);
 
-  const toggle = (e: React.MouseEvent) => {
+  const toggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Trigger animation
+    setAnimating(true);
+    setTimeout(() => setAnimating(false), 400);
+
     const items = getWatchlistItems();
     const isIn = items.some((i) => i.ticker === ticker.toUpperCase());
     if (isIn) {
@@ -143,11 +177,11 @@ export function WatchlistButton({
       setIsWatched(true);
       toast.success(`⭐ ${ticker} added to watchlist`);
     }
-  };
+  }, [ticker]);
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon" disabled>
+      <Button variant="outline" size="icon" disabled className="rounded-xl">
         <Star className="h-4 w-4" />
       </Button>
     );
@@ -160,14 +194,26 @@ export function WatchlistButton({
       onClick={toggle}
       data-watchlist-toggle
       className={cn(
+        "rounded-xl",
         compact ? "min-h-11 min-w-11" : "min-h-9",
         isWatched && "bg-amber-500 hover:bg-amber-600 border-amber-500",
+        animating && "scale-90",
+        "transition-all duration-150 ease-out",
+        "shadow-[3px_3px_6px_rgba(0,0,0,0.08),-3px_-3px_6px_rgba(255,255,255,0.5)]",
+        "active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.3)]",
       )}
       aria-label={
         isWatched ? `Hapus ${ticker} dari watchlist` : `Tambah ${ticker} ke watchlist`
       }
     >
-      <Star className={cn("h-4 w-4", isWatched && "fill-white")} />
+      <Star
+        className={cn(
+          "h-4 w-4 transition-all duration-300",
+          isWatched && "fill-white",
+          animating && isWatched && "scale-125 rotate-12",
+          animating && !isWatched && "scale-75 -rotate-12",
+        )}
+      />
     </Button>
   );
 }

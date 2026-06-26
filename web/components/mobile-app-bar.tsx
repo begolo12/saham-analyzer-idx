@@ -20,9 +20,8 @@ interface MobileAppBarProps {
 }
 
 /**
- * MobileAppBar — the proper iOS-style sticky app bar for primary screens.
- * Replaces the previous thin "mobile-topbar" pattern. Hidden on desktop.
- * 64px tall on mobile (matches Apple HIG top bar height) with safe-area top.
+ * MobileAppBar — iOS-style sticky app bar with Claymorphism.
+ * Hidden on desktop. 64px tall on mobile.
  */
 export function MobileAppBar({
   title,
@@ -35,33 +34,60 @@ export function MobileAppBar({
   className,
 }: MobileAppBarProps) {
   return (
-    <div className={cn("mobile-app-bar md:hidden", className)}>
-      <div className="mobile-app-bar__inner">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {backHref && (
-            <Link
-              href={backHref}
-              aria-label="Kembali"
-              className="mobile-app-bar__back"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Link>
-          )}
-          <div className="min-w-0 flex-1">
-            <div
-              className={cn(
-                "truncate",
-                emphasis === "ticker"
-                  ? "mobile-app-bar__ticker"
-                  : "mobile-app-bar__title",
-              )}
-            >
-              {title}
-            </div>
-            {subtitle && (
-              <div className="mobile-app-bar__subtitle truncate">{subtitle}</div>
+    <div
+      className={cn(
+        "md:hidden",
+        "sticky top-0 z-35",
+        "mx-[-1rem] mb-3",
+        "bg-[hsl(var(--background)_/_0.96)] backdrop-blur-xl",
+        "border-b border-border/60",
+        "shadow-[0_2px_8px_rgba(0,0,0,0.06)]",
+        "dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          "py-2 px-2.5",
+          "min-h-[3.25rem]",
+        )}
+      >
+        {backHref && (
+          <Link
+            href={backHref}
+            aria-label="Kembali"
+            className={cn(
+              "inline-flex items-center justify-center",
+              "w-10 h-10 rounded-full",
+              "text-primary",
+              "bg-primary/8",
+              "shadow-[3px_3px_6px_rgba(0,0,0,0.06),-3px_-3px_6px_rgba(255,255,255,0.5)]",
+              "dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-3px_-3px_6px_rgba(255,255,255,0.03)]",
+              "transition-all duration-fast ease-smooth",
+              "active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.3)]",
+              "dark:active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03)]",
             )}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+        )}
+        <div className="min-w-0 flex-1">
+          <div
+            className={cn(
+              "truncate",
+              emphasis === "ticker"
+                ? "text-lg font-black tracking-tight tabular-nums"
+                : "text-base font-extrabold tracking-tight",
+            )}
+          >
+            {title}
           </div>
+          {subtitle && (
+            <div className="text-[11px] text-muted-foreground truncate mt-0.5 tracking-wide">
+              {subtitle}
+            </div>
+          )}
         </div>
         {(trailingValue || trailing) && (
           <div className="flex shrink-0 items-center gap-2">
@@ -106,13 +132,46 @@ export function MobileQuickAction({
   return (
     <Link
       href={href}
-      className={cn("mobile-quick-action", variant === "primary" && "mobile-quick-action--primary", className)}
+      className={cn(
+        "group relative flex items-center gap-3 rounded-xl p-3.5",
+        "border border-border/50",
+        "transition-all duration-200 ease-smooth",
+        "active:scale-[0.97]",
+        "min-h-[72px]",
+        variant === "primary"
+          ? [
+              "bg-gradient-to-br from-primary/5 to-primary/10",
+              "dark:from-primary/10 dark:to-primary/5",
+              "border-primary/20",
+              "shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.6)]",
+              "dark:shadow-[6px_6px_12px_rgba(0,0,0,0.25),-6px_-6px_12px_rgba(255,255,255,0.04)]",
+            ]
+          : [
+              "bg-[hsl(var(--card))]",
+              "shadow-[6px_6px_12px_rgba(0,0,0,0.08),-6px_-6px_12px_rgba(255,255,255,0.6)]",
+              "dark:shadow-[6px_6px_12px_rgba(0,0,0,0.25),-6px_-6px_12px_rgba(255,255,255,0.04)]",
+              "hover:shadow-[8px_8px_16px_rgba(0,0,0,0.1),-8px_-8px_16px_rgba(255,255,255,0.7)]",
+              "dark:hover:shadow-[8px_8px_16px_rgba(0,0,0,0.3),-8px_-8px_16px_rgba(255,255,255,0.05)]",
+              "hover:-translate-y-[1px]",
+            ],
+        className,
+      )}
     >
-      <div className="mobile-quick-action__icon">{icon}</div>
+      <div
+        className={cn(
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px]",
+          "transition-transform duration-fast ease-spring group-hover:scale-105",
+          variant === "primary"
+            ? "bg-primary/10 text-primary dark:bg-primary/20"
+            : "bg-secondary text-muted-foreground",
+        )}
+      >
+        {icon}
+      </div>
       <div className="min-w-0 flex-1">
-        <div className="mobile-quick-action__label">{label}</div>
+        <div className="text-[13px] font-bold text-foreground leading-tight">{label}</div>
         {description && (
-          <div className="mobile-quick-action__desc">{description}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{description}</div>
         )}
       </div>
     </Link>
@@ -134,7 +193,14 @@ export function MobileSectionTabs<T extends string>({
 }: MobileSectionTabsProps<T>) {
   return (
     <div
-      className={cn("mobile-section-tabs no-scrollbar", className)}
+      className={cn(
+        "flex items-center gap-1 overflow-x-auto no-scrollbar",
+        "p-0.5 rounded-full",
+        "bg-secondary/60",
+        "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)]",
+        "dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03)]",
+        className,
+      )}
       role="tablist"
       aria-label="Section"
     >
@@ -148,17 +214,31 @@ export function MobileSectionTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "mobile-section-tab",
-              active && "mobile-section-tab--active",
+              "inline-flex items-center gap-1.5",
+              "px-3.5 py-2 rounded-full",
+              "text-xs font-semibold",
+              "whitespace-nowrap",
+              "transition-all duration-200 ease-smooth",
+              active
+                ? [
+                    "bg-background text-foreground",
+                    "shadow-[3px_3px_6px_rgba(0,0,0,0.08),-3px_-3px_6px_rgba(255,255,255,0.6)]",
+                    "dark:shadow-[3px_3px_6px_rgba(0,0,0,0.25),-3px_-3px_6px_rgba(255,255,255,0.04)]",
+                  ]
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {option.icon && <span className="mobile-section-tab__icon">{option.icon}</span>}
+            {option.icon && <span className="inline-flex items-center justify-center">{option.icon}</span>}
             <span>{option.label}</span>
             {typeof option.count === "number" && (
               <span
                 className={cn(
-                  "mobile-section-tab__count",
-                  active && "mobile-section-tab__count--active",
+                  "inline-flex items-center justify-center",
+                  "min-w-[1.25rem] h-5 rounded-full px-1.5",
+                  "text-[11px] font-bold",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {option.count}
@@ -196,27 +276,62 @@ export function MobileActionBar({
   className,
 }: MobileActionBarProps) {
   return (
-    <div className={cn("mobile-action-bar md:hidden", className)}>
-      <div className="mobile-action-bar__panel">
+    <div
+      className={cn(
+        "fixed left-0 right-0 z-38 md:hidden",
+        "px-3 py-2.5",
+        "pointer-events-none",
+        className,
+      )}
+      style={{ bottom: "var(--bottom-nav-safe-offset)" }}
+    >
+      <div
+        className={cn(
+          "flex gap-2 p-1.5 rounded-xl pointer-events-auto",
+          "bg-[hsl(var(--card))] border border-border/50",
+          "shadow-[8px_8px_16px_rgba(0,0,0,0.12),-8px_-8px_16px_rgba(255,255,255,0.7)]",
+          "dark:shadow-[8px_8px_16px_rgba(0,0,0,0.35),-8px_-8px_16px_rgba(255,255,255,0.05)]",
+        )}
+      >
         {secondary && !primaryOnly && (
           <button
             type="button"
             onClick={secondary.onClick}
             aria-label={secondary.ariaLabel || secondary.label}
-            className="mobile-action-bar__btn mobile-action-bar__btn--secondary"
+            className={cn(
+              "flex-1 inline-flex items-center justify-center gap-1.5",
+              "h-11 rounded-[12px] px-4",
+              "text-sm font-bold",
+              "bg-secondary text-secondary-foreground",
+              "shadow-[3px_3px_6px_rgba(0,0,0,0.06),-3px_-3px_6px_rgba(255,255,255,0.5)]",
+              "dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-3px_-3px_6px_rgba(255,255,255,0.03)]",
+              "active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.3)]",
+              "dark:active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03)]",
+              "transition-all duration-200 ease-smooth",
+            )}
           >
-            {secondary.icon && <span className="mobile-action-bar__icon">{secondary.icon}</span>}
-            <span className="mobile-action-bar__label">{secondary.label}</span>
+            {secondary.icon && <span className="inline-flex">{secondary.icon}</span>}
+            <span>{secondary.label}</span>
           </button>
         )}
         <button
           type="button"
           onClick={primary.onClick}
           aria-label={primary.ariaLabel || primary.label}
-          className="mobile-action-bar__btn mobile-action-bar__btn--primary"
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-1.5",
+            "h-11 rounded-[12px] px-4",
+            "text-sm font-bold",
+            "bg-primary text-primary-foreground",
+            "shadow-[4px_4px_8px_rgba(0,0,0,0.08),-4px_-4px_8px_rgba(255,255,255,0.5)]",
+            "dark:shadow-[4px_4px_8px_rgba(0,0,0,0.3),-4px_-4px_8px_rgba(255,255,255,0.05)]",
+            "active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1)]",
+            "dark:active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2)]",
+            "transition-all duration-200 ease-smooth",
+          )}
         >
-          {primary.icon && <span className="mobile-action-bar__icon">{primary.icon}</span>}
-          <span className="mobile-action-bar__label">{primary.label}</span>
+          {primary.icon && <span className="inline-flex">{primary.icon}</span>}
+          <span>{primary.label}</span>
         </button>
       </div>
     </div>

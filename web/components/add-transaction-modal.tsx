@@ -134,14 +134,14 @@ export function AddTransactionModal({
       onClick={onClose}
     >
       <Card
-        className="w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl rounded-b-none sm:rounded-b-2xl max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl rounded-b-none sm:rounded-b-3xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit} className="p-5">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold">Tambah Transaksi</h2>
+              <h2 className="text-xl font-bold">💰 Tambah Transaksi</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Tersimpan di browser (localStorage)
               </p>
@@ -151,6 +151,7 @@ export function AddTransactionModal({
               variant="ghost"
               size="icon"
               onClick={onClose}
+              className="rounded-xl"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -162,10 +163,11 @@ export function AddTransactionModal({
               type="button"
               onClick={() => setType("BUY")}
               className={cn(
-                "rounded-xl border-2 p-3 font-semibold transition-all",
+                "rounded-2xl border-2 p-3 font-semibold transition-all",
+                "shadow-[3px_3px_6px_rgba(0,0,0,0.06),-3px_-3px_6px_rgba(255,255,255,0.4)]",
                 type === "BUY"
-                  ? "border-bull-500 bg-bull-50 dark:bg-bull-700/20 text-bull-700 dark:text-bull-500"
-                  : "border-border hover:border-bull-500/50",
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                  : "border-border hover:border-emerald-500/50",
               )}
             >
               <TrendingUp className="h-5 w-5 mx-auto mb-1" />
@@ -175,10 +177,11 @@ export function AddTransactionModal({
               type="button"
               onClick={() => setType("SELL")}
               className={cn(
-                "rounded-xl border-2 p-3 font-semibold transition-all",
+                "rounded-2xl border-2 p-3 font-semibold transition-all",
+                "shadow-[3px_3px_6px_rgba(0,0,0,0.06),-3px_-3px_6px_rgba(255,255,255,0.4)]",
                 type === "SELL"
-                  ? "border-bear-500 bg-bear-50 dark:bg-bear-700/20 text-bear-700 dark:text-bear-500"
-                  : "border-border hover:border-bear-500/50",
+                  ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+                  : "border-border hover:border-red-500/50",
               )}
             >
               <TrendingDown className="h-5 w-5 mx-auto mb-1" />
@@ -217,7 +220,10 @@ export function AddTransactionModal({
                         setTicker(code);
                         fetchAndFillPrice(stock);
                       }}
-                      className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors",
+                        "shadow-[2px_2px_4px_rgba(0,0,0,0.04),-2px_-2px_4px_rgba(255,255,255,0.3)]",
+                      )}
                     >
                       {code}
                     </button>
@@ -236,7 +242,8 @@ export function AddTransactionModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 h-12"
+              className="mt-1 h-12 rounded-xl"
+              style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
               required
             />
           </div>
@@ -253,7 +260,7 @@ export function AddTransactionModal({
                   Mengambil harga...
                 </span>
               ) : priceAutoFilled ? (
-                <span className="text-[10px] font-semibold text-bull-600 dark:text-bull-500 flex items-center gap-1">
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Zap className="h-3 w-3 fill-current" />
                   Live dari Yahoo Finance
                 </span>
@@ -268,7 +275,8 @@ export function AddTransactionModal({
                 setPriceAutoFilled(false);
               }}
               placeholder="6500"
-              className="mt-1 h-12 text-base tabular-nums"
+              className="mt-1 h-12 text-base tabular-nums rounded-xl font-num"
+              style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
               required
             />
           </div>
@@ -285,7 +293,8 @@ export function AddTransactionModal({
                 value={lotInput}
                 onChange={(e) => setLotInput(e.target.value)}
                 placeholder="1"
-                className="h-12 text-base tabular-nums flex-1"
+                className="h-12 text-base tabular-nums flex-1 rounded-xl font-num"
+                style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
                 required
               />
               <div className="flex gap-1">
@@ -296,6 +305,8 @@ export function AddTransactionModal({
                     onClick={() => setLotInput(lot.toString())}
                     className={cn(
                       "px-3 h-12 rounded-xl border bg-secondary text-xs font-medium hover:bg-accent shrink-0",
+                      "shadow-[2px_2px_4px_rgba(0,0,0,0.04),-2px_-2px_4px_rgba(255,255,255,0.3)]",
+                      "active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.2)]",
                       lotInput === lot.toString() && "border-primary bg-primary/10 text-primary",
                     )}
                   >
@@ -322,7 +333,8 @@ export function AddTransactionModal({
               value={fee}
               onChange={(e) => setFee(e.target.value)}
               placeholder="0.15"
-              className="mt-1 h-12 text-base tabular-nums"
+              className="mt-1 h-12 text-base tabular-nums rounded-xl font-num"
+              style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
             />
           </div>
 
@@ -335,7 +347,8 @@ export function AddTransactionModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Buy untuk jangka panjang..."
-              className="mt-1 h-10"
+              className="mt-1 h-10 rounded-xl"
+              style={{ boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.4)" }}
             />
           </div>
 
@@ -343,17 +356,20 @@ export function AddTransactionModal({
           {priceNum && lotNum > 0 && (
             <div
               className={cn(
-                "rounded-lg p-3 mb-4",
-                type === "BUY" ? "bg-bull-50 dark:bg-bull-700/20" : "bg-bear-50 dark:bg-bear-700/20",
+                "rounded-2xl p-4 mb-4",
+                type === "BUY"
+                  ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-700/30"
+                  : "bg-red-50 dark:bg-red-900/20 border border-red-200/50 dark:border-red-700/30",
               )}
+              style={{ boxShadow: "4px 4px 8px rgba(0,0,0,0.06), -4px -4px 8px rgba(255,255,255,0.4)" }}
             >
               <div className="text-xs text-muted-foreground">
                 Total {type === "BUY" ? "Pembelian" : "Penjualan"}
               </div>
-              <div className="text-2xl font-black tabular-nums">
+              <div className="text-2xl font-black tabular-nums font-num">
                 {formatIDR(total)}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+              <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums font-num">
                 {lotNum} lot × {lembarNum.toLocaleString("id-ID")} lembar ×{" "}
                 {formatIDR(priceNum)}
                 {feeNum > 0 && ` + Fee ${formatIDR((total * feeNum) / 100)}`}
@@ -367,10 +383,10 @@ export function AddTransactionModal({
             size="lg"
             disabled={submitting}
             className={cn(
-              "w-full",
+              "bg-[hsl(var(--primary))] text-white rounded-lg w-full rounded-2xl min-h-[48px]",
               type === "BUY"
-                ? "bg-bull-600 hover:bg-bull-700"
-                : "bg-bear-600 hover:bg-bear-700",
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-red-600 hover:bg-red-700",
             )}
           >
             {submitting ? (

@@ -15,7 +15,8 @@ import sys
 import os
 import warnings
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Tambah path ke modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

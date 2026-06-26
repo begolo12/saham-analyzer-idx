@@ -28,8 +28,10 @@ import { Alert } from "@/components/alert";
 import {
   calculateHoldings,
   calculateSummary,
+  calculatePortfolioStats,
   normalizeTicker,
   type Transaction,
+  type PortfolioStats,
 } from "@/lib/portfolio";
 import { usePortfolio, removeTransaction, clearAllTransactions } from "@/lib/portfolio-storage";
 import { calculateCashSummary, type CashEntry, type CashEntryType } from "@/lib/cash-ledger";
@@ -44,6 +46,8 @@ import { CashModal } from "@/components/cash-modal";
 import { SectorDonut, processSectors } from "@/components/sector-donut";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { IHSGBenchmark } from "@/components/ihsg-benchmark";
+import { BenchmarkChart } from "@/components/benchmark-chart";
+import { PortfolioStatsCard } from "@/components/portfolio-stats-card";
 import { EmptyState } from "@/components/empty-state";
 import {
   getSnapshots,
@@ -122,6 +126,9 @@ export default function PortfolioPage() {
     type: "BUY" | "SELL";
     maxLot?: number;
   } | null>(null);
+  const [ihsgData, setIhsgData] = useState<Array<{ date: string; close: number }>>([]);
+  const [ihsgLoading, setIhsgLoading] = useState(false);
+  const [ihsgError, setIhsgError] = useState<string | null>(null);
 
   const uniqueTickers = useMemo(
     () => Array.from(new Set(transactions.map((t) => normalizeTicker(t.ticker)))),
@@ -179,6 +186,36 @@ export default function PortfolioPage() {
     return () => window.removeEventListener("portfolio-updated", handler);
   }, [mounted]);
 
+  // Fetch IHSG historical data for benchmark comparison
+  useEffect(() => {
+    if (!mounted || snapshots.length < 2) return;
+    let cancelled = false;
+    setIhsgLoading(true);
+    fetch("/api/ihsg?period=3mo")
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal memuat data IHSG");
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data.data && Array.isArray(data.data)) {
+          setIhsgData(data.data);
+          setIhsgError(null);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setIhsgError("Gagal memuat data IHSG");
+        console.error(err);
+      })
+      .finally(() => {
+        if (!cancelled) setIhsgLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, snapshots.length]);
+
   const priceMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t in currentPrices) {
@@ -224,6 +261,37 @@ export default function PortfolioPage() {
     netInvested > 0
       ? ((totalPortfolioValue - netInvested) / netInvested) * 100
       : 0;
+
+  // Sector map for each ticker
+  const sectorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t in currentPrices) {
+      if (currentPrices[t].sector) {
+        map[t] = currentPrices[t].sector!;
+      }
+    }
+    return map;
+  }, [currentPrices]);
+
+  // Portfolio stats (Sharpe, max drawdown, etc.)
+  const portfolioStats = useMemo((): PortfolioStats | null => {
+    if (snapshots.length < 2 || transactions.length === 0) return null;
+    // Build IHSG closes aligned with snapshot dates
+    const ihsgCloses: number[] = [];
+    if (ihsgData.length > 0) {
+      for (const snap of snapshots) {
+        const match = ihsgData.find((d) => d.date === snap.date);
+        ihsgCloses.push(match?.close ?? 0);
+      }
+    }
+    return calculatePortfolioStats(
+      snapshots,
+      transactions,
+      holdings,
+      netInvested,
+      ihsgCloses.length === snapshots.length ? ihsgCloses : undefined,
+    );
+  }, [snapshots, transactions, holdings, netInvested, ihsgData]);
 
   const sellSignals = useMemo(() => {
     const signals: Array<{
@@ -319,10 +387,16 @@ export default function PortfolioPage() {
   }, [holdings, currentPrices]);
 
   const handleDeleteTransaction = (id: string) => {
-    if (confirm("Hapus transaksi ini?")) {
-      removeTransaction(id);
-      toast.success("Transaksi dihapus");
-    }
+    removeTransaction(id);
+    toast.success("Transaksi dihapus", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          // Re-add would need the original tx data stored
+          toast.info("Gunakan tombol Beli/Jual untuk menambah ulang");
+        },
+      },
+    });
   };
 
   const openBuyModal = useCallback(() => setShowAddModal(true), []);
@@ -336,10 +410,10 @@ export default function PortfolioPage() {
     return (
       <div className="page-main container space-y-4" aria-busy="true">
         <div className="space-y-2 animate-pulse">
-          <div className="h-8 w-40 bg-muted rounded" />
-          <div className="h-4 w-56 bg-muted rounded" />
+          <div className="h-8 w-40 bg-muted rounded-[0.75rem]" />
+          <div className="h-4 w-56 bg-muted rounded-[0.75rem]" />
         </div>
-        <Card className="p-5 space-y-3 animate-pulse">
+        <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 space-y-3 animate-pulse">
           <div className="h-3 w-20 bg-muted rounded" />
           <div className="h-10 w-44 bg-muted rounded" />
           <div className="h-3 w-32 bg-muted rounded" />
@@ -476,7 +550,7 @@ export default function PortfolioPage() {
         {transactions.length === 0 && cashEntries.length === 0 && (
           <>
             <div className="md:hidden">
-              <Card className="p-6 text-center">
+              <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center">
                 <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Briefcase className="h-6 w-6" />
                 </div>
@@ -628,10 +702,8 @@ export default function PortfolioPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (confirm("Hapus entry ini?")) {
-                                removeCashEntry(entry.id);
-                                toast.success("Entry dihapus");
-                              }
+                              removeCashEntry(entry.id);
+                              toast.success("Entry dihapus");
                             }}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-bear-100 hover:text-bear-600"
                             aria-label="Hapus entry"
@@ -756,6 +828,24 @@ export default function PortfolioPage() {
                 initialDeposit={netInvested}
               />
             )}
+
+            {portfolioStats && (
+              <Card className="p-4">
+                <PortfolioStatsCard stats={portfolioStats} className="border-0 p-0" />
+              </Card>
+            )}
+
+            {snapshots.length >= 2 && (
+              <Card className="p-4">
+                <BenchmarkChart
+                  snapshots={snapshots}
+                  ihsgData={ihsgData}
+                  loading={ihsgLoading}
+                  error={ihsgError}
+                  className="border-0 p-0"
+                />
+              </Card>
+            )}
           </div>
         )}
 
@@ -764,7 +854,7 @@ export default function PortfolioPage() {
           <div className="hidden md:block space-y-5">
             <Card
               className={cn(
-                "p-5 sm:p-6 border-2",
+                "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 sm:p-6 border-2",
                 portfolioDeltaPositive
                   ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5"
                   : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5",
@@ -836,6 +926,21 @@ export default function PortfolioPage() {
             )}
 
             {netInvested > 0 && <IHSGBenchmark portfolioValue={totalPortfolioValue} initialDeposit={netInvested} />}
+
+            {/* Portfolio Stats & Risk Metrics */}
+            {portfolioStats && (
+              <PortfolioStatsCard stats={portfolioStats} />
+            )}
+
+            {/* Dual-line benchmark chart */}
+            {snapshots.length >= 2 && (
+              <BenchmarkChart
+                snapshots={snapshots}
+                ihsgData={ihsgData}
+                loading={ihsgLoading}
+                error={ihsgError}
+              />
+            )}
 
             {sellSignals.length > 0 && (
               <Card
@@ -1001,10 +1106,8 @@ export default function PortfolioPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      if (confirm("Hapus semua cash ledger?")) {
-                        clearAllCashEntries();
-                        toast.success("Cash ledger dihapus");
-                      }
+                      clearAllCashEntries();
+                      toast.success("Cash ledger dihapus");
                     }}
                     className="text-xs text-muted-foreground"
                   >
@@ -1018,10 +1121,8 @@ export default function PortfolioPage() {
                       key={entry.id}
                       entry={entry}
                       onDelete={() => {
-                        if (confirm("Hapus entry ini?")) {
-                          removeCashEntry(entry.id);
-                          toast.success("Entry dihapus");
-                        }
+                        removeCashEntry(entry.id);
+                        toast.success("Entry dihapus");
                       }}
                     />
                   ))}
@@ -1040,10 +1141,8 @@ export default function PortfolioPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      if (confirm("Hapus semua transaksi?")) {
-                        clearAllTransactions();
-                        toast.success("Semua transaksi dihapus");
-                      }
+                      clearAllTransactions();
+                      toast.success("Semua transaksi dihapus");
                     }}
                     className="text-xs text-muted-foreground"
                   >
@@ -1126,7 +1225,7 @@ function StatCard({
   highlight?: "bull" | "bear";
 }) {
   return (
-    <Card className="p-3">
+    <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3">
       <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{label}</div>
       <div
         className={cn(

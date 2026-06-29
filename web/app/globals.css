@@ -11,40 +11,40 @@
 
 @layer base {
   :root {
-    /* === COLORS — dark mode is DEFAULT (stock apps are dark) === */
-    --background: 222 47% 7%;      /* #0F172A deep navy */
-    --foreground: 210 40% 96%;     /* #E2E8F0 light text */
+    /* === COLORS — Light Mode as Default (Human & Warm) === */
+    --background: 0 0% 98%;        /* Warm off-white #FAFAFA */
+    --foreground: 240 10% 3.9%;    /* Warm dark charcoal #09090B */
 
-    --card: 222 47% 11%;           /* #1E293B card bg */
-    --card-foreground: 210 40% 96%;
+    --card: 0 0% 100%;             /* Pure white #FFFFFF */
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 222 47% 13%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 217 91% 50%;        /* #3B82F6 blue */
+    --primary: 221.2 83.2% 53.3%;  /* Royal Blue #2563EB */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 15%;      /* #1E2A3A secondary */
-    --secondary-foreground: 210 40% 80%;
+    --secondary: 240 4.8% 95.9%;   /* Light gray #F1F5F9 */
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 222 30% 15%;          /* #1A2332 muted */
-    --muted-foreground: 215 20% 55%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 222 30% 18%;         /* #253449 accent */
-    --accent-foreground: 210 40% 96%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
-    --destructive: 0 84% 60%;      /* #EF4444 red */
+    --destructive: 346.8 77.2% 49.8%; /* Bearish Red #E11D48 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%;        /* #10B981 green */
+    --success: 142.1 76.2% 36.3%;  /* Bullish Green #16A34A */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;         /* #F59E0B orange */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 217 33% 17%;         /* #1E293B subtle border */
-    --input: 217 33% 17%;
-    --ring: 217 91% 50%;           /* blue focus ring */
+    --border: 240 5.9% 90%;        /* Soft warm light gray #E4E4E7 */
+    --input: 240 5.9% 90%;
+    --ring: 221.2 83.2% 53.3%;
 
     /* === TYPOGRAPHY === */
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
@@ -84,41 +84,41 @@
     --mobile-app-bar-top: 3.25rem;
   }
 
-  /* === LIGHT MODE — optional, opt-in via .light class === */
-  .light {
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+  /* === DARK MODE — Obsidian Dark Theme === */
+  .dark {
+    --background: 240 10% 3.9%;    /* Obsidian black/charcoal #09090B */
+    --foreground: 0 0% 98%;        /* Soft off-white text #FAFAFA */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 240 10% 7.8%;          /* Soft charcoal card #141416 */
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 240 10% 7.8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 217 91% 50%;
+    --primary: 217.2 91.2% 59.8%;  /* Soft bright blue #3B82F6 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 20% 93%;
-    --secondary-foreground: 222 30% 20%;
+    --secondary: 240 3.7% 15.9%;   /* Charcoal secondary */
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 222 20% 93%;
-    --muted-foreground: 222 15% 45%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 222 20% 91%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 78% 52%;
+    --destructive: 346.8 84.1% 60.2%; /* Bearish Red #F43F5E */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 60% 35%;
+    --success: 142.1 70.6% 45.3%;  /* Bullish Green #22C55E */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 45%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 222 15% 88%;
-    --input: 222 15% 88%;
-    --ring: 217 91% 50%;
+    --border: 240 3.7% 15.9%;      /* Dark border #27272A */
+    --input: 240 3.7% 15.9%;
+    --ring: 217.2 91.2% 59.8%;
   }
 
   * {

@@ -11,10 +11,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 // Lazy-load heavy interactive components — they're not needed for initial paint
-const AIChatbot = dynamic(
-  () => import("@/components/ai-chatbot").then((m) => ({ default: m.AIChatbot })),
-  { ssr: false },
-);
 const CommandPalette = dynamic(
   () => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })),
   { ssr: false },
@@ -96,7 +92,6 @@ export default function RootLayout({
           <BottomNav />
           <KeyboardShortcuts />
           <ServiceWorkerRegister />
-          <AIChatbot />
           <CommandPalette />
           <LinkPrefetch />
           <NetworkStatusIndicator />

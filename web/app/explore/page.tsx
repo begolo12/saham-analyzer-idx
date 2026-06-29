@@ -76,6 +76,7 @@ export default function ExplorePage() {
   const [scanned, setScanned] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
+  const [activeExploreTab, setActiveExploreTab] = useState<"sinyal" | "fundamental" | "sektor-flow">("sinyal");
 
   const selectedPreset = useMemo(
     () => SCREENER_PRESETS.find((p) => p.id === selectedScreen),
@@ -236,8 +237,49 @@ export default function ExplorePage() {
           </Link>
         </div>
 
+        {/* Segmented Control / Tab Switcher for mobile view */}
+        <div className="flex rounded-xl bg-muted p-1 border border-border/40 max-w-xl mx-auto">
+          <button
+            type="button"
+            onClick={() => setActiveExploreTab("sinyal")}
+            className={cn(
+              "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center",
+              activeExploreTab === "sinyal"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            🚀 Sinyal
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveExploreTab("fundamental")}
+            className={cn(
+              "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center",
+              activeExploreTab === "fundamental"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            🪙 Fundamental
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveExploreTab("sektor-flow")}
+            className={cn(
+              "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center",
+              activeExploreTab === "sektor-flow"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            📊 Sektor & Flow
+          </button>
+        </div>
+
         {/* Screener Section */}
-        <section>
+        {activeExploreTab === "sinyal" && (
+          <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 dark:bg-blue-500/15">
@@ -450,9 +492,11 @@ export default function ExplorePage() {
             )}
           </Card>
         </section>
+        )}
 
         {/* Fundamental Screener */}
-        <section>
+        {activeExploreTab === "fundamental" && (
+          <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 dark:bg-amber-500/15">
@@ -466,9 +510,12 @@ export default function ExplorePage() {
           </div>
           <FundamentalScreener />
         </section>
+        )}
 
         {/* Sector Heatmap */}
-        <section>
+        {activeExploreTab === "sektor-flow" && (
+          <>
+            <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 dark:bg-violet-500/15">
@@ -497,7 +544,9 @@ export default function ExplorePage() {
             </div>
           </div>
           <ForeignFlow />
-        </section>
+            </section>
+          </>
+        )}
 
         {/* Bottom Links */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

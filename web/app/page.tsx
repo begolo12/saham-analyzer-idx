@@ -171,6 +171,7 @@ export default function HomePage() {
 
   /** Shared top-picks fetch */
   const fetchTopPicks = useCallback(async (signal?: AbortSignal): Promise<void> => {
+    setPicksLoading(true);
     try {
       const r = await fetch("/api/market/top-picks", { signal });
       if (!r.ok) throw new Error("Gagal memuat sinyal");
@@ -179,6 +180,8 @@ export default function HomePage() {
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       setTopPicks([]);
+    } finally {
+      setPicksLoading(false);
     }
   }, []);
 
@@ -345,246 +348,147 @@ export default function HomePage() {
       >
         <OnboardingTour />
 
-        {/* ═══════════════════════════════════════════════════════════════
-            HERO — Dark navy card with subtle border
-            ═══════════════════════════════════════════════════════════════ */}
-        <section className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4 md:p-6 relative overflow-hidden">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent pointer-events-none" />
-
-          <div className="relative">
-            {/* Greeting + market status */}
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">👋</span>
-                <span className="text-xl md:text-2xl font-extrabold text-foreground leading-tight">
-                  {greeting.text}
-                </span>
-              </div>
+        {/* Mobile-first: search as primary job-to-be-done */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-0.5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                {greeting.text} 👋
+              </p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground md:text-3xl">
+                Mau cek saham apa?
+              </h1>
+            </div>
+            <span
+              className={cn(
+                "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold uppercase tracking-wider",
+                marketOpen
+                  ? "border-success/25 bg-success/10 text-success"
+                  : "border-border bg-card text-muted-foreground",
+              )}
+            >
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border",
-                  marketOpen
-                    ? "border-success/30 bg-success/10 text-success"
-                    : "border-[hsl(var(--border))] bg-muted text-muted-foreground",
+                  "h-2 w-2 rounded-full",
+                  marketOpen ? "bg-success animate-pulse" : "bg-muted-foreground/40",
                 )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    marketOpen
-                      ? "bg-success animate-pulse"
-                      : "bg-muted-foreground/40",
-                  )}
-                />
-                {marketOpen ? "Buka" : "Tutup"}
+              />
+              {marketOpen ? "Buka" : "Tutup"}
+            </span>
+          </div>
+
+          <Link
+            href="/search"
+            className="group flex min-h-[72px] items-center gap-3 rounded-[1.35rem] border border-primary/18 bg-gradient-to-br from-primary/10 via-card to-card p-4 shadow-[0_10px_30px_hsl(var(--primary)/0.10)] transition-all active:scale-[0.985] md:hidden"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition-transform group-active:scale-95">
+              <Search className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black text-foreground">Cari saham IDX</span>
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                BBCA, TLKM, sektor bank, blue chip…
               </span>
-            </div>
+            </span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-active:translate-x-0.5" />
+          </Link>
 
-            {/* Search bar — real link to /search on mobile, inline StockSearch on desktop */}
-            <Link
-              href="/search"
-              className="md:hidden rounded-lg bg-background border border-[hsl(var(--border))] px-4 py-3 flex items-center gap-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all duration-200"
-            >
-              <Search className="h-5 w-5 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground">
-                Cari saham, kode, atau sektor…
-              </span>
-            </Link>
-
-            {/* Desktop: inline stock search */}
-            <div className="hidden md:block">
-              <div className="rounded-lg bg-background border border-[hsl(var(--border))] px-4 py-2.5 flex items-center gap-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all duration-200">
-                <Search className="h-5 w-5 text-muted-foreground shrink-0" />
-                <div className="flex-1">
-                  <StockSearch />
-                </div>
-              </div>
-            </div>
-
-            {/* Quick action pills */}
-            <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 md:flex-wrap md:overflow-visible">
-              <Link href="/screener" className="quick-pill">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Filter className="h-3 w-3 text-primary" />
-                </span>
-                Screener
-              </Link>
-              <Link href="/compare" className="quick-pill">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ios-purple/10">
-                  <Scale className="h-3 w-3 text-ios-purple" />
-                </span>
-                Bandingkan
-              </Link>
-              <Link href="/backtest" className="quick-pill">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ios-orange/10">
-                  <FlaskConical className="h-3 w-3 text-ios-orange" />
-                </span>
-                Backtest
-              </Link>
-              <Link href="/portfolio" className="quick-pill">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/10">
-                  <Briefcase className="h-3 w-3 text-success" />
-                </span>
-                Portfolio
-              </Link>
-              <Link href="/watchlist" className="quick-pill">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Eye className="h-3 w-3 text-primary" />
-                </span>
-                Watchlist
-              </Link>
-            </div>
-
-            {/* Market pulse cards */}
-            {hasMarketData && (
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="bg-success/[0.08] border border-success/20 rounded-lg p-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                    <ArrowUpRight className="h-5 w-5 text-success" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-black text-success tabular-nums leading-none">
-                      {advanceCount}
-                    </div>
-                    <div className="text-[11px] text-success/70 font-medium mt-0.5">
-                      Naik
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-destructive/[0.08] border border-destructive/20 rounded-lg p-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-                    <TrendingDown className="h-5 w-5 text-destructive" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-black text-destructive tabular-nums leading-none">
-                      {declineCount}
-                    </div>
-                    <div className="text-[11px] text-destructive/70 font-medium mt-0.5">
-                      Turun
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="hidden rounded-[1.35rem] border bg-card p-3 md:block">
+            <StockSearch />
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            SINYAL HARI INI — Horizontal scroll signal cards
-            ═══════════════════════════════════════════════════════════════ */}
+        {/* Quick actions: only core mobile paths */}
+        <section className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+          <HomeAction href="/screener" icon={<Filter className="h-4 w-4" />} title="Screener" desc="Scan peluang" tone="primary" />
+          <HomeAction href="/watchlist" icon={<Eye className="h-4 w-4" />} title="Watchlist" desc="Pantauan" tone="blue" />
+          <HomeAction href="/portfolio" icon={<Briefcase className="h-4 w-4" />} title="Portfolio" desc="Kinerja" tone="green" />
+          <HomeAction href="/compare" icon={<Scale className="h-4 w-4" />} title="Bandingkan" desc="2–3 saham" tone="purple" />
+        </section>
+
+        {/* Signals: horizontal, scannable, thumb-friendly */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-foreground">Sinyal Hari Ini</h3>
-              <span className="text-[10px] text-muted-foreground hidden md:inline">
-                Sinyal dengan confidence tertinggi
-              </span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg font-black tracking-tight text-foreground">Sinyal terbaik</h2>
+              <p className="text-xs text-muted-foreground">Confidence tertinggi hari ini</p>
             </div>
-            <DataFreshnessPill updatedAt={marketTimestamp} />
+            <DataFreshnessPill updatedAt={marketTimestamp} className="shrink-0" />
           </div>
           <TopPicksSection picks={topPicks.slice(0, 5)} loading={picksLoading} />
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            PERGERAKAN HARI INI — Tabs + Stock list
-            ═══════════════════════════════════════════════════════════════ */}
+        {/* Market pulse: compact strip, no bulky hero */}
+        <section className="grid grid-cols-3 gap-2 rounded-[1.35rem] border bg-card p-2.5">
+          <PulseMetric label="Naik" value={advanceCount} tone="success" />
+          <PulseMetric label="Turun" value={declineCount} tone="danger" />
+          <PulseMetric
+            label="Rata-rata"
+            value={`${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}%`}
+            tone={marketTone === "bear" ? "danger" : marketTone === "bull" ? "success" : "neutral"}
+          />
+        </section>
+
+        {/* Movers: tap targets >= 44px */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-foreground">Pergerakan Hari Ini</h3>
-            <Link
-              href="/screener"
-              className="inline-flex items-center gap-0.5 text-[11px] font-bold text-primary"
-            >
-              Lihat semua <ChevronRight className="h-3 w-3" />
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-foreground">Pergerakan pasar</h2>
+              <p className="text-xs text-muted-foreground">Ringkasan saham paling bergerak</p>
+            </div>
+            <Link href="/screener" className="inline-flex min-h-9 items-center gap-0.5 rounded-full px-2 text-xs font-bold text-primary">
+              Semua <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
 
-          {/* Tab pills — clean segmented */}
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="grid grid-cols-3 gap-1 rounded-full bg-muted/70 p-1">
             {tabConfig.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => setMarketTab(tab.value)}
                 className={cn(
-                  "rounded-full px-3.5 py-1.5 text-[11px] font-bold transition-all duration-200",
+                  "min-h-11 rounded-full text-xs font-black transition-all",
                   marketTab === tab.value
-                    ? tab.value === "gainers"
-                      ? "bg-success/15 text-success border border-success/30"
-                      : tab.value === "losers"
-                        ? "bg-destructive/15 text-destructive border border-destructive/30"
-                        : "bg-primary/15 text-primary border border-primary/30"
-                    : "bg-muted text-muted-foreground border border-transparent hover:bg-accent",
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground active:bg-card/60",
                 )}
               >
-                {tab.value === "gainers" && "🟢 "}
-                {tab.value === "losers" && "🔴 "}
-                {tab.value === "active" && "⚡ "}
                 {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Tab content */}
           {error ? (
-            <div className="px-2 py-2">
-              <ErrorBanner
-                message={error}
-                onRetry={
-                  retryCount < RETRY_LIMIT ? handleRetry : undefined
-                }
-              />
-            </div>
+            <ErrorBanner message={error} onRetry={retryCount < RETRY_LIMIT ? handleRetry : undefined} />
           ) : loading ? (
-            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl overflow-hidden">
+            <div className="overflow-hidden rounded-[1.35rem] border bg-card">
               <StockRowSkeleton count={5} />
             </div>
           ) : !hasMarketData ? (
-            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4">
+            <div className="rounded-[1.35rem] border bg-card p-4">
               <EmptyState
                 illustration={marketOpen ? "no-results" : "error"}
                 icon={<Clock className="h-5 w-5" aria-hidden />}
-                title={
-                  marketOpen
-                    ? "Belum ada pergerakan"
-                    : "Market sedang tutup"
-                }
-                description={
-                  marketOpen
-                    ? "Tunggu sebentar, data sedang dimuat."
-                    : "Buka lagi saat jam bursa (09:00–16:00 WIB)."
-                }
-                actions={[
-                  {
-                    label: "Buka screener",
-                    icon: <Filter className="h-3 w-3" aria-hidden />,
-                    onClick: () => router.push("/screener"),
-                  },
-                ]}
+                title={marketOpen ? "Belum ada pergerakan" : "Market sedang tutup"}
+                description={marketOpen ? "Tunggu sebentar, data sedang dimuat." : "Buka lagi saat jam bursa (09:00–16:00 WIB)."}
+                actions={[{ label: "Buka screener", icon: <Filter className="h-3 w-3" aria-hidden />, onClick: () => router.push("/screener") }]}
               />
             </div>
           ) : (
-            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl overflow-hidden">
-              {getActiveTabStocks().length === 0 &&
-              marketTab === "gainers" ? (
+            <div className="overflow-hidden rounded-[1.35rem] border bg-card">
+              {getActiveTabStocks().length === 0 && marketTab === "gainers" ? (
                 <div className="p-4">
                   <EmptyState
                     illustration="no-results"
                     icon={<TrendingDown className="h-5 w-5" aria-hidden />}
                     title="Semua saham turun hari ini"
                     description="Tidak ada saham dengan kenaikan positif saat ini."
-                    actions={[
-                      {
-                        label: "Lihat saham terburuk",
-                        icon: <ChevronRight className="h-3 w-3" aria-hidden />,
-                        onClick: () => setMarketTab("losers"),
-                      },
-                    ]}
+                    actions={[{ label: "Lihat saham terburuk", icon: <ChevronRight className="h-3 w-3" aria-hidden />, onClick: () => setMarketTab("losers") }]}
                   />
                 </div>
               ) : (
-                getActiveTabStocks().map((stock) => (
+                getActiveTabStocks().slice(0, 5).map((stock) => (
                   <CompactStockRow
                     key={stock.code}
                     ticker={stock.code}
@@ -592,9 +496,7 @@ export default function HomePage() {
                     sector={stock.sector}
                     price={stock.price}
                     changePct={stock.changePct}
-                    highlighted={
-                      stock.changePct >= 0 ? "bull" : "bear"
-                    }
+                    highlighted={stock.changePct >= 0 ? "bull" : "bear"}
                   />
                 ))
               )}
@@ -602,45 +504,92 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            COLLAPSIBLE SECTIONS — below the grid
-            ═══════════════════════════════════════════════════════════════ */}
-
         <CollapsibleSection
-          title="Saham Fundamental Bagus"
-          icon={<TrendingUp className="h-4 w-4 text-success" />}
-          storageKey="home.screener.open"
+          title="Analisis lanjutan"
+          icon={<BarChart3 className="h-4 w-4 text-primary" />}
+          subtitle="Fundamental, heatmap sektor, dan aliran asing"
+          storageKey="home.advanced.open"
           defaultOpen={false}
         >
-          <FundamentalScreener />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title="Heatmap Sektor"
-          icon={<Activity className="h-4 w-4 text-primary" />}
-          storageKey="home.heatmap.open"
-          defaultOpen={false}
-        >
-          <SectorHeatmap />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title="Aliran Asing"
-          icon={<ArrowDownRight className="h-4 w-4 text-ios-purple" />}
-          subtitle="Estimasi aktivitas asing (proxy volume spike)"
-          storageKey="home.foreign.open"
-          defaultOpen={false}
-        >
-          <ForeignFlow />
-        </CollapsibleSection>
-
-        <footer className="text-center text-[10px] text-muted-foreground py-3 space-y-2">
-          <div className="flex justify-center">
-            <Disclaimer />
+          <div className="space-y-2">
+            <CollapsibleSection title="Saham Fundamental Bagus" icon={<TrendingUp className="h-4 w-4 text-success" />} storageKey="home.screener.open" defaultOpen={false}>
+              <FundamentalScreener />
+            </CollapsibleSection>
+            <CollapsibleSection title="Heatmap Sektor" icon={<Activity className="h-4 w-4 text-primary" />} storageKey="home.heatmap.open" defaultOpen={false}>
+              <SectorHeatmap />
+            </CollapsibleSection>
+            <CollapsibleSection title="Aliran Asing" icon={<ArrowDownRight className="h-4 w-4 text-ios-purple" />} subtitle="Estimasi aktivitas asing" storageKey="home.foreign.open" defaultOpen={false}>
+              <ForeignFlow />
+            </CollapsibleSection>
           </div>
-          📊 Yahoo Finance · Bukan saran finansial
+        </CollapsibleSection>
+
+        <footer className="pb-3 pt-1 text-center text-[11px] leading-relaxed text-muted-foreground">
+          Data Yahoo Finance · Bukan saran finansial · DYOR
         </footer>
       </main>
+    </div>
+  );
+}
+
+function HomeAction({
+  href,
+  icon,
+  title,
+  desc,
+  tone,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  tone: "primary" | "blue" | "green" | "purple";
+}) {
+  const toneClass = {
+    primary: "bg-primary/10 text-primary border-primary/18",
+    blue: "bg-sky-500/10 text-sky-600 border-sky-500/18",
+    green: "bg-success/10 text-success border-success/18",
+    purple: "bg-ios-purple/10 text-ios-purple border-ios-purple/18",
+  }[tone];
+
+  return (
+    <Link
+      href={href}
+      className="group rounded-[1.15rem] border bg-card p-3.5 transition-all active:scale-[0.98]"
+    >
+      <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border", toneClass)}>
+        {icon}
+      </div>
+      <div className="text-sm font-black tracking-tight text-foreground">{title}</div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{desc}</div>
+    </Link>
+  );
+}
+
+function PulseMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number | string;
+  tone: "success" | "danger" | "neutral";
+}) {
+  return (
+    <div className="rounded-2xl bg-muted/45 px-2 py-3 text-center">
+      <div
+        className={cn(
+          "text-lg font-black tabular-nums leading-none",
+          tone === "success" && "text-success",
+          tone === "danger" && "text-destructive",
+          tone === "neutral" && "text-foreground",
+        )}
+      >
+        {value}
+      </div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }

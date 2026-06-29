@@ -12,7 +12,7 @@ import {
 } from "@/lib/screener";
 
 export const runtime = "nodejs";
-export const revalidate = 300; // 5 min ISR cache — in-memory Map cache below only works in single-process mode
+export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
 interface QuickQuote {

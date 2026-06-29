@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ interface CollapsibleSectionProps {
 }
 
 /**
- * CollapsibleSection — header button + content. Doesn't wrap in Card.
+ * CollapsibleSection — header button + content with smooth height animation.
  * Use when child component renders its own Card (avoids nested cards).
  */
 export function CollapsibleSection({
@@ -34,6 +34,9 @@ export function CollapsibleSection({
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -46,33 +49,77 @@ export function CollapsibleSection({
     }
   }, [storageKey]);
 
+  // Measure content height
+  const measureHeight = useCallback(() => {
+    if (contentRef.current) {
+      const height = contentRef.current.scrollHeight;
+      setContentHeight(height);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      // Measure after render
+      requestAnimationFrame(() => {
+        measureHeight();
+      });
+    }
+  }, [open, children, measureHeight]);
+
+  // Observe resize for dynamic content
+  useEffect(() => {
+    if (!open || !contentRef.current) return;
+    const observer = new ResizeObserver(() => {
+      measureHeight();
+    });
+    observer.observe(contentRef.current);
+    return () => observer.disconnect();
+  }, [open, measureHeight]);
+
   const toggle = () => {
     const next = !open;
-    setOpen(next);
-    if (storageKey) {
-      try {
-        localStorage.setItem(storageKey, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
+    setIsAnimating(true);
+
+    // If closing, snapshot current height first
+    if (!next && contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
     }
+
+    // Small delay to allow height to be set before transitioning
+    requestAnimationFrame(() => {
+      setOpen(next);
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, next ? "1" : "0");
+        } catch {
+          // ignore
+        }
+      }
+      // End animation after transition
+      setTimeout(() => setIsAnimating(false), 320);
+    });
   };
 
   return (
     <section
       className={cn(
-        framed && "rounded-xl border bg-card overflow-hidden",
+        framed && "rounded-2xl bg-card overflow-hidden",
+        framed && "shadow-[0_1px_2px_hsl(222_25%_11%/0.04),0_2px_8px_hsl(222_25%_11%/0.05)]",
       )}
     >
       <button
         onClick={toggle}
-        className="w-full flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-accent/40 transition-colors text-left"
+        className={cn(
+          "w-full flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3",
+          "hover:bg-accent/40 active:bg-accent/60",
+          "transition-colors duration-fast ease-spring text-left",
+        )}
         aria-expanded={open}
       >
         {icon && <span className="shrink-0">{icon}</span>}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold truncate">{title}</h3>
+            <h3 className="text-[15px] font-semibold truncate">{title}</h3>
             {accessory}
           </div>
           {open && subtitle && (
@@ -89,13 +136,38 @@ export function CollapsibleSection({
         )}
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
+            "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-base ease-spring",
             open && "rotate-180",
             !mounted && "opacity-0",
           )}
         />
       </button>
-      {open && <div className={framed ? "p-2" : ""}>{children}</div>}
+      <div
+        ref={contentRef}
+        className={cn(
+          "transition-[height,opacity] duration-base ease-spring overflow-hidden",
+          !open && !isAnimating && "h-0",
+          open && !isAnimating && "h-auto",
+        )}
+        style={
+          isAnimating
+            ? {
+                height: open ? contentHeight : 0,
+                opacity: open ? 1 : 0,
+              }
+            : open
+              ? { opacity: 1 }
+              : { opacity: 0 }
+        }
+        onTransitionEnd={() => {
+          if (open && isAnimating) {
+            setIsAnimating(false);
+            setContentHeight(undefined);
+          }
+        }}
+      >
+        <div className={framed ? "p-2" : ""}>{children}</div>
+      </div>
     </section>
   );
 }

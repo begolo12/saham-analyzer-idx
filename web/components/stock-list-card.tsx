@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,7 @@ const actionColors: Record<string, string> = {
   STRONG_SELL: "bg-bear-700",
 };
 
-export function StockListCard({
+export const StockListCard = React.memo(function StockListCard({
   ticker,
   name,
   sector,
@@ -84,4 +85,4 @@ export function StockListCard({
       </Card>
     </Link>
   );
-}
+});

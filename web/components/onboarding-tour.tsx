@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,11 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "saham_onboarding_completed";
+
+const prefersReducedMotion =
+  typeof window !== "undefined"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
 
 interface TourStep {
   icon: React.ReactNode;
@@ -130,92 +136,107 @@ export function OnboardingTour({ forceShow = false }: OnboardingTourProps) {
     }
   }, []);
 
-  if (!open) return null;
-
   const current = TOUR_STEPS[step];
   const isLast = step === TOUR_STEPS.length - 1;
   const isFirst = step === 0;
 
+  const duration = prefersReducedMotion ? 0.01 : undefined;
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Onboarding tour"
-    >
-      <Card className="w-full max-w-md p-6 relative bg-gradient-to-br from-background to-primary/5 border-2 border-primary/20 shadow-2xl">
-        <button
-          onClick={skip}
-          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Skip tour"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Onboarding tour"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: duration ?? 0.2 } }}
+          exit={{ opacity: 0, transition: { duration: duration ?? 0.15 } }}
         >
-          <X className="h-5 w-5" />
-        </button>
-
-        <div className="text-center mb-5">
-          <div className="text-5xl mb-3" aria-hidden>
-            {current.emoji}
-          </div>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {current.icon}
-            <h2 className="text-lg font-black">{current.title}</h2>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {current.description}
-          </p>
-        </div>
-
-        {/* Progress dots */}
-        <div className="flex items-center justify-center gap-1.5 mb-5">
-          {TOUR_STEPS.map((_, i) => (
+          <Card className="w-full max-w-md p-6 relative bg-gradient-to-br from-background to-primary/5 border-2 border-primary/20 shadow-2xl">
             <button
-              key={i}
-              onClick={() => setStep(i)}
-              aria-label={`Go to step ${i + 1}`}
-              className={cn(
-                "h-2 rounded-full transition-all",
-                i === step ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30",
-              )}
-            />
-          ))}
-        </div>
+              onClick={skip}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Skip tour"
+            >
+              <X className="h-5 w-5" />
+            </button>
 
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={prev}
-            disabled={isFirst}
-            className={isFirst ? "invisible" : ""}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Kembali
-          </Button>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: prefersReducedMotion ? 0 : 20 }}
+                animate={{ opacity: 1, x: 0, transition: { duration: duration ?? 0.25, ease: [0.25, 0.1, 0.25, 1] } }}
+                exit={{ opacity: 0, x: prefersReducedMotion ? 0 : -20, transition: { duration: duration ?? 0.15, ease: [0.4, 0, 1, 1] } }}
+                className="text-center mb-5"
+              >
+                <div className="text-5xl mb-3" aria-hidden>
+                  {current.emoji}
+                </div>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  {current.icon}
+                  <h2 className="text-lg font-black">{current.title}</h2>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {current.description}
+                </p>
+              </motion.div>
+            </AnimatePresence>
 
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {step + 1} / {TOUR_STEPS.length}
-          </span>
+            {/* Progress dots */}
+            <div className="flex items-center justify-center gap-1.5 mb-5">
+              {TOUR_STEPS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setStep(i)}
+                  aria-label={`Go to step ${i + 1}`}
+                  className={cn(
+                    "h-2 rounded-full transition-all",
+                    i === step ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30"
+                  )}
+                />
+              ))}
+            </div>
 
-          <Button size="sm" onClick={next} className="min-w-24">
-            {isLast ? (
-              "Mulai! 🚀"
-            ) : (
-              <>
-                Lanjut
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
-            )}
-          </Button>
-        </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={prev}
+                disabled={isFirst}
+                className={isFirst ? "invisible" : ""}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Kembali
+              </Button>
 
-        <button
-          onClick={skip}
-          className="block mx-auto mt-3 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Lewati tour
-        </button>
-      </Card>
-    </div>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {step + 1} / {TOUR_STEPS.length}
+              </span>
+
+              <Button size="sm" onClick={next} className="min-w-24">
+                {isLast ? (
+                  "Mulai! 🚀"
+                ) : (
+                  <>
+                    Lanjut
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <button
+              onClick={skip}
+              className="block mx-auto mt-3 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Lewati tour
+            </button>
+          </Card>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

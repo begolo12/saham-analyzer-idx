@@ -1,0 +1,832 @@
+{
+  "D:\\saham-claude\\app.py": {
+    "mtime": 1782069343.8490665,
+    "ast_hash": "f156179c7cd3d2781043a5869be53f8e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\vercel.json": {
+    "mtime": 1782208145.0468853,
+    "ast_hash": "40c7be75e5223b96c46b3fc50005a141",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\data\\sentiment_lexicon.json": {
+    "mtime": 1781864800.9311166,
+    "ast_hash": "b9c491d18a37d66baef1020b856a9e89",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\behavioral.py": {
+    "mtime": 1781864198.285909,
+    "ast_hash": "59f5d58ee35d1ad685824ac320d1fed9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\data_fetcher.py": {
+    "mtime": 1781864045.137053,
+    "ast_hash": "88996afb930193feb279b507e70d77d7",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\fundamental.py": {
+    "mtime": 1781864145.039676,
+    "ast_hash": "1ca96325f809bbe1a4ce5b8cca5053d9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\idx_realtime.py": {
+    "mtime": 1782069408.4192665,
+    "ast_hash": "cd778741ed42426bb617eaf35595ae6d",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\recommender.py": {
+    "mtime": 1781864291.8443956,
+    "ast_hash": "f4b3f9fda11dfa816e14866979a4813a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\sentiment.py": {
+    "mtime": 1781864254.278936,
+    "ast_hash": "42a225b1c23dc3cc9ad957e8fdb5bc23",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\technical.py": {
+    "mtime": 1781864092.7265987,
+    "ast_hash": "ee7a23c4274351ab7a695549d00e9d59",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\telegram_bot.py": {
+    "mtime": 1782144792.9551353,
+    "ast_hash": "383bc3042b0df583c3edc32c823ef6a4",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\telegram_bot_test.py": {
+    "mtime": 1782144714.7003238,
+    "ast_hash": "d21362b62c376a39fef66afb9305f9ef",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\utils.py": {
+    "mtime": 1781864393.9671667,
+    "ast_hash": "2ada8817506a06c7a1d45372257bdf34",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\__init__.py": {
+    "mtime": 1781864017.795052,
+    "ast_hash": "8f41fda23a93b5ad55ee87289359b5ae",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\tests\\test_analysis.py": {
+    "mtime": 1781864393.979664,
+    "ast_hash": "b12c1443fa23a0a9e35a395eb0705a90",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\tests\\test_idx_realtime.py": {
+    "mtime": 1782069393.945508,
+    "ast_hash": "ed151a9cac462a2229fd17dff75a2f41",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\tests\\__init__.py": {
+    "mtime": 1781864393.9865422,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\.eslintrc.json": {
+    "mtime": 1782101305.0088727,
+    "ast_hash": "6c636976577d27c2ebdc12da2f6f2b56",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\next.config.mjs": {
+    "mtime": 1782271497.2443945,
+    "ast_hash": "9192efb120de57b6d704148caed78727",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\package.json": {
+    "mtime": 1781901524.1580105,
+    "ast_hash": "1e59cdebd98239b103d1c6d4e92bfdf3",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\postcss.config.mjs": {
+    "mtime": 1781865144.0506115,
+    "ast_hash": "c735540bb63936a123bc867d950c9f69",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\tailwind.config.ts": {
+    "mtime": 1782295896.5686507,
+    "ast_hash": "7eace566cafcdc200d90acdb4c9bae38",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\tsconfig.json": {
+    "mtime": 1781865144.0221782,
+    "ast_hash": "be402bb2943ec4d70061ca82a37cd2d5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\vercel.json": {
+    "mtime": 1781865672.1537657,
+    "ast_hash": "d4eed94a6807afe425db379dc21aaf60",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\vitest.config.ts": {
+    "mtime": 1781901517.7811687,
+    "ast_hash": "5475ca3193bea948b62b4f1352e5c94d",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\layout.tsx": {
+    "mtime": 1782273137.1191454,
+    "ast_hash": "5d57edd5aaaf264b48bebe2a51dcfa6e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\page.tsx": {
+    "mtime": 1782296815.5507586,
+    "ast_hash": "07b44c1eb0481a5088d99929fa3df019",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\alerts\\page.tsx": {
+    "mtime": 1782276698.092697,
+    "ast_hash": "6c03d72d05e0630777cc19757a7bd14a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\analysis\\[ticker]\\route.ts": {
+    "mtime": 1782276686.1617074,
+    "ast_hash": "cad659bde9102011bdabf46427244036",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\backtest\\route.ts": {
+    "mtime": 1782298287.1079555,
+    "ast_hash": "c2da0495d6e60099b852d431cdf3cd06",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\compare\\route.ts": {
+    "mtime": 1782298214.8861613,
+    "ast_hash": "081325a1f865887377a44354c180d93a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\foreign-flow\\route.ts": {
+    "mtime": 1781902580.2601044,
+    "ast_hash": "7bd41e0cb8593ca083b70180d6027888",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\ihsg\\route.ts": {
+    "mtime": 1782276507.2799935,
+    "ast_hash": "294aa09bc162ffd6c48caee37a4cb27d",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\market\\overview\\route.ts": {
+    "mtime": 1781869232.4856348,
+    "ast_hash": "d013f7a4d876a203429d1ceabf63f8cd",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\market\\top-picks\\route.ts": {
+    "mtime": 1782208530.5436006,
+    "ast_hash": "9e05a1475869fe8afbb2005607a6ddc6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\news\\[ticker]\\route.ts": {
+    "mtime": 1781865399.5447628,
+    "ast_hash": "4ef68c808184c6c32a2bb994dfc6e4b4",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\quick\\[ticker]\\route.ts": {
+    "mtime": 1781882555.4407403,
+    "ast_hash": "f700d4251cb6e0d7ae9bbf3c172ed3c0",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\realtime\\route.ts": {
+    "mtime": 1782069521.0685835,
+    "ast_hash": "6f047c6eb9e374fa0275d713ad468b73",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\realtime\\[ticker]\\route.ts": {
+    "mtime": 1782069521.0233538,
+    "ast_hash": "3f1d99d2901b9ab5e60982f957291728",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\screener\\route.ts": {
+    "mtime": 1782298214.868028,
+    "ast_hash": "e947c385c491777e247c7cc5e6c2c236",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\screener\\custom\\route.ts": {
+    "mtime": 1782298214.9268959,
+    "ast_hash": "fefaf06dcb09346ff060f065d2f384e7",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\screener\\fundamental\\route.ts": {
+    "mtime": 1781898484.5294719,
+    "ast_hash": "9a7428133c1300abc43664a52fb9be7a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\search\\route.ts": {
+    "mtime": 1781867966.8628304,
+    "ast_hash": "e2cf984471125618e925040fb4b410b6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\api\\stock\\[ticker]\\route.ts": {
+    "mtime": 1781865399.5031185,
+    "ast_hash": "1ac2afa42a81b40d142f759537e3e275",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\backtest\\loading.tsx": {
+    "mtime": 1782271430.4420245,
+    "ast_hash": "7fe8e53f88c2e0e35b159694727f87e2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\backtest\\page.tsx": {
+    "mtime": 1782151821.1244504,
+    "ast_hash": "acc9a15d6b20e0252f09b7388f4b8171",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\compare\\loading.tsx": {
+    "mtime": 1782271430.438023,
+    "ast_hash": "e16491e9988768e359ff5cb94f9da742",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\compare\\page.tsx": {
+    "mtime": 1782114087.5243974,
+    "ast_hash": "32fdf7e3e280c6cc8e7032d354bec7f6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\explore\\page.tsx": {
+    "mtime": 1782295913.7727833,
+    "ast_hash": "637f992ec96e287d59604e71cc5a5a90",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\offline\\page.tsx": {
+    "mtime": 1782116676.471631,
+    "ast_hash": "313f637fdc10791cb60a506f17f87ff5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\portfolio\\loading.tsx": {
+    "mtime": 1782271430.5061884,
+    "ast_hash": "15780d17352908cf8564814ce28715a6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\portfolio\\page.tsx": {
+    "mtime": 1782276559.280986,
+    "ast_hash": "3b1280cbfc363f4c35810320b6c5fbf9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\screener\\loading.tsx": {
+    "mtime": 1782271430.5041888,
+    "ast_hash": "6eee684edf1b368d3167ebc5ea84d45f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\screener\\page.tsx": {
+    "mtime": 1782151787.1813684,
+    "ast_hash": "a608f7bc3e131e5ca49bc4dd9f2ec317",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\search\\page.tsx": {
+    "mtime": 1782122746.589825,
+    "ast_hash": "21e75f856cfcef6c28817931f782a826",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\settings\\page.tsx": {
+    "mtime": 1782116394.459211,
+    "ast_hash": "77f8b622a4738f9a1b247686259076b3",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\share\\watchlist\\page.tsx": {
+    "mtime": 1782116676.2112362,
+    "ast_hash": "f2023b984f25f83cc1349f5aef4a1395",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\stock\\[ticker]\\page.tsx": {
+    "mtime": 1782298346.9895494,
+    "ast_hash": "733ade272a6e57f452a434ae87bc9fa4",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\app\\watchlist\\page.tsx": {
+    "mtime": 1782276789.0137186,
+    "ast_hash": "3d0ddac8b48e54c526daf51df0859e82",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\add-transaction-modal.tsx": {
+    "mtime": 1781880853.3373005,
+    "ast_hash": "35eb0e36c806c7f3b78ba770b3e280c2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ai-chatbot.tsx": {
+    "mtime": 1781902289.071772,
+    "ast_hash": "7728bc9f5a50bdb4dc711110203cfe32",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\alert.tsx": {
+    "mtime": 1782274856.9514153,
+    "ast_hash": "9c712605ada479a0dff90137988defc0",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\behavioral-patterns.tsx": {
+    "mtime": 1781865518.716401,
+    "ast_hash": "a153cb0dd1a4465d589137ce35a28cf5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\benchmark-chart.tsx": {
+    "mtime": 1782295944.0515504,
+    "ast_hash": "1e3066a7de9e671b2d961e944c5cec2d",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\bottom-nav.tsx": {
+    "mtime": 1782275649.42579,
+    "ast_hash": "45de8d5d2957dad5abd757e974f696ea",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\cash-modal.tsx": {
+    "mtime": 1781881905.0867834,
+    "ast_hash": "6332f44abff4e3e07e34a3131d63772b",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\collapsible-card.tsx": {
+    "mtime": 1782295733.8220153,
+    "ast_hash": "9950da883e8a0dd0a19dfb137e4fa148",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\collapsible-section.tsx": {
+    "mtime": 1782274859.2227075,
+    "ast_hash": "6c52d5ecc0f11071ebf69e99d27c2dc1",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\command-palette.tsx": {
+    "mtime": 1782101996.8623357,
+    "ast_hash": "35fb4024bb614deeeabac6c1c85fccc5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\compact-mode-toggle.tsx": {
+    "mtime": 1781903026.3981087,
+    "ast_hash": "2add3ffd487075f39e3a28461f4622a4",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\compact-stock-row.tsx": {
+    "mtime": 1782295834.5322556,
+    "ast_hash": "f22152337ad6557974f9723ccf3c1b4e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\daily-briefing.tsx": {
+    "mtime": 1782274929.3156807,
+    "ast_hash": "584ddef2c3e49d714322e9b5bf603171",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\data-freshness-pill.tsx": {
+    "mtime": 1782271404.3732824,
+    "ast_hash": "1fb1572834dbb0261d5076803fc18aa7",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\empty-state.tsx": {
+    "mtime": 1782271433.329641,
+    "ast_hash": "9e5a0b885245728b6e4ebc104ed96ed2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\error-banner.tsx": {
+    "mtime": 1782071149.5428147,
+    "ast_hash": "14ce6a44d49453faf9cc21439b0383f0",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\foreign-flow.tsx": {
+    "mtime": 1781901876.742478,
+    "ast_hash": "a5ba9e08171013dd8ca6726fe8b85c69",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\fundamental-metrics.tsx": {
+    "mtime": 1781865518.704217,
+    "ast_hash": "2eb5bd613dd9c65d0862723857d78761",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\fundamental-screener.tsx": {
+    "mtime": 1781898585.567298,
+    "ast_hash": "f3f50672f58fd78990c9f022d30cbe71",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\horizon-selector.tsx": {
+    "mtime": 1782271568.5443246,
+    "ast_hash": "ebc75873674f4c5f18a8d833763d3221",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ihsg-benchmark.tsx": {
+    "mtime": 1781899546.0874414,
+    "ast_hash": "9f9e9ce037f723c123c7aa183433ed78",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\install-prompt.tsx": {
+    "mtime": 1782271414.7859704,
+    "ast_hash": "b96565c1dc3af8077e2427711703f982",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\keyboard-shortcuts.tsx": {
+    "mtime": 1781902313.4680023,
+    "ast_hash": "114191e574e775b487b0e97b55b5280e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\language-switcher.tsx": {
+    "mtime": 1781902348.583313,
+    "ast_hash": "733d0ece71e936b0b4807767707d18a0",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\lazy-load.tsx": {
+    "mtime": 1782271414.7281141,
+    "ast_hash": "94217fefeaaa5a3cbfb65889d218081a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\link-prefetch.tsx": {
+    "mtime": 1782274525.4462447,
+    "ast_hash": "97651ce4456c579b4f6e87916e4f12e1",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\mini-chart.tsx": {
+    "mtime": 1781865535.8515582,
+    "ast_hash": "3ab45911e969c9b5bb7b03f08c918283",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\mobile-app-bar.tsx": {
+    "mtime": 1782273893.4531488,
+    "ast_hash": "4e18afda3b10e3aa71ce69845f2ab37a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\network-status-indicator.tsx": {
+    "mtime": 1782271414.7784593,
+    "ast_hash": "84ec3c93060e02f7bab25180c4e453a4",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\news-list.tsx": {
+    "mtime": 1781865518.7298357,
+    "ast_hash": "a1e86dc80904b6537236cee3c2a6cbb2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\onboarding-tour.tsx": {
+    "mtime": 1782271433.329641,
+    "ast_hash": "33a244f9687d03f0ce5e4bc343e58744",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\page-transition.tsx": {
+    "mtime": 1782272408.3099365,
+    "ast_hash": "0b53b4924cf47b37e8fcbf9e6ce16b15",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\portfolio-chart.tsx": {
+    "mtime": 1781892327.8055165,
+    "ast_hash": "99ab9e9bd2eaf5ba0a12b807e031b2b3",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\portfolio-stats-card.tsx": {
+    "mtime": 1782295944.0228908,
+    "ast_hash": "12bca03d79b019cdc40b7c1e08948532",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\price-alert-modal.tsx": {
+    "mtime": 1782276654.1679974,
+    "ast_hash": "bf68f85a13df8e1c236a395089ce4673",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\price-chart.tsx": {
+    "mtime": 1781865518.6888168,
+    "ast_hash": "efc622a87f847983417a33d69019cfb2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\recommendation-hero.tsx": {
+    "mtime": 1782271488.200664,
+    "ast_hash": "9287a3a2bf8091e26db37606c2dfaee6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\sector-donut.tsx": {
+    "mtime": 1782295944.0617318,
+    "ast_hash": "3c091eaec31f06a67b299456c814bb34",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\sector-heatmap.tsx": {
+    "mtime": 1781897260.2706544,
+    "ast_hash": "d660d764d7a73e0e6e13af1c9418c5a6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\service-worker-register.tsx": {
+    "mtime": 1782271518.3210402,
+    "ast_hash": "6b8deeccd4d3b2d68fbdf4dc837bcaeb",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\skeleton.tsx": {
+    "mtime": 1782271381.9567907,
+    "ast_hash": "a745f33f3a7c3f43fe3ac3207c374f8f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\stock-comparison.tsx": {
+    "mtime": 1782276532.046547,
+    "ast_hash": "190dcd306b512f826c95d2988cffb73a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\stock-list-card.tsx": {
+    "mtime": 1781865478.9210978,
+    "ast_hash": "81a5278d4d7a35a20d956eada2a72164",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\stock-row-skeleton.tsx": {
+    "mtime": 1782271593.9513159,
+    "ast_hash": "be2e91596412ffefdb5e2a1dae26669f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\stock-search.tsx": {
+    "mtime": 1781865582.514478,
+    "ast_hash": "f1054991097877537a0a9491588fb63b",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\technical-indicators.tsx": {
+    "mtime": 1782271524.1053104,
+    "ast_hash": "ff116db78b53cac85f39482f228902be",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\theme-provider.tsx": {
+    "mtime": 1782273088.972148,
+    "ast_hash": "6e419ab84dce56318757885842f8b242",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\theme-toggle.tsx": {
+    "mtime": 1782273111.5734935,
+    "ast_hash": "77ca2d145468af8e19446edad65d8451",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ticker-autocomplete.tsx": {
+    "mtime": 1782101996.974053,
+    "ast_hash": "21b13085660d3055f9c0c21901088d07",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\top-header.tsx": {
+    "mtime": 1782275667.8499937,
+    "ast_hash": "dac7c35459f6904acbae13495c09ce92",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\top-picks-section.tsx": {
+    "mtime": 1782295844.7710557,
+    "ast_hash": "fe8c83b031a6f7fec40fc743deb3f012",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\track-recommendation.ts": {
+    "mtime": 1781869392.92097,
+    "ast_hash": "74b3d50bc721596beff860ae4de8cb13",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\watchlist-button.tsx": {
+    "mtime": 1782276552.7176945,
+    "ast_hash": "9e2cc4e10cd72c697a283687dba79696",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\watchlist-card.tsx": {
+    "mtime": 1782295944.020329,
+    "ast_hash": "19eee29f18f0628ebfd2f8af9296a10a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ui\\badge.tsx": {
+    "mtime": 1781865439.3519483,
+    "ast_hash": "267a6bdb59186625e643edfc8a910331",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ui\\button.tsx": {
+    "mtime": 1782271500.7345474,
+    "ast_hash": "77c0c6acb9aac9a46dd4488788665e98",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ui\\card.tsx": {
+    "mtime": 1782271469.7345538,
+    "ast_hash": "2618d2792e984f9e338f666fa98e3767",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ui\\input.tsx": {
+    "mtime": 1781865439.3402643,
+    "ast_hash": "ab3e53c6b701f39ce3404ccc4454dccb",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\components\\ui\\tabs.tsx": {
+    "mtime": 1782100091.5848296,
+    "ast_hash": "18b3a930d7049e0e19121816605b8a0f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\hooks\\use-haptic.ts": {
+    "mtime": 1782271361.6754558,
+    "ast_hash": "a5a8c6c8ac3d832a4843231248be03bb",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\hooks\\use-network-status.ts": {
+    "mtime": 1782271414.7251067,
+    "ast_hash": "07f004262f1c4b9ad52238f807fcbfd9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\hooks\\use-pull-to-refresh.ts": {
+    "mtime": 1782271361.670945,
+    "ast_hash": "235572bb5271c0f22c6d6055848e756f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\hooks\\use-realtime-price.ts": {
+    "mtime": 1782069521.021144,
+    "ast_hash": "70b41096a42e0370365616817f0118c6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\hooks\\use-swipe.ts": {
+    "mtime": 1782271361.737791,
+    "ast_hash": "624a484075b722bbaec802108ba1e252",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\analysis-engine.ts": {
+    "mtime": 1782276535.8703718,
+    "ast_hash": "9ab8377825ff1b91d2f7ed8392a0ac17",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\backtest.ts": {
+    "mtime": 1781902530.7381861,
+    "ast_hash": "55bfa2c118418f05e9f18dd02b55496b",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\backup.ts": {
+    "mtime": 1781901215.048052,
+    "ast_hash": "31fb6ddb3d35c876f89a7d8fb3ee817e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\behavioral.ts": {
+    "mtime": 1781869366.8171518,
+    "ast_hash": "e312afd3767251a2fb2dbad4bdcce750",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\cash-ledger.ts": {
+    "mtime": 1781881868.121268,
+    "ast_hash": "07b0125ae547b840f8cc0681487284d6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\cash-storage.ts": {
+    "mtime": 1781881880.6063445,
+    "ast_hash": "74081e91220b4205afc9136e5b76b995",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\chatbot.ts": {
+    "mtime": 1781902044.8818016,
+    "ast_hash": "4d7902ad3a06037776937ad1e135059c",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\compact-mode.ts": {
+    "mtime": 1781903067.4089518,
+    "ast_hash": "38c8f533fdaf4df8e4bce2d593e27e4c",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\constants.ts": {
+    "mtime": 1782298188.5427384,
+    "ast_hash": "512a13b133bb6baa3826462c3fca3da3",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\foreign-flow.ts": {
+    "mtime": 1781902580.250121,
+    "ast_hash": "c09027ed3ec45a6bdffbf6a1988e1391",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\fundamental.ts": {
+    "mtime": 1781869376.6958737,
+    "ast_hash": "183c26bcea820d175179cbec27abc18c",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\i18n.ts": {
+    "mtime": 1781902335.6468756,
+    "ast_hash": "6726e7db13a923ebc33685408cdcc6a0",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\news.ts": {
+    "mtime": 1781869407.612927,
+    "ast_hash": "b5729ef0c49f48926d71e11510f5877f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\notifications.ts": {
+    "mtime": 1781900481.8902466,
+    "ast_hash": "bbfbc2c33b65a78770360d2ff4cb5b94",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\popular-stocks.ts": {
+    "mtime": 1781866956.3961174,
+    "ast_hash": "6db17357ea0ca44832deef83017c30d9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\portfolio-snapshots.ts": {
+    "mtime": 1781893034.6331272,
+    "ast_hash": "6c279a4cb2a47510a25cdb4f2937a6f5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\portfolio-storage.ts": {
+    "mtime": 1781867039.285056,
+    "ast_hash": "866b56706d301d866d1f48f21d9a21f9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\portfolio.test.ts": {
+    "mtime": 1781901647.0519226,
+    "ast_hash": "b2cbc832b50f066952ad7fc4cead658d",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\portfolio.ts": {
+    "mtime": 1782276409.7416356,
+    "ast_hash": "308b1340469e41911f5e010fdb679d1f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\price-alerts.ts": {
+    "mtime": 1782276605.6654353,
+    "ast_hash": "0baa47720014153b4ff2fcfc3d0b7b95",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\realtime.ts": {
+    "mtime": 1782298214.90776,
+    "ast_hash": "bc18284fb26ee14cc99723f70317266f",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\recommender.ts": {
+    "mtime": 1781865370.691926,
+    "ast_hash": "41442cfc9eb15f970a1db7f14f226629",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\screener.ts": {
+    "mtime": 1782276570.3255868,
+    "ast_hash": "7da74f615cb3ec44397ba6bf5301241a",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\self-analysis-storage.ts": {
+    "mtime": 1781867176.2152207,
+    "ast_hash": "db6f4d847bb6fac3e83becbf2a7232f8",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\self-analysis.ts": {
+    "mtime": 1781867161.9496467,
+    "ast_hash": "7f537397a7c87cf77a6166c0210fb1f9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\sentiment-lexicon.json": {
+    "mtime": 1781865370.666856,
+    "ast_hash": "de5ca082ef10245708172b7c0a9e2246",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\sentiment.ts": {
+    "mtime": 1781865370.674245,
+    "ast_hash": "ca81f437678e6e39c25cfb91fc496041",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\technical.ts": {
+    "mtime": 1781869430.4103427,
+    "ast_hash": "8f0134df6d9f6f558633a871ed55954e",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\utils.ts": {
+    "mtime": 1781865170.649549,
+    "ast_hash": "8aae569a313b9456dd183308aaa19554",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\watchlist-storage.ts": {
+    "mtime": 1782276563.8709238,
+    "ast_hash": "4f8847c3bc4cc5074756c2006c8902e5",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\lib\\yahoo.ts": {
+    "mtime": 1782298214.86157,
+    "ast_hash": "aee3c9c49c007762acaa871dfca23808",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\public\\manifest.json": {
+    "mtime": 1781901839.1576917,
+    "ast_hash": "cdeeab50de34be82049b61494a00df21",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\public\\sw.js": {
+    "mtime": 1782271555.5000405,
+    "ast_hash": "94937019fee9d9b32a71e0d41e44f7cb",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\BMAD_ROADMAP.md": {
+    "mtime": 1782184152.937523,
+    "ast_hash": "a5f2ae3ae0074396d0d2c3093a9808d6",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\DEPLOYMENT.md": {
+    "mtime": 1781865891.028358,
+    "ast_hash": "c32f77589cf0e28dab1c18ac09d04eba",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\IMPROVEMENT_TRACKER.md": {
+    "mtime": 1782298595.4193547,
+    "ast_hash": "ed04258e687f1a71578ce95a8e515052",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\PRD.md": {
+    "mtime": 1782066831.9636457,
+    "ast_hash": "451db9ad78960b00f911a99c485275b2",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\README.md": {
+    "mtime": 1781865706.4894245,
+    "ast_hash": "fd91a2a4995bbdb67d18267a6a8a6da9",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\requirements.txt": {
+    "mtime": 1781864002.846409,
+    "ast_hash": "33b6920ecfc9ef6261b4af831fe47924",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\.github\\workflows\\deploy.yml": {
+    "mtime": 1781865672.1618626,
+    "ast_hash": "7b197207aa6d66363bec315581fd34a7",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\docs\\PRD-PROFESSIONAL-UPGRADE.md": {
+    "mtime": 1782271137.8699515,
+    "ast_hash": "dfea9718b338af5375058adc141b053c",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\modules\\TELEGRAM_SETUP.md": {
+    "mtime": 1782072082.7405872,
+    "ast_hash": "7ae18c073806e5bc6d8836a093b62c61",
+    "semantic_hash": ""
+  },
+  "D:\\saham-claude\\web\\public\\icon.svg": {
+    "mtime": 1781865418.0405548,
+    "ast_hash": "c6ee4ecefed98973d8b6b62bdb3a27f7",
+    "semantic_hash": ""
+  }
+}

@@ -26,7 +26,9 @@ export function FundamentalMetrics({ metrics }: FundamentalMetricsProps) {
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
+      <div
+        className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center text-muted-foreground"
+      >
         Data fundamental tidak tersedia untuk saham IDX ini.
         <br />
         <span className="text-xs">Cek laporan keuangan langsung di idx.co.id</span>
@@ -35,19 +37,19 @@ export function FundamentalMetrics({ metrics }: FundamentalMetricsProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {visible.map((m) => {
         const variant = signalBadgeVariant[m.signal];
         return (
           <div
             key={m.name}
-            className="rounded-xl border bg-card p-3 sm:p-4 hover:bg-accent/30 transition-colors"
+            className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4"
           >
             <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{m.name}</span>
-                  <span className="text-xs font-mono text-muted-foreground">
+                  <span className="text-xs font-mono text-muted-foreground font-num">
                     {m.formatted}
                   </span>
                 </div>

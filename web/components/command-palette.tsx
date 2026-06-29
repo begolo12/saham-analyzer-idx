@@ -28,7 +28,6 @@ interface PaletteAction {
   label: string;
   description?: string;
   icon: React.ReactNode;
-  /** Search keywords */
   keywords: string[];
   action: () => void;
   group: string;
@@ -147,19 +146,16 @@ export function CommandPalette() {
           return;
         }
         if (a.id === "action-shortcuts") {
-          // Trigger keyboard shortcuts modal
           window.dispatchEvent(new CustomEvent("show-shortcuts"));
           return;
         }
         if (a.id === "action-chatbot") {
-          // Trigger chatbot open
           window.dispatchEvent(new CustomEvent("open-chatbot"));
           return;
         }
       },
     }));
 
-    // Add stock actions: navigate + add to watchlist
     const stockActions: PaletteAction[] = POPULAR_STOCKS.slice(0, 25).map((s) => ({
       id: `stock-${s.code}`,
       label: s.code,
@@ -171,12 +167,11 @@ export function CommandPalette() {
     }));
 
     return [...baseActions, ...stockActions];
-  }, [router, watchlistTickers]);
+  }, [router]);
 
   // Filter by query
   const results = useMemo(() => {
     if (!query.trim()) {
-      // Default: show nav + first 6 stocks + watchlist tickers
       const nav = allActions.filter((a) => a.group === "Navigasi" || a.group === "Aksi");
       const watchlist = watchlistMounted && watchlistTickers.length > 0
         ? allActions.filter(
@@ -206,7 +201,6 @@ export function CommandPalette() {
         setOpen((prev) => !prev);
         return;
       }
-      // Open on "/" (only if not in input)
       if (e.key === "/" && !open) {
         const target = e.target as HTMLElement | null;
         const tag = target?.tagName?.toLowerCase();
@@ -220,7 +214,7 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  // Listen for external open events (e.g. from KeyboardShortcuts button)
+  // Listen for external open events
   useEffect(() => {
     function onShow(e: Event) {
       if ((e as CustomEvent).detail?.type === "command-palette") {
@@ -238,7 +232,6 @@ export function CommandPalette() {
     if (open) {
       setQuery("");
       setActiveIndex(0);
-      // Focus input after open
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
@@ -311,7 +304,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4 bg-black/40 backdrop-blur-sm animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) setOpen(false);
       }}
@@ -319,7 +312,14 @@ export function CommandPalette() {
       aria-modal="true"
       aria-label="Command palette"
     >
-      <div className="w-full max-w-xl rounded-xl border bg-background shadow-2xl overflow-hidden">
+      <div
+        className={cn(
+          "w-full max-w-xl rounded-2xl border bg-card overflow-hidden",
+          "shadow-[12px_12px_24px_rgba(0,0,0,0.12),-12px_-12px_24px_rgba(255,255,255,0.8)]",
+          "dark:shadow-[12px_12px_24px_rgba(0,0,0,0.4),-12px_-12px_24px_rgba(255,255,255,0.06)]",
+          "animate-scale-in",
+        )}
+      >
         {/* Search input */}
         <div className="flex items-center gap-2 px-3 py-3 border-b">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -345,7 +345,7 @@ export function CommandPalette() {
         >
           {results.length === 0 ? (
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-              <p>Tidak ada hasil untuk "{query}"</p>
+              <p>Tidak ada hasil untuk &quot;{query}&quot;</p>
               <p className="text-[10px] mt-1">Coba kata kunci lain</p>
             </div>
           ) : (
@@ -370,7 +370,8 @@ export function CommandPalette() {
                       onClick={() => handleSelect(item)}
                       onMouseEnter={() => setActiveIndex(idx)}
                       className={cn(
-                        "w-full flex items-center gap-3 px-2 py-1.5 rounded-md text-left text-sm",
+                        "w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left text-sm",
+                        "transition-colors duration-fast",
                         isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent/60",
                       )}
                     >

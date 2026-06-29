@@ -2,31 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface CollapsibleCardProps {
   title: React.ReactNode;
   icon?: React.ReactNode;
-  /** Right-side accessory (badge, count, etc.) */
   accessory?: React.ReactNode;
-  /** Subtitle shown when expanded */
   subtitle?: string;
-  /** Default open state */
   defaultOpen?: boolean;
-  /** Storage key to persist open state (across pages) */
   storageKey?: string;
-  /** Optional right action button */
   action?: React.ReactNode;
-  /** Compact density */
   density?: "tight" | "normal";
+  accentColor?: string;
   children: React.ReactNode;
 }
 
-/**
- * CollapsibleCard — section header with click-to-expand.
- * Persists open state in localStorage if storageKey provided.
- */
 export function CollapsibleCard({
   title,
   icon,
@@ -36,12 +26,12 @@ export function CollapsibleCard({
   storageKey,
   action,
   density = "normal",
+  accentColor,
   children,
 }: CollapsibleCardProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
 
-  // Load persisted state
   useEffect(() => {
     if (!storageKey) return;
     setMounted(true);
@@ -68,15 +58,17 @@ export function CollapsibleCard({
   };
 
   return (
-    <Card
+    <div
       className={cn(
-        "overflow-hidden",
+        "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl overflow-hidden",
         density === "tight" && "gap-0",
+        accentColor && "border-l-[3px]",
+        accentColor,
       )}
     >
       <button
         onClick={toggle}
-        className="w-full flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-accent/40 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-accent/30 transition-colors text-left"
         aria-expanded={open}
       >
         {icon && <span className="shrink-0">{icon}</span>}
@@ -85,8 +77,11 @@ export function CollapsibleCard({
             <h3 className="text-sm font-bold truncate">{title}</h3>
             {accessory}
           </div>
-          {open && subtitle && (
-            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+          {subtitle && (
+            <p className={cn(
+              "text-[10px] text-muted-foreground truncate mt-0.5",
+              !open && "line-clamp-1",
+            )}>
               {subtitle}
             </p>
           )}
@@ -98,7 +93,7 @@ export function CollapsibleCard({
         )}
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground shrink-0 transition-transform",
+            "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
             open && "rotate-180",
             !mounted && "opacity-0",
           )}
@@ -107,13 +102,13 @@ export function CollapsibleCard({
       {open && (
         <div
           className={cn(
-            "px-3 sm:px-4 pb-3",
+            "px-4 pb-4",
             density === "tight" ? "pt-0" : "pt-1",
           )}
         >
           {children}
         </div>
       )}
-    </Card>
+    </div>
   );
 }

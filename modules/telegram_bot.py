@@ -31,6 +31,17 @@ Storage: SQLite (saham_bot.db) di instance dir
 """
 import os
 import sys
+import io
+
+# Fix Windows console UTF-8 output issues for emojis
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except AttributeError:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
 import json
 import time
 import logging
@@ -53,7 +64,11 @@ except ImportError:
 try:
     from modules.idx_realtime import get_realtime_quote
     from modules.data_fetcher import StockDataFetcher
-    from modules.recommender import StockRecommender
+    from modules.recommender import Recommender
+    from modules.technical import TechnicalAnalyzer
+    from modules.fundamental import FundamentalAnalyzer
+    from modules.behavioral import BehavioralAnalyzer
+    from modules.sentiment import analyze_sentiment
     HAS_ANALYZER = True
 except ImportError as e:
     HAS_ANALYZER = False
@@ -200,6 +215,13 @@ def fmt_pct(n: Optional[float]) -> str:
 def fmt_ts(ts: Optional[float] = None) -> str:
     if ts is None:
         ts = time.time()
+    # Handle string ISO timestamps
+    if isinstance(ts, str):
+        try:
+            dt = datetime.fromisoformat(ts)
+            return dt.astimezone(WIB).strftime("%d %b %Y %H:%M WIB")
+        except (ValueError, TypeError):
+            return ts
     return datetime.fromtimestamp(ts, WIB).strftime("%d %b %Y %H:%M WIB")
 
 
@@ -282,39 +304,67 @@ def cmd_signal(api: TelegramAPI, chat_id: int, args: List[str], db: sqlite3.Conn
         return
 
     try:
-        fetcher = StockDataFetcher()
-        rec_engine = StockRecommender()
-        # Quick signal — technical + fundamental summary
-        rec = fetcher.get_recommendation(ticker) if hasattr(fetcher, "get_recommendation") else None
-        if not rec:
-            # Fallback: just give price + simple RSI/MACD verdict
-            q = get_realtime_quote(ticker, use_cache=True, ttl=60)
-            if not q:
-                api.send_message(chat_id, f"❌ Data untuk {ticker} tidak tersedia.")
-                return
-            text = (
-                f"📊 <b>{ticker}</b>\n"
-                f"Harga: <b>{fmt_idr(q.price)}</b> ({fmt_pct(q.change_pct)})\n\n"
-                f"⚠️ Sinyal lengkap belum tersedia. Lihat detail di web:\n"
-                f"https://saham-claude.vercel.app/stock/{ticker}"
-            )
-        else:
-            emoji = {"STRONG_BUY": "🟢🟢", "BUY": "🟢", "HOLD": "🟡",
-                     "SELL": "🔴", "STRONG_SELL": "🔴🔴"}.get(rec.get("action", "HOLD"), "⚪")
-            text = (
-                f"{emoji} <b>{ticker} — {rec.get('action', 'N/A')}</b>\n"
-                f"Confidence: {rec.get('confidence', 0):.0f}%\n"
-                f"Current: {fmt_idr(rec.get('currentPrice'))}\n"
-            )
-            if rec.get("targetPrice"):
-                text += f"Target: {fmt_idr(rec['targetPrice'])}\n"
-            if rec.get("stopLoss"):
-                text += f"Stop: {fmt_idr(rec['stopLoss'])}\n"
-            text += f"\n<i>Update: {fmt_ts()}</i>"
+        ticker_full = f"{ticker}.JK"
+        fetcher = StockDataFetcher(ticker_full)
+        if not fetcher.is_valid():
+            api.send_message(chat_id, f"❌ Ticker <b>{ticker}</b> tidak valid di Yahoo Finance.")
+            return
+
+        api.send_message(chat_id, f"🔍 Menganalisa <b>{ticker}</b>... mohon tunggu sebentar.")
+
+        df = fetcher.get_historical_data(period="6mo")
+        info = fetcher.get_info()
+        current_price = fetcher.get_current_price() or float(df["Close"].iloc[-1])
+
+        technical = TechnicalAnalyzer(df).analyze()
+        fundamental = FundamentalAnalyzer(info).analyze()
+        behavioral = BehavioralAnalyzer(df).analyze()
+
+        sentiment = None
+        try:
+            company_name = fetcher.get_company_name()
+            sentiment = analyze_sentiment(company_name, ticker, max_articles=5)
+        except Exception as se:
+            log.warning(f"Sentiment failed for {ticker}: {se}")
+
+        rec_obj = Recommender(
+            technical=technical,
+            fundamental=fundamental,
+            behavioral=behavioral,
+            sentiment=sentiment,
+            current_price=current_price,
+        ).recommend()
+
+        rec = rec_obj.to_dict()
+
+        emoji = {"STRONG_BUY": "🟢🟢", "BUY": "🟢", "HOLD": "🟡",
+                 "SELL": "🔴", "STRONG_SELL": "🔴🔴"}.get(rec.get("action", "HOLD"), "⚪")
+        
+        action_indo = rec.get("action_indonesian", rec.get("action", "HOLD"))
+        horizon_indo = rec.get("horizon_indonesian", "")
+
+        text = (
+            f"{emoji} <b>{ticker} — {action_indo}</b>\n"
+            f"Confidence: <b>{rec.get('confidence', 0):.0f}%</b>\n"
+            f"Horizon: {horizon_indo}\n"
+            f"Harga Saat Ini: <b>{fmt_idr(current_price)}</b>\n\n"
+        )
+
+        if rec.get("entry_zone"):
+            zone = rec["entry_zone"]
+            text += f"📍 Entry Zone: <b>{fmt_idr(zone[0])} — {fmt_idr(zone[1])}</b>\n"
+        if rec.get("target_price"):
+            text += f"🎯 Target Price: <b>{fmt_idr(rec['target_price'])}</b>\n"
+        if rec.get("stop_loss"):
+            text += f"🛡️ Stop Loss: <b>{fmt_idr(rec['stop_loss'])}</b>\n"
+        if rec.get("risk_reward_ratio"):
+            text += f"⚖️ Risk/Reward: <b>{rec['risk_reward_ratio']:.2f}x</b>\n"
+
+        text += f"\n<i>Update: {fmt_ts()}</i>"
         api.send_message(chat_id, text)
     except Exception as e:
         log.error(f"signal {ticker}: {e}")
-        api.send_message(chat_id, f"❌ Error analyzing {ticker}: {e}")
+        api.send_message(chat_id, f"❌ Error menganalisa {ticker}: {e}")
 
 
 def cmd_setalert(api: TelegramAPI, chat_id: int, args: List[str], db: sqlite3.Connection):

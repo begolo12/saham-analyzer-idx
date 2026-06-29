@@ -41,6 +41,7 @@ interface WatchlistCardProps {
   onSetAlert?: (ticker: string) => void;
   alertTriggered?: boolean;
   alertArmed?: boolean;
+  priceAtAdded?: number | null;
 }
 
 type Signal = "hot" | "watch" | "hold" | "drop" | "caution";
@@ -136,7 +137,6 @@ function Sparkline({
   // Build fill polygon by closing path to baseline
   const lastPoint = closes.length - 1;
   const lastX = (lastPoint / (closes.length - 1)) * width;
-  const lastY = height - ((closes[lastPoint] - min) / range) * (height - 4) - 2;
   const firstY = height - ((closes[0] - min) / range) * (height - 4) - 2;
   const fillPath = `0,${firstY.toFixed(1)} ${points} ${lastX.toFixed(1)},${height} 0,${height}`;
 
@@ -162,16 +162,28 @@ export function WatchlistCard({
   onSetAlert,
   alertTriggered,
   alertArmed,
+  priceAtAdded,
 }: WatchlistCardProps) {
   const isUp = (stock.changePct ?? 0) >= 0;
   const { signal, badge, alerts } = useMemo(() => computeSignal(stock), [stock]);
 
+  // Return since added
+  const returnSinceAdded = priceAtAdded && stock.price
+    ? ((stock.price - priceAtAdded) / priceAtAdded) * 100
+    : null;
+  const returnUp = returnSinceAdded !== null ? returnSinceAdded >= 0 : true;
+
   return (
     <Card
       className={cn(
-        "p-4 transition-all hover:shadow-md relative group",
-        signal === "hot" && "border-bull-500/30 bg-bull-50/20 dark:bg-bull-700/5",
-        signal === "caution" && "border-bear-500/30 bg-bear-50/20 dark:bg-bear-700/5",
+        "p-4 transition-all relative group",
+        /* iOS-style subtle elevation */
+        "shadow-[0_1px_3px_hsl(222_25%_11%/0.05),0_4px_12px_hsl(222_25%_11%/0.04)]",
+        "dark:shadow-[0_1px_3px_hsl(0_0%_0%/0.25),0_4px_12px_hsl(0_0%_0%/0.15)]",
+        "hover:shadow-[0_2px_6px_hsl(222_25%_11%/0.07),0_8px_20px_hsl(222_25%_11%/0.06)]",
+        "dark:hover:shadow-[0_2px_6px_hsl(0_0%_0%/0.3),0_8px_20px_hsl(0_0%_0%/0.2)]",
+        signal === "hot" && "border-emerald-500/25 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06]",
+        signal === "caution" && "border-rose-500/25 bg-rose-500/[0.04] dark:bg-rose-500/[0.06]",
         alertTriggered &&
           "ring-2 ring-amber-500/40 bg-amber-50/30 dark:bg-amber-900/10",
       )}
@@ -179,7 +191,7 @@ export function WatchlistCard({
       {/* Remove button */}
       <button
         onClick={() => onRemove(stock.code)}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-bear-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all z-10"
+        className="absolute right-2 top-2 z-10 rounded-full bg-background/90 backdrop-blur-sm p-1.5 opacity-100 transition-all hover:bg-rose-500 hover:text-white md:opacity-0 md:group-hover:opacity-100"
         aria-label="Remove from watchlist"
       >
         <Trash2 className="h-3 w-3" />
@@ -209,7 +221,7 @@ export function WatchlistCard({
         )}>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-black text-lg">{stock.code}</span>
+              <span className="font-black text-lg tracking-tight">{stock.code}</span>
               <Badge
                 variant={
                   signal === "hot"
@@ -230,27 +242,46 @@ export function WatchlistCard({
         </div>
 
         {/* Price + Change + Sparkline */}
-        <div className="flex items-end justify-between gap-3 mb-2">
+        <div className="flex items-end justify-between gap-3 mb-2.5">
           <div className="min-w-0 flex-1">
-            <div className="text-2xl font-black tabular-nums leading-none">
+            <div className="text-2xl font-black tabular-nums leading-none tracking-tight">
               {stock.price !== null ? formatIDR(stock.price) : "—"}
             </div>
-            <div
-              className={cn(
-                "text-xs font-bold tabular-nums mt-1 flex items-center gap-1",
-                isUp ? "text-bull-600" : "text-bear-600",
+            {/* Performance indicator — colored pill */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <div
+                className={cn(
+                  "inline-flex items-center gap-1 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full",
+                  isUp
+                    ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+                    : "bg-rose-500/12 text-rose-700 dark:text-rose-400",
+                )}
+              >
+                {isUp ? (
+                  <TrendingUp className="h-3 w-3" />
+                ) : (
+                  <TrendingDown className="h-3 w-3" />
+                )}
+                {stock.change !== null && (
+                  <span>{isUp ? "+" : ""}{Math.round(stock.change).toLocaleString("id-ID")}</span>
+                )}
+                <span className="opacity-50">·</span>
+                <span>{formatPercent(stock.changePct)}</span>
+              </div>
+
+              {/* Return since added — if available */}
+              {returnSinceAdded !== null && (
+                <span
+                  className={cn(
+                    "inline-flex items-center text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                    returnUp
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-500"
+                      : "bg-rose-500/10 text-rose-600 dark:text-rose-500",
+                  )}
+                >
+                  {returnUp ? "▲" : "▼"} {returnUp ? "+" : ""}{returnSinceAdded.toFixed(1)}% sejak ditambah
+                </span>
               )}
-            >
-              {isUp ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              {stock.change !== null && (
-                <span>{isUp ? "+" : ""}{Math.round(stock.change).toLocaleString("id-ID")}</span>
-              )}
-              <span className="text-muted-foreground">•</span>
-              <span>{formatPercent(stock.changePct)}</span>
             </div>
           </div>
           <Sparkline closes={stock.recentCloses} isUp={isUp} />
@@ -298,16 +329,16 @@ export function WatchlistCard({
 
         {/* Smart Alerts */}
         {alerts.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-2 border-t">
+          <div className="flex flex-wrap gap-1.5 pt-2.5 border-t border-border/50">
             {alerts.map((a, i) => (
               <span
                 key={i}
                 className={cn(
                   "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full",
-                  a.type === "hot" && "bg-bull-100 text-bull-700 dark:bg-bull-700/30 dark:text-bull-500",
-                  a.type === "drop" && "bg-bear-100 text-bear-700 dark:bg-bear-700/30 dark:text-bear-500",
-                  a.type === "target" && "bg-amber-100 text-amber-700 dark:bg-amber-700/30 dark:text-amber-500",
-                  a.type === "valley" && "bg-purple-100 text-purple-700 dark:bg-purple-700/30 dark:text-purple-500",
+                  a.type === "hot" && "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-700/30 dark:text-emerald-400",
+                  a.type === "drop" && "bg-rose-500/10 text-rose-700 dark:bg-rose-700/30 dark:text-rose-400",
+                  a.type === "target" && "bg-amber-500/10 text-amber-700 dark:bg-amber-700/30 dark:text-amber-400",
+                  a.type === "valley" && "bg-purple-500/10 text-purple-700 dark:bg-purple-700/30 dark:text-purple-400",
                 )}
               >
                 {a.type === "hot" && <Flame className="h-2.5 w-2.5" />}
@@ -340,23 +371,31 @@ export function AlertCard({
     <Link href={`/stock/${stock.code}`}>
       <Card
         className={cn(
-          "p-3 transition-all hover:shadow-md",
+          "p-3 transition-all",
+          /* subtle elevation */
+          "shadow-[0_1px_3px_hsl(222_25%_11%/0.05),0_4px_12px_hsl(222_25%_11%/0.04)]",
+          "dark:shadow-[0_1px_3px_hsl(0_0%_0%/0.25),0_4px_12px_hsl(0_0%_0%/0.15)]",
+          "hover:shadow-[0_2px_6px_hsl(222_25%_11%/0.07),0_8px_20px_hsl(222_25%_11%/0.06)]",
           isHot
-            ? "border-bull-500/40 bg-gradient-to-br from-bull-50 to-bull-100/50 dark:from-bull-700/10 dark:to-bull-700/5"
-            : "border-bear-500/40 bg-gradient-to-br from-bear-50 to-bear-100/50 dark:from-bear-700/10 dark:to-bear-700/5",
+            ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/8 to-emerald-500/3 dark:from-emerald-500/10 dark:to-emerald-500/4"
+            : "border-rose-500/30 bg-gradient-to-br from-rose-500/8 to-rose-500/3 dark:from-rose-500/10 dark:to-rose-500/4",
         )}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {isHot ? (
-              <Flame className="h-4 w-4 text-bull-600 shrink-0" />
+              <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/12">
+                <Flame className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
             ) : (
-              <AlertTriangle className="h-4 w-4 text-bear-600 shrink-0" />
+              <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-500/12">
+                <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              </div>
             )}
             <span className="font-bold text-sm">{stock.code}</span>
             <span className={cn(
               "text-xs font-bold tabular-nums",
-              isHot ? "text-bull-700" : "text-bear-700",
+              isHot ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
             )}>
               {text}
             </span>
@@ -390,7 +429,14 @@ export function DiscoveryCard({
 }: DiscoveryCardProps) {
   const isUp = (changePct ?? 0) >= 0;
   return (
-    <Card className="p-3 hover:shadow-md transition-all">
+    <Card
+      className={cn(
+        "p-3 transition-all",
+        "shadow-[0_1px_3px_hsl(222_25%_11%/0.05),0_4px_12px_hsl(222_25%_11%/0.04)]",
+        "dark:shadow-[0_1px_3px_hsl(0_0%_0%/0.25),0_4px_12px_hsl(0_0%_0%/0.15)]",
+        "hover:shadow-[0_2px_6px_hsl(222_25%_11%/0.07),0_8px_20px_hsl(222_25%_11%/0.06)]",
+      )}
+    >
       <Link href={`/stock/${code}`} className="block mb-2">
         <div className="flex items-center justify-between gap-2 mb-1">
           <span className="font-bold text-sm">{code}</span>
@@ -410,18 +456,20 @@ export function DiscoveryCard({
           {changePct !== null && (
             <span
               className={cn(
-                "font-bold tabular-nums",
-                isUp ? "text-bull-600" : "text-bear-600",
+                "inline-flex items-center gap-0.5 font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                isUp
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400",
               )}
             >
-              {formatPercent(changePct)}
+              {isUp ? "▲" : "▼"} {formatPercent(changePct)}
             </span>
           )}
         </div>
       </Link>
       <button
         onClick={onAdd}
-        className="w-full mt-1 flex items-center justify-center gap-1 text-[11px] font-bold py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-700 dark:text-amber-500 transition-colors"
+        className="w-full mt-1 flex items-center justify-center gap-1 text-[11px] font-bold py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-700 dark:text-amber-500 transition-colors"
       >
         <Plus className="h-3 w-3" />
         Watch

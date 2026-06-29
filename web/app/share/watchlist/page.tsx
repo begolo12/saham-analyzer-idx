@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Share2, ArrowLeft, Loader2, Check, Plus, Copy, Star } from "lucide-react";
 import { TopHeader } from "@/components/top-header";
+import { MobileAppBar } from "@/components/mobile-app-bar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/alert";
@@ -42,6 +43,7 @@ export default function ShareWatchlistPage() {
 }
 
 function ShareWatchlistContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const listParam = params.get("list") || "";
   const title = params.get("title") || "Watchlist";
@@ -144,9 +146,14 @@ function ShareWatchlistContent() {
   const allExisting = newTickers.length === 0 && tickers.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
+      <MobileAppBar
+        title="Watchlist Share"
+        subtitle={tickers.length > 0 ? `${tickers.length} saham dari ${owner}` : "Import watchlist dari link"}
+        backHref="/watchlist"
+      />
+      <main className="page-main container space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/watchlist" aria-label="Kembali ke Watchlist">
             <Button variant="ghost" size="sm" className="min-h-9">
@@ -169,7 +176,7 @@ function ShareWatchlistContent() {
               {
                 label: "Buka watchlist",
                 icon: <Star className="h-3 w-3" aria-hidden />,
-                onClick: () => (window.location.href = "/watchlist"),
+                onClick: () => router.push("/watchlist"),
               },
             ]}
           />
@@ -295,7 +302,7 @@ function ShareWatchlistSkeleton() {
   return (
     <div className="min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4" aria-busy="true">
+      <main className="page-main container space-y-4" aria-busy="true">
         <div className="h-9 w-32 bg-secondary rounded shimmer" />
         <div className="space-y-2 animate-pulse">
           <div className="h-6 w-48 bg-muted rounded" />

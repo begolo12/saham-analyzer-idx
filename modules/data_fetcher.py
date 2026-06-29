@@ -9,11 +9,14 @@ Format ticker IDX: BBCA.JK, TLKM.JK, ASII.JK, dll.
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 import warnings
 
-warnings.filterwarnings("ignore")
+from modules.utils import retry
+
+logger = logging.getLogger(__name__)
 
 
 # Daftar saham-saham IDX yang paling liquid (LQ45 + populer)
@@ -88,12 +91,20 @@ class StockDataFetcher:
     def _validate_ticker(ticker: str) -> str:
         """Pastikan ticker menggunakan suffix .JK untuk saham Indonesia"""
         ticker = ticker.upper().strip()
+        # Only allow alphanumeric, dots (for .JK suffix), and max 10 chars
+        import re
+        ticker = re.sub(r'[^A-Z0-9.]', '', ticker)
+        if not ticker:
+            raise ValueError("Ticker tidak valid setelah sanitasi")
         if not ticker.endswith(".JK"):
             ticker = f"{ticker}.JK"
+        if len(ticker) > 15:
+            raise ValueError(f"Ticker terlalu panjang: {ticker}")
         return ticker
 
     # === DATA HARGA ===
 
+    @retry(max_attempts=3, delay=1.0)
     def get_historical_data(
         self, period: str = "1y", interval: str = "1d"
     ) -> pd.DataFrame:
@@ -121,7 +132,8 @@ class StockDataFetcher:
         try:
             df = self.stock.history(period="5d", interval=interval)
             return df.dropna() if not df.empty else pd.DataFrame()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"get_intraday_data error: {e}")
             return pd.DataFrame()
 
     # === DATA FUNDAMENTAL ===
@@ -138,7 +150,8 @@ class StockDataFetcher:
             info = self.stock.info or {}
             self._info_cache = info
             return info
-        except Exception:
+        except Exception as e:
+            logger.warning(f"get_info error for {self.ticker}: {e}")
             return {}
 
     def get_financials(self) -> Dict[str, pd.DataFrame]:
@@ -149,7 +162,8 @@ class StockDataFetcher:
                 "balance_sheet": self.stock.balance_sheet,
                 "cash_flow": self.stock.cashflow,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"get_financials error for {self.ticker}: {e}")
             return {}
 
     # === HELPER METHODS ===
@@ -205,7 +219,8 @@ class StockDataFetcher:
         try:
             hist = self.stock.history(period="5d")
             return not hist.empty
-        except Exception:
+        except Exception as e:
+            logger.warning(f"is_valid error for {self.ticker}: {e}")
             return False
 
 

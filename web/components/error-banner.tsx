@@ -18,12 +18,13 @@ export function ErrorBanner({
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/[0.06] px-3.5 py-3",
+        "flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/[0.06] px-4 py-3",
         "animate-fade-in",
+        "shadow-[4px_4px_8px_rgba(0,0,0,0.06),-4px_-4px_8px_rgba(255,255,255,0.4)]",
         className,
       )}
     >
-      <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+      <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
         <AlertCircle className="h-4 w-4 text-destructive" aria-hidden />
       </div>
       <div className="flex-1 min-w-0">
@@ -38,7 +39,7 @@ export function ErrorBanner({
         <button
           onClick={onRetry}
           className={cn(
-            "btn-base min-h-9 shrink-0 gap-1 rounded-full bg-destructive px-3.5",
+            "inline-flex items-center justify-center min-h-9 shrink-0 gap-1 rounded-full bg-destructive px-4 font-semibold",
             "text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90",
           )}
         >

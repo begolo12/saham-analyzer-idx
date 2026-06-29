@@ -17,12 +17,9 @@ export interface TickerAutocompleteProps {
 }
 
 /**
- * Reusable ticker combobox. Filters POPULAR_STOCKS by code/name/sector and
+ * Reusable ticker combobox with Claymorphism styling.
+ * Filters POPULAR_STOCKS by code/name/sector and
  * surfaces ARIA-compliant suggestions with keyboard navigation.
- *
- * Pure-React, no combobox library. Mirrors the pattern from stock-search.tsx
- * but adds: keyboard nav, click-outside, highlight match, empty fallback row,
- * popular picks when empty, and ARIA combobox pattern.
  */
 export function TickerAutocomplete({
   value,
@@ -92,7 +89,6 @@ export function TickerAutocomplete({
   };
 
   const commitFreeText = () => {
-    // User typed a ticker that's not in POPULAR_STOCKS — just keep the value.
     setOpen(false);
     inputRef.current?.blur();
   };
@@ -109,7 +105,6 @@ export function TickerAutocomplete({
       e.preventDefault();
       setHighlight((h) => Math.max(h - 1, 0));
     } else if (e.key === "Enter") {
-      // If dropdown open and we have a suggestion, pick it. Otherwise submit form freely.
       if (open && suggestions[highlight]) {
         e.preventDefault();
         commit(suggestions[highlight]);
@@ -125,7 +120,7 @@ export function TickerAutocomplete({
     }
   };
 
-  // Highlight matching substring in code/name (returns React-friendly array of nodes).
+  // Highlight matching substring in code/name
   const highlightMatch = (text: string): React.ReactNode => {
     const q = value.trim();
     if (!q) return text;
@@ -177,10 +172,18 @@ export function TickerAutocomplete({
               : undefined
           }
           className={cn(
-            "flex h-12 w-full rounded-xl border border-input bg-background pl-11 pr-10 py-2 text-base ring-offset-background",
+            "flex h-12 w-full rounded-xl border border-input pl-11 pr-10 py-2 text-base",
+            "bg-[hsl(var(--secondary))]",
+            "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)]",
+            "dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03)]",
             "placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            "disabled:cursor-not-allowed disabled:opacity-50 transition-colors uppercase",
+            "focus-visible:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-ring/30",
+            "focus-visible:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5),0_0_0_3px_rgba(147,130,220,0.15)]",
+            "dark:focus-visible:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.03),0_0_0_3px_rgba(147,130,220,0.2)]",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            "transition-all duration-200 ease-smooth",
+            "uppercase",
           )}
         />
         {value && !disabled && (
@@ -192,7 +195,12 @@ export function TickerAutocomplete({
               setOpen(true);
             }}
             aria-label="Clear ticker"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            className={cn(
+              "absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full",
+              "text-muted-foreground hover:text-foreground",
+              "hover:bg-accent",
+              "transition-colors duration-fast",
+            )}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -201,7 +209,13 @@ export function TickerAutocomplete({
 
       {showDropdown && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 rounded-xl border bg-popover shadow-xl z-50 overflow-hidden animate-fade-in"
+          className={cn(
+            "absolute top-full left-0 right-0 mt-2 rounded-xl border bg-popover overflow-hidden",
+            "animate-fade-in",
+            "shadow-[8px_8px_16px_rgba(0,0,0,0.12),-8px_-8px_16px_rgba(255,255,255,0.7)]",
+            "dark:shadow-[8px_8px_16px_rgba(0,0,0,0.35),-8px_-8px_16px_rgba(255,255,255,0.05)]",
+            "z-50",
+          )}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {!value.trim() && (
@@ -228,7 +242,8 @@ export function TickerAutocomplete({
                   onClick={() => commit(stock)}
                   onMouseEnter={() => setHighlight(i)}
                   className={cn(
-                    "w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors text-left border-b last:border-0",
+                    "w-full flex items-center justify-between gap-3 px-4 py-3 text-left border-b last:border-0",
+                    "transition-colors duration-fast",
                     highlight === i
                       ? "bg-accent"
                       : "hover:bg-accent/50",
@@ -242,7 +257,14 @@ export function TickerAutocomplete({
                       {highlightMatch(stock.name)}
                     </div>
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground shrink-0 px-2 py-0.5 rounded-full bg-muted">
+                  <span
+                    className={cn(
+                      "text-[10px] font-medium text-muted-foreground shrink-0 px-2 py-0.5 rounded-full",
+                      "bg-secondary",
+                      "shadow-[2px_2px_4px_rgba(0,0,0,0.04),-2px_-2px_4px_rgba(255,255,255,0.4)]",
+                      "dark:shadow-[2px_2px_4px_rgba(0,0,0,0.15),-2px_-2px_4px_rgba(255,255,255,0.02)]",
+                    )}
+                  >
                     {stock.sector}
                   </span>
                 </button>
@@ -257,7 +279,7 @@ export function TickerAutocomplete({
                   className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:bg-accent text-left border-b last:border-0"
                 >
                   <Search className="h-3.5 w-3.5" />
-                  Tidak ada hasil untuk <strong className="text-foreground ml-1">"{value}"</strong>.
+                  Tidak ada hasil untuk <strong className="text-foreground ml-1">&quot;{value}&quot;</strong>.
                   <span className="ml-auto text-xs">Tekan Enter untuk pakai kode ini</span>
                 </button>
               </li>

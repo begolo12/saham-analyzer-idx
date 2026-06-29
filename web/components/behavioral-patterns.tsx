@@ -31,16 +31,19 @@ export function BehavioralPatterns({
     <div className="space-y-3">
       {/* Support / Resistance */}
       {(supportLevels.length > 0 || resistanceLevels.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {supportLevels.length > 0 && (
-            <div className="rounded-xl border-2 border-bull-500/30 bg-bull-50/50 dark:bg-bull-700/10 p-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-bull-700 dark:text-bull-500 mb-2">
+            <div
+              className="rounded-2xl p-4 bg-emerald-50/80 dark:bg-emerald-900/15 border border-emerald-200/50 dark:border-emerald-700/30"
+              style={{ boxShadow: "4px 4px 8px rgba(0,0,0,0.06), -4px -4px 8px rgba(255,255,255,0.5)" }}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
                 <TrendingUp className="h-3.5 w-3.5" />
                 Support Levels
               </div>
               <div className="space-y-1">
                 {supportLevels.map((level, i) => (
-                  <div key={i} className="text-sm font-bold tabular-nums">
+                  <div key={i} className="text-sm font-bold tabular-nums font-num">
                     {formatIDR(level)}
                   </div>
                 ))}
@@ -48,14 +51,17 @@ export function BehavioralPatterns({
             </div>
           )}
           {resistanceLevels.length > 0 && (
-            <div className="rounded-xl border-2 border-bear-500/30 bg-bear-50/50 dark:bg-bear-700/10 p-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-bear-700 dark:text-bear-500 mb-2">
+            <div
+              className="rounded-2xl p-4 bg-red-50/80 dark:bg-red-900/15 border border-red-200/50 dark:border-red-700/30"
+              style={{ boxShadow: "4px 4px 8px rgba(0,0,0,0.06), -4px -4px 8px rgba(255,255,255,0.5)" }}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400 mb-2">
                 <TrendingDown className="h-3.5 w-3.5" />
                 Resistance Levels
               </div>
               <div className="space-y-1">
                 {resistanceLevels.map((level, i) => (
-                  <div key={i} className="text-sm font-bold tabular-nums">
+                  <div key={i} className="text-sm font-bold tabular-nums font-num">
                     {formatIDR(level)}
                   </div>
                 ))}
@@ -65,20 +71,23 @@ export function BehavioralPatterns({
         </div>
       )}
 
-      {/* Patterns */}
-      <div className="space-y-2">
+      {/* Pattern cards */}
+      <div className="space-y-2.5">
         {patterns.map((p) => {
           const variant = signalVariant[p.signal];
           return (
             <div
               key={p.name}
-              className="rounded-xl border bg-card p-3 sm:p-4 hover:bg-accent/30 transition-colors"
+              className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-4"
             >
               <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{p.name}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">
+                    <span
+                      className="text-xs px-2.5 py-0.5 rounded-full bg-secondary font-medium"
+                      style={{ boxShadow: "inset 1px 1px 2px rgba(0,0,0,0.04), inset -1px -1px 2px rgba(255,255,255,0.3)" }}
+                    >
                       {p.pattern}
                     </span>
                   </div>

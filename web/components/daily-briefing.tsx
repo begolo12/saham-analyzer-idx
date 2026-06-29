@@ -12,7 +12,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { getWatchlistItems } from "@/components/watchlist-button";
@@ -51,6 +50,12 @@ export function DailyBriefing() {
 
   useEffect(() => {
     let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setData(null);
+        setLoading(false);
+      }
+    }, 12000);
     (async () => {
       setLoading(true);
       try {
@@ -90,6 +95,7 @@ export function DailyBriefing() {
           (s): s is BriefingStock => s !== null,
         );
         if (cancelled) return;
+        clearTimeout(timeout);
 
         // 1. Watchlist hari ini
         const watchlist = personalTickers
@@ -141,20 +147,29 @@ export function DailyBriefing() {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
   }, []);
 
   if (loading) {
     return (
-      <Card className="p-5">
+      <div className="card-ios p-4">
         <div className="flex items-center gap-2 mb-3">
           <Newspaper className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold">Daily Briefing</h2>
+          <h2 className="text-base font-bold">Daily Briefing</h2>
         </div>
-        <div className="text-sm text-muted-foreground animate-pulse">
-          Menyiapkan ringkasan hari ini...
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between rounded-xl bg-muted/40 p-3 animate-pulse">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-12 bg-muted rounded-md" />
+                <div className="h-3 w-20 bg-muted rounded-md" />
+              </div>
+              <div className="h-4 w-16 bg-muted rounded-md" />
+            </div>
+          ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -169,12 +184,12 @@ export function DailyBriefing() {
   if (!hasContent) {
     // Show empty state with CTA
     return (
-      <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
+      <div className="card-ios p-4 bg-gradient-to-br from-ios-blue/5 to-transparent dark:from-ios-blue/10 dark:to-transparent">
         <div className="flex items-center gap-2 mb-2">
           <Newspaper className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold">Daily Briefing</h2>
+          <h2 className="text-base font-bold">Daily Briefing</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-3">
+        <p className="text-[13px] text-muted-foreground mb-3">
           Mulai tracking saham untuk lihat ringkasan personal harian di sini.
         </p>
         <Link
@@ -183,17 +198,17 @@ export function DailyBriefing() {
         >
           Cari saham potensial →
         </Link>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
+    <div className="card-ios p-4 bg-gradient-to-br from-ios-blue/5 to-transparent dark:from-ios-blue/8 dark:to-transparent">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Newspaper className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold">Daily Briefing</h2>
-          <Badge variant="info" className="text-[10px]">
+          <h2 className="text-base font-bold">Daily Briefing</h2>
+          <Badge variant="info" className="text-[10px] rounded-full px-2">
             Hari ini
           </Badge>
         </div>
@@ -217,12 +232,12 @@ export function DailyBriefing() {
                 <Link
                   key={a.ticker}
                   href={`/stock/${a.ticker}`}
-                  className="rounded-lg border-2 border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-2.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                  className="group rounded-xl border-2 border-amber-500/30 bg-amber-50/50 dark:bg-amber-900/15 dark:border-amber-500/20 p-3 hover:bg-amber-100/60 dark:hover:bg-amber-900/25 transition-all duration-fast ease-spring active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="font-bold text-sm">{a.ticker}</div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="font-extrabold text-[13px]">{a.ticker}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
                         {a.direction === "above" ? "Naik" : "Turun"}{" "}
                         {formatIDR(a.threshold)} → saat ini{" "}
                         <strong className="text-foreground">
@@ -252,24 +267,26 @@ export function DailyBriefing() {
                   <Link
                     key={s.code}
                     href={`/stock/${s.code}`}
-                    className="flex items-center justify-between gap-2 rounded-lg border bg-card p-2 hover:bg-accent transition-colors"
+                    className="group flex items-center justify-between gap-2 rounded-xl bg-muted/30 p-3 hover:bg-accent/40 transition-all duration-fast ease-spring active:scale-[0.99]"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm">{s.code}</span>
-                        <span className="text-[10px] text-muted-foreground line-clamp-1">
-                          {s.sector}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-[13px]">{s.code}</span>
+                        <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[9px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
+                          {s.sector.length > 8 ? s.sector.slice(0, 8) : s.sector}
                         </span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold tabular-nums">
+                      <div className="text-[13px] font-bold tabular-nums">
                         {formatIDR(s.price)}
                       </div>
-                      <div
+                      <span
                         className={cn(
-                          "text-[10px] font-bold tabular-nums flex items-center justify-end gap-0.5",
-                          isUp ? "text-bull-600" : "text-bear-600",
+                          "inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums mt-0.5",
+                          isUp
+                            ? "bg-success/10 text-success dark:bg-success/15"
+                            : "bg-destructive/10 text-destructive dark:bg-destructive/15",
                         )}
                       >
                         {isUp ? (
@@ -278,7 +295,7 @@ export function DailyBriefing() {
                           <ArrowDownRight className="h-2.5 w-2.5" />
                         )}
                         {formatPercent(s.changePct)}
-                      </div>
+                      </span>
                     </div>
                   </Link>
                 );
@@ -299,13 +316,13 @@ export function DailyBriefing() {
                 <Link
                   key={s.code}
                   href={`/stock/${s.code}`}
-                  className="rounded-lg border-2 border-bull-500/30 bg-bull-50/30 dark:bg-bull-700/10 p-2.5 hover:bg-bull-100/50 dark:hover:bg-bull-700/20 transition-colors text-center"
+                  className="group rounded-xl bg-gradient-to-br from-ios-orange/10 to-transparent dark:from-ios-orange/8 dark:to-transparent p-3 hover:from-ios-orange/15 transition-all duration-fast ease-spring text-center active:scale-[0.97]"
                 >
-                  <div className="font-bold text-sm">{s.code}</div>
+                  <div className="font-extrabold text-[13px]">{s.code}</div>
                   <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
                     {s.sector}
                   </div>
-                  <div className="text-bull-700 dark:text-bull-500 font-black text-lg tabular-nums mt-1">
+                  <div className="text-bull-700 dark:text-bull-400 font-black text-lg tabular-nums mt-1">
                     +{s.changePct.toFixed(2)}%
                   </div>
                 </Link>
@@ -331,23 +348,23 @@ export function DailyBriefing() {
                   <Link
                     key={s.code}
                     href={`/stock/${s.code}`}
-                    className="flex items-center justify-between gap-2 rounded-lg border bg-card p-2 hover:bg-accent transition-colors"
+                    className="group flex items-center justify-between gap-2 rounded-xl bg-gradient-to-br from-ios-blue/8 to-transparent dark:from-ios-blue/6 dark:to-transparent p-3 hover:from-ios-blue/12 transition-all duration-fast ease-spring active:scale-[0.99]"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm">{s.code}</span>
-                        <span className="text-[10px] text-muted-foreground line-clamp-1">
-                          {s.sector}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-[13px]">{s.code}</span>
+                        <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[9px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
+                          {s.sector.length > 8 ? s.sector.slice(0, 8) : s.sector}
                         </span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold tabular-nums">
+                      <div className="text-[13px] font-bold tabular-nums">
                         {formatIDR(s.price)}
                       </div>
-                      <div className="text-[10px] font-bold tabular-nums text-purple-700 dark:text-purple-400">
-                        −{dropFromHigh.toFixed(1)}% from 52w
-                      </div>
+                      <span className="inline-flex items-center rounded-full bg-purple-500/10 dark:bg-purple-500/15 px-1.5 py-px text-[10px] font-bold tabular-nums text-purple-700 dark:text-purple-400 mt-0.5">
+                        −{dropFromHigh.toFixed(1)}% dari 52w
+                      </span>
                     </div>
                   </Link>
                 );
@@ -356,7 +373,7 @@ export function DailyBriefing() {
           </BriefingSection>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -373,9 +390,9 @@ function BriefingSection({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center gap-2 mb-2">
         {icon}
-        <h3 className="text-sm font-bold">{title}</h3>
+        <h3 className="text-[13px] font-bold">{title}</h3>
         {subtitle && (
           <span className="text-[10px] text-muted-foreground italic">
             · {subtitle}

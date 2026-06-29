@@ -13,30 +13,30 @@ export const maxDuration = 30;
  * Returns: { quotes: RealtimeQuote[], fetchedAt: ISO, count: number }
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const tickersParam = searchParams.get("tickers");
-
-  if (!tickersParam) {
-    return NextResponse.json(
-      { error: "Missing 'tickers' query param" },
-      { status: 400 },
-    );
-  }
-
-  const tickers = tickersParam
-    .split(",")
-    .map((t) => t.trim().toUpperCase().replace(".JK", ""))
-    .filter(Boolean)
-    .slice(0, 50);
-
-  if (tickers.length === 0) {
-    return NextResponse.json(
-      { error: "No valid tickers" },
-      { status: 400 },
-    );
-  }
-
   try {
+    const { searchParams } = new URL(request.url);
+    const tickersParam = searchParams.get("tickers");
+
+    if (!tickersParam) {
+      return NextResponse.json(
+        { error: "Missing 'tickers' query param" },
+        { status: 400 },
+      );
+    }
+
+    const tickers = tickersParam
+      .split(",")
+      .map((t) => t.trim().toUpperCase().replace(".JK", ""))
+      .filter(Boolean)
+      .slice(0, 50);
+
+    if (tickers.length === 0) {
+      return NextResponse.json(
+        { error: "No valid tickers" },
+        { status: 400 },
+      );
+    }
+
     const quotesMap = await fetchRealtimeQuotes(tickers);
     const quotes = Array.from(quotesMap.values());
     const fetchedAt = quotes[0]?.fetchedAt ?? new Date().toISOString();

@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, FlaskConical, TrendingUp, TrendingDown, BarChart3, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  FlaskConical,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  AlertCircle,
+  Play,
+} from "lucide-react";
 import { TopHeader } from "@/components/top-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,14 +27,15 @@ import {
   type BacktestConfig,
   type BacktestResult,
 } from "@/lib/backtest";
-import { cn, formatIDR, formatPercent } from "@/lib/utils";
+import { MobileAppBar, MobileActionBar, MobileStatRow } from "@/components/mobile-app-bar";
+import { cn, formatIDR } from "@/lib/utils";
 import { POPULAR_STOCKS } from "@/lib/popular-stocks";
 
 export default function BacktestPage() {
   const [ticker, setTicker] = useState("BBCA");
   const [strategy, setStrategy] = useState<BacktestConfig["strategy"]>("RSI_MEAN_REVERSION");
   const [period, setPeriod] = useState<BacktestConfig["period"]>("1y");
-  const [capital, setCapital] = useState("10000000"); // 10jt IDR
+  const [capital, setCapital] = useState("10000000");
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [ihsgReturn, setIhsgReturn] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,21 +47,27 @@ export default function BacktestPage() {
     setIhsgReturn(null);
     setLoading(true);
     try {
-      const config: BacktestConfig = {
-        ticker: ticker.toUpperCase().replace(".JK", ""),
-        strategy,
-        period,
-        initialCapital: parseFloat(capital) || 10_000_000,
-      };
-      const [btResult, ihsg] = await Promise.all([
-        runBacktest(config),
-        compareWithIHSG(period),
-      ]);
-      setIhsgReturn(ihsg.ihsgReturnPct);
-      setResult({
-        ...btResult,
-        outperformance: Math.round((btResult.totalReturnPct - ihsg.ihsgReturnPct) * 100) / 100,
+      const res = await fetch("/api/backtest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticker: ticker.toUpperCase().replace(".JK", ""),
+          strategy,
+          period,
+          initialCapital: capital,
+        }),
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Gagal menjalankan backtest (${res.status})`);
+      }
+
+      const data = await res.json();
+      setIhsgReturn(data.ihsgReturn);
+      setResult(data.result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Backtest gagal");
       console.error(err);
@@ -61,10 +77,18 @@ export default function BacktestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-shell min-h-screen bg-background">
       <TopHeader />
-      <main className="container py-4 sm:py-6 pb-24 md:pb-6 space-y-4">
-        <div className="flex items-center gap-2">
+
+      <MobileAppBar
+        title="Backtest"
+        subtitle={loading ? "Menjalankan strategi..." : result ? `${ticker} · ${period} · ${strategy.replace(/_/g, " ")}` : "Uji strategi trading di data historis"}
+        backHref="/"
+      />
+
+      <main className="page-main container space-y-4" data-sticky-actions="true">
+        {/* DESKTOP legacy header */}
+        <div className="hidden md:flex items-center gap-2">
           <Link href="/">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" />
@@ -77,26 +101,35 @@ export default function BacktestPage() {
           </h1>
         </div>
 
-        <p className="text-sm text-muted-foreground px-1">
-          Test strategi trading di data historis. Bandingkan return dengan
-          Buy &amp; Hold dan IHSG (pasar).
-        </p>
+        {/* MOBILE hero */}
+        <div className="md:hidden">
+          <div className="mobile-hero">
+            <div className="page-eyebrow text-white/80">Backtest</div>
+            <div className="mobile-hero__row">
+              <div>
+                <div className="mobile-hero__value">{ticker}</div>
+                <div className="mobile-hero__delta">
+                  <FlaskConical className="h-3 w-3" />
+                  <span>{strategy.replace(/_/g, " ")}</span>
+                </div>
+                <div className="mobile-hero__sub">{period} • modal {formatIDR(parseFloat(capital) || 0)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Config */}
-        <Card className="p-5 space-y-4">
-          <h2 className="font-bold text-base">Konfigurasi</h2>
+        <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 space-y-4">
+          <h2 className="font-bold text-base text-foreground">Konfigurasi</h2>
 
-          {/* Ticker */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">
-              Saham
-            </label>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Saham</label>
             <Input
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               placeholder="BBCA"
               maxLength={6}
-              className="font-bold"
+              className="font-bold shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.03)] rounded-[0.75rem]"
             />
             <div className="flex flex-wrap gap-1 mt-2">
               {POPULAR_STOCKS.slice(0, 8).map((s) => (
@@ -107,6 +140,7 @@ export default function BacktestPage() {
                   aria-pressed={ticker === s.code}
                   aria-label={`Pilih saham ${s.code}`}
                   className="inline-flex min-h-8 items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-accent active:bg-accent/70"
+                  /* pill style */
                 >
                   + {s.code}
                 </button>
@@ -114,11 +148,8 @@ export default function BacktestPage() {
             </div>
           </div>
 
-          {/* Strategy */}
           <div>
-            <span className="text-xs text-muted-foreground mb-1.5 block">
-              Strategi
-            </span>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Strategi</span>
             <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Strategi backtest">
               {STRATEGIES.map((s) => (
                 <button
@@ -128,26 +159,21 @@ export default function BacktestPage() {
                   aria-checked={strategy === s.id}
                   onClick={() => setStrategy(s.id)}
                   className={cn(
-                    "min-h-12 text-left rounded-lg border-2 p-3 transition-colors active:scale-[0.99]",
+                    "min-h-12 text-left rounded-[0.75rem] border-2 p-3 transition-colors active:scale-[0.99]",
                     strategy === s.id
                       ? "border-primary bg-primary/5"
                       : "border-border hover:bg-accent/50",
                   )}
                 >
                   <div className="font-bold text-sm">{s.label}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {s.description}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{s.description}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Period */}
           <div>
-            <span className="text-xs text-muted-foreground mb-1.5 block">
-              Periode
-            </span>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Periode</span>
             <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Periode backtest">
               {PERIODS.map((p) => (
                 <button
@@ -157,7 +183,7 @@ export default function BacktestPage() {
                   aria-checked={period === p.id}
                   onClick={() => setPeriod(p.id)}
                   className={cn(
-                    "min-h-10 rounded-lg border-2 px-3 py-2 font-medium text-sm transition-colors active:scale-[0.99]",
+                    "min-h-10 rounded-[0.75rem] border-2 px-3 py-2 font-medium text-sm transition-colors active:scale-[0.99]",
                     period === p.id
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border hover:bg-accent/50",
@@ -169,18 +195,15 @@ export default function BacktestPage() {
             </div>
           </div>
 
-          {/* Capital */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">
-              Modal Awal (IDR)
-            </label>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Modal Awal (IDR)</label>
             <Input
               type="number"
               value={capital}
               onChange={(e) => setCapital(e.target.value)}
               min={100000}
               step={1000000}
-              className="font-bold tabular-nums"
+              className="font-bold tabular-nums shadow-[inset_2px_2px_4px_rgba(0,0,0,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.5)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.03)] rounded-[0.75rem]"
             />
             <div className="flex gap-1 mt-2">
               {["5000000", "10000000", "50000000", "100000000"].map((v) => (
@@ -191,32 +214,13 @@ export default function BacktestPage() {
                   aria-pressed={capital === v}
                   aria-label={`Modal ${formatIDR(parseFloat(v))}`}
                   className="min-h-9 flex-1 rounded px-2 py-1 text-[11px] font-semibold bg-muted hover:bg-accent transition-colors tabular-nums"
+                  /* preset pill */
                 >
                   {formatIDR(parseFloat(v))}
                 </button>
               ))}
             </div>
           </div>
-
-          <Button
-            onClick={handleRun}
-            disabled={loading}
-            size="lg"
-            aria-label={loading ? "Menjalankan backtest" : "Jalankan backtest"}
-            className="min-h-11 w-full"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
-                Menjalankan backtest...
-              </>
-            ) : (
-              <>
-                <FlaskConical className="h-4 w-4 mr-2" aria-hidden />
-                Jalankan Backtest
-              </>
-            )}
-          </Button>
 
           {error && (
             <ErrorBanner
@@ -227,9 +231,8 @@ export default function BacktestPage() {
           )}
         </Card>
 
-        {/* Loading state for results */}
         {loading && !result && (
-          <Card className="p-5 space-y-3" aria-busy="true">
+          <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 space-y-3" aria-busy="true">
             <div className="h-5 w-32 bg-secondary rounded shimmer" />
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border bg-card p-3 space-y-2 animate-pulse">
@@ -249,24 +252,58 @@ export default function BacktestPage() {
           </Card>
         )}
 
-        {/* Empty state — belum ada hasil */}
         {!loading && !result && !error && (
-          <EmptyState
-            icon={<FlaskConical className="h-6 w-6 text-primary" aria-hidden />}
-            title="Belum ada hasil"
-            description="Atur konfigurasi di atas, lalu tekan Jalankan Backtest untuk simulasi strategi trading kamu."
-          />
+          <div className="md:hidden">
+            <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-6 text-center">
+              <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Play className="h-6 w-6" />
+              </div>
+              <h2 className="mt-3 text-lg font-bold">Belum ada hasil</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Atur konfigurasi, lalu tap tombol Run di bawah.</p>
+            </Card>
+          </div>
         )}
 
-        {/* Results */}
+        {!loading && !result && !error && (
+          <div className="hidden md:block">
+            <EmptyState
+              icon={<FlaskConical className="h-6 w-6 text-primary" aria-hidden />}
+              title="Belum ada hasil"
+              description="Atur konfigurasi di atas, lalu tekan Jalankan Backtest untuk simulasi strategi trading kamu."
+            />
+          </div>
+        )}
+
         {result && (
           <>
+            <div className="md:hidden">
+              <MobileStatRow
+                items={[
+                  {
+                    label: "Return",
+                    value: `${result.totalReturnPct >= 0 ? "+" : ""}${result.totalReturnPct.toFixed(1)}%`,
+                    tone: result.totalReturnPct >= 0 ? "bull" : "bear",
+                  },
+                  {
+                    label: "vs IHSG",
+                    value: `${result.outperformance >= 0 ? "+" : ""}${result.outperformance.toFixed(1)}%`,
+                    tone: result.outperformance >= 0 ? "bull" : "bear",
+                  },
+                  {
+                    label: "Win Rate",
+                    value: `${result.winRate.toFixed(1)}%`,
+                    tone: result.winRate >= 50 ? "bull" : "bear",
+                  },
+                ]}
+              />
+            </div>
+
             <Card
               className={cn(
-                "p-5 border-2",
+                "bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5 border-2",
                 result.totalReturnPct >= 0
-                  ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5"
-                  : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5",
+                  ? "border-bull-500/30 bg-gradient-to-br from-bull-50 to-bull-100/30 dark:from-bull-700/10 dark:to-bull-700/5 shadow-lg shadow-bull-500/5"
+                  : "border-bear-500/30 bg-gradient-to-br from-bear-50 to-bear-100/30 dark:from-bear-700/10 dark:to-bear-700/5 shadow-lg shadow-bear-500/5",
               )}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -276,39 +313,22 @@ export default function BacktestPage() {
 
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="rounded-lg border bg-card p-3">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                    Return Strategi
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Return Strategi</div>
+                  <div className={cn("text-2xl font-black tabular-nums mt-0.5", result.totalReturnPct >= 0 ? "text-bull-600" : "text-bear-600")}>
+                    {result.totalReturnPct >= 0 ? "+" : ""}{result.totalReturnPct.toFixed(2)}%
                   </div>
-                  <div
-                    className={cn(
-                      "text-2xl font-black tabular-nums mt-0.5",
-                      result.totalReturnPct >= 0 ? "text-bull-600" : "text-bear-600",
-                    )}
-                  >
-                    {result.totalReturnPct >= 0 ? "+" : ""}
-                    {result.totalReturnPct.toFixed(2)}%
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-                    {formatIDR(result.totalReturn)}
-                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{formatIDR(result.totalReturn)}</div>
                 </div>
-
                 <div className="rounded-lg border bg-card p-3">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                    Modal Akhir
-                  </div>
-                  <div className="text-2xl font-black tabular-nums mt-0.5">
-                    {formatIDR(result.finalValue)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    dari {formatIDR(result.initialCapital)}
-                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Modal Akhir</div>
+                  <div className="text-2xl font-black tabular-nums mt-0.5">{formatIDR(result.finalValue)}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">dari {formatIDR(result.initialCapital)}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <StatPill label="vs Buy & Hold" value={result.buyHoldReturnPct} suffix="%" />
-                <StatPill label="vs IHSG" value={ihsgReturn ?? 0} suffix="%" />
+                <StatPill label="vs IHSG" value={result.outperformance} suffix="%" />
                 <StatPill label="Win Rate" value={result.winRate} suffix="%" />
                 <StatPill label="Max Drawdown" value={-result.maxDrawdown} suffix="%" />
                 <StatPill label="Win / Loss" value={`${result.winCount} / ${result.lossCount}`} />
@@ -317,54 +337,31 @@ export default function BacktestPage() {
 
               {result.outperformance > 0 ? (
                 <div className="mt-3 rounded-lg bg-bull-100/50 dark:bg-bull-700/20 p-3 text-center">
-                  <p className="text-sm font-bold text-bull-700 dark:text-bull-500">
-                    🎉 Strategi outperform IHSG sebesar {result.outperformance.toFixed(2)}%
-                  </p>
+                  <p className="text-sm font-bold text-bull-700 dark:text-bull-500">🎉 Strategi outperform IHSG sebesar {result.outperformance.toFixed(2)}%</p>
                 </div>
               ) : (
                 <div className="mt-3 rounded-lg bg-amber-100/50 dark:bg-amber-700/20 p-3 text-center">
-                  <p className="text-sm font-bold text-amber-700 dark:text-amber-500">
-                    ⚠️ Strategi underperform IHSG sebesar {Math.abs(result.outperformance).toFixed(2)}%
-                  </p>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-500">⚠️ Strategi underperform IHSG sebesar {Math.abs(result.outperformance).toFixed(2)}%</p>
                 </div>
               )}
             </Card>
 
-            {/* Trade History */}
             {result.trades.length > 0 && (
-              <Card className="p-5">
-                <h2 className="text-base font-bold mb-3">
-                  Trade History ({result.trades.filter((t) => t.action === "SELL").length} transaksi)
-                </h2>
+              <Card className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-5">
+                <h2 className="text-base font-bold mb-3">Trade History ({result.trades.filter((t) => t.action === "SELL").length} transaksi)</h2>
                 <div className="space-y-1.5 max-h-96 overflow-y-auto">
                   {result.trades.map((t, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50 text-sm"
-                    >
+                    <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50 text-sm">
                       <div className="flex items-center gap-2">
-                        {t.action === "BUY" ? (
-                          <TrendingUp className="h-4 w-4 text-bull-600" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-bear-600" />
-                        )}
-                        <span
-                          className={cn(
-                            "font-bold text-xs",
-                            t.action === "BUY" ? "text-bull-600" : "text-bear-600",
-                          )}
-                        >
+                        {t.action === "BUY" ? <TrendingUp className="h-4 w-4 text-bull-600" /> : <TrendingDown className="h-4 w-4 text-bear-600" />}
+                        <span className={cn("font-bold text-xs", t.action === "BUY" ? "text-bull-600" : "text-bear-600")}>
                           {t.action}
                         </span>
-                        <span className="tabular-nums">
-                          {t.shares.toLocaleString("id-ID")} lembar
-                        </span>
+                        <span className="tabular-nums">{t.shares.toLocaleString("id-ID")} lembar</span>
                       </div>
                       <div className="text-right tabular-nums">
                         <div className="font-bold">{formatIDR(t.price)}</div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {formatIDR(t.value)}
-                        </div>
+                        <div className="text-[10px] text-muted-foreground">{formatIDR(t.value)}</div>
                       </div>
                     </div>
                   ))}
@@ -373,13 +370,21 @@ export default function BacktestPage() {
             )}
 
             <Alert variant="info">
-              <strong>ℹ️ Disclaimer:</strong> Backtest menggunakan data historis
-              Yahoo Finance. Bukan jaminan performa masa depan. Selalu DYOR
-              dan kelola risiko Anda.
+              <strong>ℹ️ Disclaimer:</strong> Backtest menggunakan data historis Yahoo Finance. Bukan jaminan performa masa depan. Selalu DYOR dan kelola risiko Anda.
             </Alert>
           </>
         )}
       </main>
+
+      <MobileActionBar
+        primary={{
+          label: loading ? "Menjalankan..." : "🚀 Run Backtest",
+          ariaLabel: loading ? "Menjalankan backtest" : "Jalankan backtest",
+          icon: loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />,
+          onClick: handleRun,
+        }}
+        primaryOnly
+      />
     </div>
   );
 }
@@ -389,20 +394,10 @@ function StatPill({ label, value, suffix }: { label: string; value: number | str
   const isPositive = typeof value === "number" && value > 0;
   const isNegative = typeof value === "number" && value < 0;
   return (
-    <div className="rounded-lg bg-card border p-2 text-center">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "text-sm font-black tabular-nums",
-          isPositive && "text-bull-600",
-          isNegative && "text-bear-600",
-        )}
-      >
-        {typeof value === "number" && value > 0 ? "+" : ""}
-        {displayValue}
-        {suffix}
+    <div className="rounded-[0.75rem] bg-card border p-2 text-center shadow-[shadow-sm]">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</div>
+      <div className={cn("text-sm font-black tabular-nums", isPositive && "text-bull-600", isNegative && "text-bear-600")}>
+        {typeof value === "number" && value > 0 ? "+" : ""}{displayValue}{suffix}
       </div>
     </div>
   );

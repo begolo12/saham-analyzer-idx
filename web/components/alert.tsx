@@ -9,10 +9,10 @@ interface AlertProps {
 }
 
 const variantStyles = {
-  info: "bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-200",
-  warning: "bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200",
-  danger: "bg-red-50 border-red-200 text-red-900 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200",
-  success: "bg-green-50 border-green-200 text-green-900 dark:bg-green-950/30 dark:border-green-800 dark:text-green-200",
+  info: "bg-primary/10 border-primary/25 text-foreground dark:bg-primary/15 dark:border-primary/30",
+  warning: "bg-warning/10 border-warning/25 text-foreground dark:bg-warning/15 dark:border-warning/30",
+  danger: "bg-destructive/10 border-destructive/25 text-foreground dark:bg-destructive/15 dark:border-destructive/30",
+  success: "bg-success/10 border-success/25 text-foreground dark:bg-success/15 dark:border-success/30",
 };
 
 const variantIcons = {
@@ -40,10 +40,8 @@ export function Alert({ variant = "info", children, className, icon = true }: Al
 
 export function Disclaimer() {
   return (
-    <Alert variant="danger" className="mb-4">
-      <strong>⚠️ Disclaimer:</strong> Aplikasi ini adalah <strong>alat bantu analisa</strong>,
-      bukan saran finansial. Semua keputusan investasi sepenuhnya tanggung jawab Anda.
-      Selalu lakukan riset sendiri (DYOR).
-    </Alert>
+    <div className="disclaimer-pill" role="note">
+      ⚠️ Alat bantu analisa, bukan saran finansial · DYOR
+    </div>
   );
 }

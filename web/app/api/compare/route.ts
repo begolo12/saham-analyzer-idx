@@ -153,6 +153,9 @@ export async function GET(request: NextRequest) {
     for (const ticker of tickers) {
       const staticStock = POPULAR_STOCKS.find((s) => s.code === ticker);
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+
         // Fetch summary (fundamentals) + chart (price + 1mo history) in parallel
         const [summary, chartRes] = await Promise.all([
           fetchSummary(ticker).catch(() => null),
@@ -161,11 +164,12 @@ export async function GET(request: NextRequest) {
             {
               headers: { "User-Agent": UA, Accept: "application/json" },
               next: { revalidate: 300 },
-            },
+              signal: controller.signal,
+            } as RequestInit,
           )
             .then((r) => (r.ok ? r.json() : null))
             .catch(() => null),
-        ]);
+        ]).finally(() => clearTimeout(timeout));
 
         // Extract chart data
         const result = chartRes?.chart?.result?.[0];

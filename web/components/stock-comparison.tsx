@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn, formatIDR, formatPercent } from "@/lib/utils";
 import { toast } from "sonner";
 import { POPULAR_STOCKS } from "@/lib/popular-stocks";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface CompareStock {
   code: string;
@@ -558,6 +559,17 @@ export function StockComparison({
   const [input, setInput] = useState("");
   const [results, setResults] = useState<CompareStock[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   const addTicker = (raw: string) => {
     const t = raw.toUpperCase().replace(".JK", "").trim();
@@ -570,12 +582,20 @@ export function StockComparison({
       toast.error("Maksimal 3 saham");
       return;
     }
+    const performAdd = () => {
+      setTickers([...tickers, t]);
+      setInput("");
+    };
     if (!POPULAR_STOCKS.some((s) => s.code === t)) {
-      const ok = confirm(`${t} tidak ada di list populer. Lanjutkan?`);
-      if (!ok) return;
+      setConfirmDialog({
+        open: true,
+        title: "Tambahkan saham non-populer?",
+        description: `${t} tidak ada di daftar populer saham IDX. Beberapa data finansial historis mungkin tidak selengkap saham populer.`,
+        onConfirm: performAdd,
+      });
+      return;
     }
-    setTickers([...tickers, t]);
-    setInput("");
+    performAdd();
   };
 
   const removeTicker = (t: string) => {
@@ -945,6 +965,14 @@ export function StockComparison({
           </p>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        variant="primary"
+      />
     </div>
   );
 }

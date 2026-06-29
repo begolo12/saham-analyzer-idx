@@ -34,6 +34,16 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
+  const handleConfirm = useCallback(() => {
+    onConfirm();
+    onOpenChange(false);
+  }, [onConfirm, onOpenChange]);
+
+  const handleCancel = useCallback(() => {
+    onCancel?.();
+    onOpenChange(false);
+  }, [onCancel, onOpenChange]);
+
   // Focus cancel button on open
   useEffect(() => {
     if (open) {
@@ -52,17 +62,7 @@ export function ConfirmDialog({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open]);
-
-  const handleConfirm = useCallback(() => {
-    onConfirm();
-    onOpenChange(false);
-  }, [onConfirm, onOpenChange]);
-
-  const handleCancel = useCallback(() => {
-    onCancel?.();
-    onOpenChange(false);
-  }, [onCancel, onOpenChange]);
+  }, [open, handleCancel]);
 
   if (!open) return null;
 

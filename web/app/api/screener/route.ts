@@ -26,14 +26,24 @@ interface QuickQuote {
   changePct: number;
 }
 
+interface ScreenerPresetCacheData {
+  screen: string;
+  results: ScreenerResult[];
+  total: number;
+  scanned: number;
+  method: string;
+  timestamp: string;
+  duration: number;
+}
+
 // NOTE: In-memory cache only effective in single-process / dev mode.
 // On Vercel serverless each invocation has its own memory, so this is a no-op.
 // The `revalidate = 300` above provides the real caching via ISR.
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: ScreenerPresetCacheData; timestamp: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 const CACHE_MAX_ITEMS = 50; // prevent unbounded growth
 
-function getCached(key: string): any | null {
+function getCached(key: string): ScreenerPresetCacheData | null {
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL) {
@@ -43,7 +53,7 @@ function getCached(key: string): any | null {
   return entry.data;
 }
 
-function setCache(key: string, data: any) {
+function setCache(key: string, data: ScreenerPresetCacheData) {
   // Evict oldest entry if at capacity
   if (cache.size >= CACHE_MAX_ITEMS) {
     const oldest = cache.entries().next().value;

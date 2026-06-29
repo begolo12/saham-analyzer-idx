@@ -9,11 +9,23 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
 
+interface ScreenerCacheData {
+  preset: string;
+  presetName: string;
+  presetDescription: string;
+  results: FundamentalsResult[];
+  total: number;
+  scanned: number;
+  filters: Record<string, string | null>;
+  timestamp: string;
+  duration: number;
+}
+
 // Cache (5 minutes) — fundamentals change slowly
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: ScreenerCacheData; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-function getCached(key: string): any | null {
+function getCached(key: string): ScreenerCacheData | null {
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL) {
@@ -23,7 +35,7 @@ function getCached(key: string): any | null {
   return entry.data;
 }
 
-function setCache(key: string, data: any) {
+function setCache(key: string, data: ScreenerCacheData) {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -205,14 +217,20 @@ export async function GET(request: NextRequest) {
       const batchResults = await Promise.allSettled(
         batch.map(async (stock): Promise<FundamentalsResult | null> => {
           try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+
             // Fetch summary (fundamentals) + chart (today change) in parallel
             const [summary, chartRes] = await Promise.all([
               fetchSummary(stock.code),
               fetch(
                 `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(stock.code + ".JK")}?range=5d&interval=1d`,
-                { next: { revalidate: 300 } },
+                { 
+                  next: { revalidate: 300 },
+                  signal: controller.signal,
+                } as RequestInit,
               ).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-            ]);
+            ]).finally(() => clearTimeout(timeout));
             const staticStock = POPULAR_STOCKS.find(
               (s) => s.code === stock.code,
             );

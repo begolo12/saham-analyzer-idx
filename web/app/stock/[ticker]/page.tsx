@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -70,6 +70,12 @@ import type { TechnicalAnalysisResult } from "@/lib/technical";
 import type { FundamentalAnalysisResult } from "@/lib/fundamental";
 import type { BehavioralAnalysisResult } from "@/lib/behavioral";
 import type { SentimentSummary } from "@/lib/news";
+import type {
+  ConfluenceResult,
+  SupportResistanceResult,
+  WeightedScoringResult,
+  PatternRecognitionResult,
+} from "@/lib/analysis-engine";
 
 interface AnalysisData {
   summary: StockSummary;
@@ -80,10 +86,10 @@ interface AnalysisData {
   sentiment: SentimentSummary | null;
   recommendation: Recommendation;
   meta: {
-    confluence: any;
-    supportResistance: any;
-    weightedScoring: any;
-    patterns: any;
+    confluence: ConfluenceResult;
+    supportResistance: SupportResistanceResult;
+    weightedScoring: WeightedScoringResult;
+    patterns: PatternRecognitionResult;
     updatedAt?: string;
   };
 }
@@ -165,7 +171,9 @@ function StockDetailContent() {
 
   // Swipe navigation
   const mainRef = useRef<HTMLElement>(null);
-  const watchlist = typeof window !== "undefined" ? getWatchlist() : [];
+  const watchlist = useMemo(() => {
+    return typeof window !== "undefined" ? getWatchlist() : [];
+  }, []);
   const currentIdx = watchlist.indexOf(ticker);
 
   const navigateToStock = useCallback((t: string) => {

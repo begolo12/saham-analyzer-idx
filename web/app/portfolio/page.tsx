@@ -141,11 +141,12 @@ export default function PortfolioPage() {
       return;
     }
 
+    const controller = new AbortController();
     setLoadingPrices(true);
     Promise.all(
       uniqueTickers.map(async (t) => {
         try {
-          const res = await fetch(`/api/quick/${t}`);
+          const res = await fetch(`/api/quick/${t}`, { signal: controller.signal });
           if (!res.ok) return [t, null] as const;
           const data = await res.json();
           return [t, { code: t, ...data }] as const;
@@ -154,6 +155,7 @@ export default function PortfolioPage() {
         }
       }),
     ).then((entries) => {
+      if (controller.signal.aborted) return;
       const map: Record<string, PriceData> = {};
       for (const [t, data] of entries) {
         if (data) map[t] = data;
@@ -170,7 +172,13 @@ export default function PortfolioPage() {
       recordTodaySnapshot(transactions, [], priceMapForSnap);
       updatePeakPrices(priceMapForSnap);
       setSnapshots(getSnapshots());
+    }).catch(() => {
+      if (!controller.signal.aborted) {
+        setLoadingPrices(false);
+      }
     });
+
+    return () => controller.abort();
   }, [uniqueTickers, mounted, transactions]);
 
   useEffect(() => {

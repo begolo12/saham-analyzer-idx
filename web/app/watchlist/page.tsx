@@ -292,7 +292,7 @@ function WatchlistPageContent() {
         });
     }
     return arr;
-  }, [filteredItems, sortBy, data]);
+  }, [filteredItems, sortBy, data, items]);
 
   const smartAlerts = useMemo(() => {
     const next: { stock: WatchlistStockData; type: "hot" | "drop"; text: string }[] = [];

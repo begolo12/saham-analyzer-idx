@@ -36,6 +36,7 @@ import {
 import { formatIDR, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MobileAppBar } from "@/components/mobile-app-bar";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 type TabType = "active" | "history";
 
@@ -53,6 +54,17 @@ function AlertsPageContent() {
   const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<TabType>("active");
   const [typeFilter, setTypeFilter] = useState<AlertType | "all">("all");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -98,19 +110,29 @@ function AlertsPageContent() {
   };
 
   const handleClearAll = () => {
-    if (confirm("Hapus semua alert?")) {
-      clearAllAlerts();
-      setAlerts(getAlerts());
-      toast.success("Semua alert dihapus");
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Hapus semua alert?",
+      description: "Tindakan ini akan menghapus semua alert aktif Anda secara permanen.",
+      onConfirm: () => {
+        clearAllAlerts();
+        setAlerts(getAlerts());
+        toast.success("Semua alert dihapus");
+      },
+    });
   };
 
   const handleClearHistory = () => {
-    if (confirm("Hapus semua riwayat alert?")) {
-      clearAlertHistory();
-      setHistory(getAlertHistory());
-      toast.success("Riwayat alert dihapus");
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Hapus semua riwayat alert?",
+      description: "Tindakan ini akan menghapus semua riwayat alert secara permanen.",
+      onConfirm: () => {
+        clearAlertHistory();
+        setHistory(getAlertHistory());
+        toast.success("Riwayat alert dihapus");
+      },
+    });
   };
 
   const getAlertTypeIcon = (type: AlertType) => {
@@ -393,6 +415,14 @@ function AlertsPageContent() {
           )
         )}
       </main>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((d) => ({ ...d, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        variant="danger"
+      />
     </div>
   );
 }

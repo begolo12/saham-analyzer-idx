@@ -148,9 +148,9 @@ export default function HomePage() {
   const [marketTab, setMarketTab] = useState<MarketTab>("gainers");
 
   /** Shared overview fetch — used by both initial load and pull-to-refresh */
-  const fetchOverview = useCallback(async (): Promise<void> => {
+  const fetchOverview = useCallback(async (signal?: AbortSignal): Promise<void> => {
     try {
-      const r = await fetch("/api/market/overview");
+      const r = await fetch("/api/market/overview", { signal });
       if (!r.ok) throw new Error("Gagal memuat pergerakan pasar");
       const data = await r.json();
       parseOverviewData(
@@ -161,6 +161,7 @@ export default function HomePage() {
       );
       setError(null);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error(err);
       setError(
         err instanceof Error ? err.message : "Gagal memuat data",
@@ -169,13 +170,14 @@ export default function HomePage() {
   }, []);
 
   /** Shared top-picks fetch */
-  const fetchTopPicks = useCallback(async (): Promise<void> => {
+  const fetchTopPicks = useCallback(async (signal?: AbortSignal): Promise<void> => {
     try {
-      const r = await fetch("/api/market/top-picks");
+      const r = await fetch("/api/market/top-picks", { signal });
       if (!r.ok) throw new Error("Gagal memuat sinyal");
       const data = await r.json();
       setTopPicks(data.picks || []);
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setTopPicks([]);
     }
   }, []);
@@ -197,10 +199,13 @@ export default function HomePage() {
 
   // Initial data load
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
-    Promise.all([fetchOverview(), fetchTopPicks()]).finally(() =>
-      setLoading(false),
-    );
+    Promise.all([
+      fetchOverview(controller.signal),
+      fetchTopPicks(controller.signal),
+    ]).finally(() => setLoading(false));
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
